@@ -2,16 +2,17 @@
   "name": "untitled",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "tsc && esbuild ./src/main.ts --bundle --sourcemap=inline --tsconfig=./tsconfig.json --platform=node --outfile=./dist/main.js",
+    "start": "npm run build && node --enable-source-maps ./dist/main.js"
   },
   "devDependencies": {
-    "typescript": "^5.2.2",
+    "@tsconfig/recommended": "^1.0.10",
+    "@types/node": "24.0.10",
+    "esbuild": "0.25.5",
     "prettier": "^3.3.1",
-    "vite": "^5.2.0",
-    "@types/node": "24.0.10"
+    "typescript": "^5.2.2"
   }
 }
