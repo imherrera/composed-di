@@ -1,7 +1,7 @@
 {
-  "name": "untitled",
-  "private": true,
-  "version": "0.0.0",
+  "name": "composed-di",
+  "private": false,
+  "version": "0.0.1",
   "type": "commonjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,8 +14,18 @@
   "files": [
     "dist"
   ],
+  "keywords": [
+    "dependency injection",
+    "di"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imherrera/composed-di"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.10",
