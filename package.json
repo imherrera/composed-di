@@ -2,6 +2,7 @@
   "name": "composed-di",
   "private": false,
   "version": "0.0.1",
+  "author": "Juan Herrera juanhr454@gmail.com",
   "type": "commonjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,8 +13,10 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
+  "sideEffects": false,
   "keywords": [
     "dependency injection",
     "di"
@@ -24,7 +27,7 @@
     "url": "https://github.com/imherrera/composed-di"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc --build",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
