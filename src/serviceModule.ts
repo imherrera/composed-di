@@ -35,9 +35,19 @@ export class ServiceModule implements ServiceProvider {
   }
 
   static from(
-    factories: ServiceFactory<unknown, ServiceKey<unknown>[]>[],
+    entries: (ServiceModule | ServiceFactory<unknown, ServiceKey<unknown>[]>)[],
   ): ServiceModule {
-    return new ServiceModule(new Set(factories));
+    return new ServiceModule(
+      new Set(
+        entries.flatMap((e) => {
+          if (e instanceof ServiceModule) {
+            return e.factories;
+          } else {
+            return [e];
+          }
+        }),
+      ),
+    );
   }
 }
 
