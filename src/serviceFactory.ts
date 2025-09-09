@@ -8,16 +8,22 @@ type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
   [K in keyof T]: ServiceType<T[K]>;
 };
 
-export interface ServiceFactory<T, D extends readonly ServiceKey<unknown>[] = []> {
+export interface ServiceFactory<
+  T,
+  D extends readonly ServiceKey<unknown>[] = [],
+> {
   provides: ServiceKey<T>;
   dependsOn: D;
 
-  initialize(...dependencies: DependencyTypes<D>): Promise<T>;
+  initialize(...dependencies: DependencyTypes<D>): T | Promise<T>;
 
   dispose(instance: T): void;
 }
 
-export function singletonFactory<T, const D extends readonly ServiceKey<unknown>[] = []>({
+export function singletonFactory<
+  T,
+  const D extends readonly ServiceKey<unknown>[] = [],
+>({
   provides,
   dependsOn = [] as unknown as D,
   initialize,
@@ -25,7 +31,7 @@ export function singletonFactory<T, const D extends readonly ServiceKey<unknown>
 }: {
   provides: ServiceKey<T>;
   dependsOn?: D;
-  initialize: (...dependencies: DependencyTypes<D>) => Promise<T>;
+  initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>;
   dispose?: (instance: T) => void;
 }): ServiceFactory<T, D> {
   let instance: T | undefined;
@@ -49,7 +55,10 @@ export function singletonFactory<T, const D extends readonly ServiceKey<unknown>
   };
 }
 
-export function oneShotFactory<T, const D extends readonly ServiceKey<unknown>[] = []>({
+export function oneShotFactory<
+  T,
+  const D extends readonly ServiceKey<unknown>[] = [],
+>({
   provides,
   dependsOn,
   initialize,
@@ -57,7 +66,7 @@ export function oneShotFactory<T, const D extends readonly ServiceKey<unknown>[]
 }: {
   provides: ServiceKey<T>;
   dependsOn: D;
-  initialize: (...dependencies: DependencyTypes<D>) => Promise<T>;
+  initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>;
   dispose?: (instance: T) => void;
 }): ServiceFactory<T, D> {
   return {
