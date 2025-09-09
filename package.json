@@ -1,7 +1,7 @@
 {
   "name": "composed-di",
   "private": false,
-  "version": "0.0.3-alpha",
+  "version": "0.0.4-alpha",
   "author": "Juan Herrera juanhr454@gmail.com",
   "type": "commonjs",
   "main": "./dist/index.js",
