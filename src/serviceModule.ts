@@ -5,7 +5,9 @@ import { ServiceProvider } from './serviceProvider';
 export class ServiceModule implements ServiceProvider {
   private readonly factories: ServiceFactory<any, any>[] = [];
 
-  constructor(factories: Set<ServiceFactory<unknown, ServiceKey<unknown>[]>>) {
+  constructor(
+    factories: Set<ServiceFactory<unknown, readonly ServiceKey<unknown>[]>>,
+  ) {
     this.factories = Array.from(factories);
     this.factories.forEach((factory) => {
       checkRecursiveDependencies(factory);
@@ -35,7 +37,7 @@ export class ServiceModule implements ServiceProvider {
   }
 
   static from(
-    entries: (ServiceModule | ServiceFactory<unknown, ServiceKey<unknown>[]>)[],
+    entries: (ServiceModule | ServiceFactory<unknown, readonly ServiceKey<unknown>[]>)[],
   ): ServiceModule {
     return new ServiceModule(
       new Set(
@@ -52,7 +54,7 @@ export class ServiceModule implements ServiceProvider {
 }
 
 function checkRecursiveDependencies(
-  factory: ServiceFactory<unknown, ServiceKey<unknown>[]>,
+  factory: ServiceFactory<unknown, readonly ServiceKey<unknown>[]>,
 ) {
   const recursive = factory.dependsOn.some((dependencyKey) => {
     return dependencyKey === factory.provides;
@@ -66,7 +68,7 @@ function checkRecursiveDependencies(
 }
 
 function checkMissingDependencies(
-  factory: ServiceFactory<unknown, ServiceKey<unknown>[]>,
+  factory: ServiceFactory<unknown, readonly ServiceKey<unknown>[]>,
   factories: ServiceFactory<unknown>[],
 ) {
   const missingDependencies = factory.dependsOn.filter(
@@ -93,7 +95,7 @@ function isRegistered(
   return factories.some((factory) => factory.provides === key);
 }
 
-function isSuitable<T, D extends ServiceKey<unknown>[]>(
+function isSuitable<T, D extends readonly ServiceKey<unknown>[]>(
   key: ServiceKey<T>,
   factory: ServiceFactory<unknown, D>,
 ): factory is ServiceFactory<T, D> {

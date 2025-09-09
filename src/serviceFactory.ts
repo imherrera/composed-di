@@ -3,12 +3,12 @@ import { ServiceKey } from './serviceKey';
 // Helper types to extract the type from ServiceKey
 type ServiceType<T> = T extends ServiceKey<infer U> ? U : never;
 
-// Helper types to convert an array of ServiceKey to tuple of their types
-type DependencyTypes<T extends ServiceKey<unknown>[]> = {
+// Helper types to convert an array/tuple of ServiceKey to tuple of their types
+type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
   [K in keyof T]: ServiceType<T[K]>;
 };
 
-export interface ServiceFactory<T, D extends ServiceKey<unknown>[] = []> {
+export interface ServiceFactory<T, D extends readonly ServiceKey<unknown>[] = []> {
   provides: ServiceKey<T>;
   dependsOn: D;
 
@@ -17,7 +17,7 @@ export interface ServiceFactory<T, D extends ServiceKey<unknown>[] = []> {
   dispose(instance: T): void;
 }
 
-export function singletonFactory<T, D extends ServiceKey<unknown>[] = []>({
+export function singletonFactory<T, const D extends readonly ServiceKey<unknown>[] = []>({
   provides,
   dependsOn = [] as unknown as D,
   initialize,
@@ -49,7 +49,7 @@ export function singletonFactory<T, D extends ServiceKey<unknown>[] = []>({
   };
 }
 
-export function oneShotFactory<T, D extends ServiceKey<unknown>[] = []>({
+export function oneShotFactory<T, const D extends readonly ServiceKey<unknown>[] = []>({
   provides,
   dependsOn,
   initialize,
