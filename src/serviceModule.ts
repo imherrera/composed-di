@@ -13,7 +13,7 @@ export class ServiceModule implements ServiceProvider {
     });
   }
 
-  public async inject<T>(key: ServiceKey<T>): Promise<T> {
+  public async get<T>(key: ServiceKey<T>): Promise<T> {
     const factory = this.factories.find((factory) => {
       return isSuitable(key, factory);
     });
@@ -26,7 +26,7 @@ export class ServiceModule implements ServiceProvider {
     // Resolve all dependencies first
     const dependencies = await Promise.all(
       factory.dependsOn.map((dependencyKey: ServiceKey<unknown>) => {
-        return this.inject(dependencyKey);
+        return this.get(dependencyKey);
       }),
     );
 
