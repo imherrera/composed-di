@@ -5,7 +5,7 @@ A tiny, type-friendly dependency injection helper for composing services via key
 It provides:
 - ServiceKey<T>: a typed token used to identify a service
 - ServiceFactory<T>: a contract to create a service (with helpers singletonFactory and oneShotFactory)
-- ServiceModule: a resolver that wires factories, validates dependencies, and injects services
+- ServiceModule: a resolver that wires factories, validates dependencies, and provides services
 
 ServiceModule will:
 - detect recursive dependencies (a factory that depends on its own key)
@@ -13,7 +13,13 @@ ServiceModule will:
 
 ## Install
 
-This repository is set up as a library. Build artifacts are generated under `dist/` by running:
+Install from npm:
+
+- npm: `npm install composed-di`
+- pnpm: `pnpm add composed-di`
+- yarn: `yarn add composed-di`
+
+If you're working on this repo locally, build artifacts are generated under `dist/` by running:
 
 ```
 npm run build
@@ -21,7 +27,7 @@ npm run build
 
 ## Usage
 
-Below is an example based on the previous sample `main.ts` usage pattern.
+Below is a minimal example using the public API.
 
 ```ts
 import {
@@ -29,7 +35,7 @@ import {
   ServiceModule,
   singletonFactory,
   oneShotFactory,
-} from 'composed-di'; // if used locally, import from the relative path to `src/index`
+} from 'composed-di'; // when developing this repo locally, import from './src/index'
 
 // 1) Define service types
 interface Config {
@@ -77,26 +83,27 @@ const appFactory = oneShotFactory({
   },
 });
 
-// 4) Compose a module
+// 4) Compose a module (you can pass factories and/or other ServiceModule instances)
 const module = ServiceModule.from([configFactory, loggerFactory, appFactory]);
 
-// 5) Inject and use
+// 5) Resolve and use
 (async () => {
-  const app = await module.inject(AppKey);
+  const app = await module.get(AppKey);
   app.start();
 })();
 ```
 
 Notes:
 - Use `as const` on your `dependsOn` list to preserve tuple types and keep constructor parameters strongly typed.
-- `ServiceModule.inject` resolves dependencies recursively, so factories can depend on other services.
+- `ServiceModule.get` resolves dependencies recursively, so factories can depend on other services.
 - If a dependency is missing or recursive, `ServiceModule` throws with a helpful error message.
 
 ## API
 
 - `class ServiceKey<T>(name: string)`
-- `interface ServiceFactory<T, D extends ServiceKey<unknown>[]>` with `provides`, `dependsOn`, `initialize`, `dispose`
+- `interface ServiceFactory<T, D extends readonly ServiceKey<unknown>[]>` with `provides`, `dependsOn`, `initialize`, `dispose`
 - `singletonFactory({ provides, dependsOn?, initialize, dispose? })`
 - `oneShotFactory({ provides, dependsOn, initialize, dispose? })`
-- `class ServiceModule` with `static from(factories)`, `inject(key)`
+- `class ServiceModule` with `static from(factoriesOrModules)`, `get(key)`
+- `type ServiceProvider` with `get(key)` (implemented by ServiceModule)
 
