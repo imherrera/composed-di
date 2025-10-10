@@ -34,7 +34,7 @@ function escapeDotString(str: string): string {
 export function createDotGraph(
   module: ServiceModule,
   { direction, title, highlightLeaves, highlightRoots }: DotGraphOptions = {
-    direction: 'BT',
+    direction: 'TB',
     title: 'Service Dependency Graph',
     highlightLeaves: true,
     highlightRoots: true,
@@ -122,8 +122,8 @@ export function createDotGraph(
       const depNodeId = nodeIds.get(depName);
 
       if (depNodeId) {
-        // Arrow points from dependency to dependent (what provides -> what needs it)
-        lines.push(`  ${depNodeId} -> ${serviceNodeId};`);
+        // Arrow points from dependent to dependency (what needs it -> what provides it)
+        lines.push(`  ${serviceNodeId} -> ${depNodeId};`);
       }
     });
   });
