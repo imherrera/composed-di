@@ -21,8 +21,8 @@ export interface ServiceFactory<
 }
 
 export function singletonFactory<
-  T,
-  D extends readonly ServiceKey<unknown>[] = [],
+  const T,
+  const D extends readonly ServiceKey<unknown>[] = [],
 >({
   provides,
   dependsOn = [] as unknown as D,
@@ -56,8 +56,8 @@ export function singletonFactory<
 }
 
 export function oneShotFactory<
-  T,
-  D extends readonly ServiceKey<unknown>[] = [],
+  const T,
+  const D extends readonly ServiceKey<unknown>[] = [],
 >({
   provides,
   dependsOn,
