@@ -1,8 +1,7 @@
-import { ServiceKey } from './serviceKey';
-import { ServiceFactory } from './serviceFactory';
-import { ServiceProvider } from './serviceProvider';
+import { ServiceKey } from './ServiceKey';
+import { ServiceFactory } from './ServiceFactory';
 
-export class ServiceModule implements ServiceProvider {
+export class ServiceModule {
   readonly factories: ServiceFactory<any, any>[] = [];
 
   constructor(

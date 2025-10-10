@@ -1,5 +1,5 @@
-import { ServiceModule } from './serviceModule';
-import { ServiceKey } from './serviceKey';
+import { ServiceModule } from './ServiceModule';
+import { ServiceKey } from './ServiceKey';
 
 export interface DotGraphOptions {
   /** Graph direction: 'TB' (top-bottom), 'LR' (left-right), 'BT' (bottom-top), 'RL' (right-left) */
@@ -136,15 +136,8 @@ export function createDotGraph(
   return lines.join('\n');
 }
 
-export function printGraph(module: ServiceModule) {
-  const graph = createDotGraph(module, {
-    direction: 'TB',
-    title: 'Service Dependency Graph',
-    highlightLeaves: true,
-    highlightRoots: true,
-  });
-
-  console.log(graph);
+export function printDotGraph(module: ServiceModule) {
+  console.log(createDotGraph(module));
   console.log('\n\nCopy the DOT output above and paste it into:');
   console.log('https://dreampuf.github.io/GraphvizOnline/');
 }
