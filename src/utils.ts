@@ -33,15 +33,13 @@ function escapeDotString(str: string): string {
  */
 export function createDotGraph(
   module: ServiceModule,
-  options: DotGraphOptions = {},
+  { direction, title, highlightLeaves, highlightRoots }: DotGraphOptions = {
+    direction: 'BT',
+    title: 'Service Dependency Graph',
+    highlightLeaves: true,
+    highlightRoots: true,
+  },
 ): string {
-  const {
-    direction = 'TB',
-    title = 'Service Dependency Graph',
-    highlightLeaves = true,
-    highlightRoots = true,
-  } = options;
-
   const factories = module.factories;
   const lines: string[] = [];
 
