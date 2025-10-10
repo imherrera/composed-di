@@ -3,7 +3,7 @@ import { ServiceFactory } from './serviceFactory';
 import { ServiceProvider } from './serviceProvider';
 
 export class ServiceModule implements ServiceProvider {
-  private readonly factories: ServiceFactory<any, any>[] = [];
+  readonly factories: ServiceFactory<any, any>[] = [];
 
   constructor(
     factories: Set<ServiceFactory<unknown, readonly ServiceKey<unknown>[]>>,
