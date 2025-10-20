@@ -27,9 +27,9 @@ function escapeDotString(str: string): string {
  *
  * Arrows point from dependencies to dependents (from what is needed to what needs it).
  *
- * @param module - The ServiceModule to convert to DOT notation
- * @param options - Optional configuration for the graph appearance
- * @returns A string containing the DOT notation graph
+ * @param {ServiceModule} module - The ServiceModule to convert to DOT notation
+ * @param {DotGraphOptions} options - Optional configuration for the graph appearance
+ * @returns {string} A string containing the DOT notation graph
  */
 export function createDotGraph(
   module: ServiceModule,
@@ -134,8 +134,19 @@ export function createDotGraph(
   return lines.join('\n');
 }
 
-export function printDotGraph(module: ServiceModule) {
-  console.log(createDotGraph(module));
+/**
+ * Prints a DOT representation of a service module graph to the console.
+ * The output can be used to visualize the graph using online graph visualization tools.
+ *
+ * @param {ServiceModule} module - The service module representing the graph to be converted into DOT format.
+ * @param {DotGraphOptions} [options] - Optional configurations to customize the output of the DOT graph.
+ * @return {void} - This function does not return a value.
+ */
+export function printDotGraph(
+  module: ServiceModule,
+  options?: DotGraphOptions,
+): void {
+  console.log(createDotGraph(module, options));
   console.log('\n\nCopy the DOT output above and paste it into:');
   console.log('https://dreampuf.github.io/GraphvizOnline/');
 }
