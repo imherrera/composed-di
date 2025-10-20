@@ -1,21 +1,19 @@
 import { ServiceKey } from './ServiceKey';
 import { ServiceFactory } from './ServiceFactory';
 
-export class ServiceModule {
-  readonly factories: ServiceFactory<any, any>[] = [];
+type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<unknown>[]>;
+type GenericKey = ServiceKey<unknown>;
 
-  constructor(
-    factories: Set<ServiceFactory<unknown, readonly ServiceKey<unknown>[]>>,
-  ) {
-    this.factories = Array.from(factories);
-    this.factories.forEach((factory) => {
+export class ServiceModule {
+  private constructor(readonly factories: GenericFactory[]) {
+    factories.forEach((factory) => {
       checkRecursiveDependencies(factory);
       checkMissingDependencies(factory, this.factories);
     });
   }
 
   public async get<T>(key: ServiceKey<T>): Promise<T> {
-    const factory = this.factories.find((factory) => {
+    const factory = this.factories.find((factory: GenericFactory) => {
       return isSuitable(key, factory);
     });
 
@@ -35,26 +33,23 @@ export class ServiceModule {
     return factory.initialize(...dependencies);
   }
 
-  static from(
-    entries: (ServiceModule | ServiceFactory<unknown, readonly ServiceKey<unknown>[]>)[],
-  ): ServiceModule {
-    return new ServiceModule(
-      new Set(
-        entries.flatMap((e) => {
-          if (e instanceof ServiceModule) {
-            return e.factories;
-          } else {
-            return [e];
-          }
-        }),
-      ),
+  static from(entries: (ServiceModule | GenericFactory)[]): ServiceModule {
+    // Flatten entries and keep only the last factory for each ServiceKey
+    const flattened = entries.flatMap((e) =>
+      e instanceof ServiceModule ? e.factories : [e],
     );
+
+    const byKey = new Map<symbol, GenericFactory>();
+    // Later factories overwrite earlier ones (last-wins)
+    for (const f of flattened) {
+      byKey.set(f.provides.symbol, f);
+    }
+
+    return new ServiceModule(Array.from(byKey.values()));
   }
 }
 
-function checkRecursiveDependencies(
-  factory: ServiceFactory<unknown, readonly ServiceKey<unknown>[]>,
-) {
+function checkRecursiveDependencies(factory: GenericFactory) {
   const recursive = factory.dependsOn.some((dependencyKey) => {
     return dependencyKey === factory.provides;
   });
@@ -67,11 +62,11 @@ function checkRecursiveDependencies(
 }
 
 function checkMissingDependencies(
-  factory: ServiceFactory<unknown, readonly ServiceKey<unknown>[]>,
-  factories: ServiceFactory<unknown>[],
+  factory: GenericFactory,
+  factories: GenericFactory[],
 ) {
   const missingDependencies = factory.dependsOn.filter(
-    (dependencyKey: ServiceKey<any>) => {
+    (dependencyKey: GenericKey) => {
       return !isRegistered(dependencyKey, factories);
     },
   );
@@ -87,16 +82,13 @@ function checkMissingDependencies(
   );
 }
 
-function isRegistered(
-  key: ServiceKey<unknown>,
-  factories: ServiceFactory<unknown>[],
-) {
-  return factories.some((factory) => factory.provides === key);
+function isRegistered(key: GenericKey, factories: GenericFactory[]) {
+  return factories.some((factory) => factory.provides?.symbol === key?.symbol);
 }
 
-function isSuitable<T, D extends readonly ServiceKey<unknown>[]>(
+function isSuitable<T, D extends readonly ServiceKey<any>[]>(
   key: ServiceKey<T>,
-  factory: ServiceFactory<unknown, D>,
+  factory: ServiceFactory<any, D>,
 ): factory is ServiceFactory<T, D> {
-  return factory?.provides === key;
+  return factory?.provides?.symbol === key?.symbol;
 }
