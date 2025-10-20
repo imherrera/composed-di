@@ -33,6 +33,16 @@ export class ServiceModule {
     return factory.initialize(...dependencies);
   }
 
+  /**
+   * Creates a new ServiceModule instance by aggregating and deduplicating a list of
+   * ServiceModule or GenericFactory instances.
+   * If multiple factories provide the same
+   * ServiceKey, the last one in the list takes precedence.
+   *
+   * @param {Array<ServiceModule | GenericFactory>} entries - An array of ServiceModule or GenericFactory
+   * instances to be processed into a single ServiceModule.
+   * @return {ServiceModule} A new ServiceModule containing the deduplicated factories.
+   */
   static from(entries: (ServiceModule | GenericFactory)[]): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
     const flattened = entries.flatMap((e) =>
