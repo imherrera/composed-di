@@ -1,4 +1,5 @@
 import { ServiceKey } from './ServiceKey';
+import { ServiceScope } from './ServiceScope';
 
 // Helper types to extract the type from ServiceKey
 type ServiceType<T> = T extends ServiceKey<infer U> ? U : never;
@@ -14,24 +15,25 @@ export abstract class ServiceFactory<
 > {
   abstract provides: ServiceKey<T>;
   abstract dependsOn: D;
-
-  abstract initialize(...dependencies: DependencyTypes<D>): T | Promise<T>;
-
-  abstract dispose(instance: T): void;
+  abstract scope?: ServiceScope;
+  abstract initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>;
+  abstract dispose?: () => void;
 
   /**
    * Creates a singleton service factory that ensures a single instance of the provided service is initialized
-   * and used throughout its lifecycle.
+   * and used throughout the scope lifecycle.
    */
   static singleton<
     const T,
     const D extends readonly ServiceKey<unknown>[] = [],
   >({
+    scope,
     provides,
     dependsOn = [] as unknown as D,
     initialize,
     dispose = () => {},
   }: {
+    scope?: ServiceScope;
     provides: ServiceKey<T>;
     dependsOn?: D;
     initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>;
@@ -40,18 +42,19 @@ export abstract class ServiceFactory<
     let instance: T | undefined;
 
     return {
+      scope,
       provides,
       dependsOn,
       async initialize(...dependencies: DependencyTypes<D>): Promise<T> {
-        if (instance) {
-          return instance;
+        if (instance === undefined) {
+          instance = await initialize(...dependencies);
         }
-        instance = await initialize(...dependencies);
+
         return instance;
       },
-      dispose(serviceInstance: T): void {
-        if (instance === serviceInstance) {
-          dispose(serviceInstance);
+      dispose(): void {
+        if (instance !== undefined) {
+          dispose(instance);
           instance = undefined;
         }
       },
@@ -66,18 +69,15 @@ export abstract class ServiceFactory<
     provides,
     dependsOn,
     initialize,
-    dispose = () => {},
   }: {
     provides: ServiceKey<T>;
     dependsOn: D;
     initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>;
-    dispose?: (instance: T) => void;
   }): ServiceFactory<T, D> {
     return {
       provides,
       dependsOn,
       initialize,
-      dispose,
     };
   }
 }

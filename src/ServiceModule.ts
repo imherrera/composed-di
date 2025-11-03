@@ -1,5 +1,6 @@
 import { ServiceKey } from './ServiceKey';
 import { ServiceFactory } from './ServiceFactory';
+import { ServiceScope } from './ServiceScope';
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<unknown>[]>;
 type GenericKey = ServiceKey<unknown>;
@@ -31,6 +32,24 @@ export class ServiceModule {
 
     // Call the factory to retrieve the dependency
     return factory.initialize(...dependencies);
+  }
+
+  /**
+   * Disposes of service factories within the specified scope or all factories if no scope is provided.
+   *
+   * This method is useful for cleaning up resources and instances held by service factories,
+   * such as singleton factories, as they may hold database connections or other resources that need to be released.
+   *
+   * @param {ServiceScope} [scope] The scope to filter the factories to be disposed.
+   * If not provided, all factories are disposed of.
+   * @return {void} No return value.
+   */
+  public dispose(scope?: ServiceScope) {
+    const factories = scope
+      ? this.factories.filter((f) => f.scope === scope)
+      : this.factories;
+
+    factories.forEach((factory) => factory.dispose?.());
   }
 
   /**
