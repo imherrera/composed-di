@@ -1,4 +1,4 @@
-# composed-di
+# lazy-di
 
 A tiny, type-friendly dependency injection helper for composing services via keys and factories.
 
