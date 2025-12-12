@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/imherrera/composed-di"
+    "url": "git+https://github.com/imherrera/composed-di.git"
   },
   "scripts": {
     "build": "tsc --build",
