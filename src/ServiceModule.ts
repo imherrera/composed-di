@@ -2,7 +2,7 @@ import { ServiceKey } from './ServiceKey';
 import { ServiceFactory } from './ServiceFactory';
 import { ServiceScope } from './ServiceScope';
 
-type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
+type GenericFactory = ServiceFactory<any, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;
 
 export class ServiceModule {

@@ -10,8 +10,8 @@ type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
 };
 
 export abstract class ServiceFactory<
-  const T,
-  const D extends readonly ServiceKey<unknown>[] = [],
+  T,
+  D extends readonly ServiceKey<unknown>[] = [],
 > {
   abstract provides: ServiceKey<T>;
   abstract dependsOn: D;
@@ -24,8 +24,8 @@ export abstract class ServiceFactory<
    * and used throughout the scope lifecycle.
    */
   static singleton<
-    const T,
-    const D extends readonly ServiceKey<unknown>[] = [],
+    T,
+    D extends readonly ServiceKey<unknown>[] = [],
   >({
     scope,
     provides,
@@ -65,7 +65,7 @@ export abstract class ServiceFactory<
    * Creates a one-shot service factory that initializes a new instance of the provided service
    * every time it is requested.
    */
-  static oneShot<const T, const D extends readonly ServiceKey<unknown>[] = []>({
+  static oneShot<T, D extends readonly ServiceKey<unknown>[] = []>({
     provides,
     dependsOn,
     initialize,

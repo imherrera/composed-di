@@ -1,7 +1,7 @@
 {
   "name": "composed-di",
   "private": false,
-  "version": "0.2.8",
+  "version": "0.2.8-ts4",
   "author": "Juan Herrera juanhr454@gmail.com",
   "type": "commonjs",
   "main": "./dist/index.js",
@@ -35,6 +35,6 @@
     "@tsconfig/recommended": "^1.0.10",
     "@types/node": "24.0.10",
     "prettier": "^3.3.1",
-    "typescript": "^5.2.2"
+    "typescript": "4.9.3"
   }
 }
