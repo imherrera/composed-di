@@ -1,6 +1,6 @@
-import { ServiceKey } from './ServiceKey';
-import { ServiceFactory } from './ServiceFactory';
-import { ServiceScope } from './ServiceScope';
+import { ServiceKey } from './serviceKey';
+import { ServiceFactory } from './serviceFactory';
+import { ServiceScope } from './serviceScope';
 
 type GenericFactory = ServiceFactory<any, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;

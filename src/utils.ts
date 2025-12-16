@@ -1,5 +1,5 @@
-import { ServiceModule } from './ServiceModule';
-import { ServiceKey } from './ServiceKey';
+import { ServiceModule } from './serviceModule';
+import { ServiceKey } from './serviceKey';
 
 export interface DotGraphOptions {
   /** Graph direction: 'TB' (top-bottom), 'LR' (left-right), 'BT' (bottom-top), 'RL' (right-left) */

@@ -1,5 +1,5 @@
-import { ServiceKey } from './ServiceKey';
-import { ServiceScope } from './ServiceScope';
+import { ServiceKey } from './serviceKey';
+import { ServiceScope } from './serviceScope';
 
 // Helper types to extract the type from ServiceKey
 type ServiceType<T> = T extends ServiceKey<infer U> ? U : never;
