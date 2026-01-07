@@ -2,6 +2,7 @@ import { ServiceKey, ServiceSelectorKey } from './serviceKey';
 import { ServiceFactory } from './serviceFactory';
 import { ServiceScope } from './serviceScope';
 import { ServiceSelector } from './serviceSelector';
+import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors';
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;
@@ -14,6 +15,13 @@ export class ServiceModule {
     });
   }
 
+  /**
+   * Retrieves an instance for the given ServiceKey.
+   *
+   * @param key - The key of the service to retrieve.
+   * @return A promise that resolves to the service instance.
+   * @throws {ServiceFactoryNotFoundError} If no suitable factory is found for the given key.
+   */
   public async get<T>(key: ServiceKey<T>): Promise<T> {
     const factory = this.factories.find((factory: GenericFactory) => {
       return isSuitable(key, factory);
@@ -21,7 +29,9 @@ export class ServiceModule {
 
     // Check if a factory to supply the requested key was not found
     if (!factory) {
-      throw new Error(`Could not find a suitable factory for ${key.name}`);
+      throw new ServiceFactoryNotFoundError(
+        `Could not find a suitable factory for ${key.name}`,
+      );
     }
 
     // Resolve all dependencies first
@@ -66,6 +76,7 @@ export class ServiceModule {
    * @param {Array<ServiceModule | GenericFactory>} entries - An array of ServiceModule or GenericFactory
    * instances to be processed into a single ServiceModule.
    * @return {ServiceModule} A new ServiceModule containing the deduplicated factories.
+   * @throws {ServiceModuleInitError} If circular or missing dependencies are detected during module creation.
    */
   static from(entries: (ServiceModule | GenericFactory)[]): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
@@ -89,7 +100,7 @@ function checkRecursiveDependencies(factory: GenericFactory) {
   });
 
   if (recursive) {
-    throw new Error(
+    throw new ServiceModuleInitError(
       'Recursive dependency detected on: ' + factory.provides.name,
     );
   }
@@ -121,7 +132,7 @@ function checkMissingDependencies(
   const dependencyList = missingDependencies
     .map((dependencyKey) => ` -> ${dependencyKey.name}`)
     .join('\n');
-  throw new Error(
+  throw new ServiceModuleInitError(
     `${factory.provides.name} will fail because it depends on:\n ${dependencyList}`,
   );
 }
