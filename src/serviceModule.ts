@@ -1,6 +1,7 @@
-import { ServiceKey } from './serviceKey';
+import { ServiceKey, ServiceSelectorKey } from './serviceKey';
 import { ServiceFactory } from './serviceFactory';
 import { ServiceScope } from './serviceScope';
+import { ServiceSelector } from './serviceSelector';
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;
@@ -26,6 +27,10 @@ export class ServiceModule {
     // Resolve all dependencies first
     const dependencies = await Promise.all(
       factory.dependsOn.map((dependencyKey: ServiceKey<unknown>) => {
+        // If the dependency is a ServiceSelectorKey, create a ServiceSelector instance
+        if (dependencyKey instanceof ServiceSelectorKey) {
+          return new ServiceSelector(this, dependencyKey);
+        }
         return this.get(dependencyKey);
       }),
     );
@@ -94,11 +99,21 @@ function checkMissingDependencies(
   factory: GenericFactory,
   factories: GenericFactory[],
 ) {
-  const missingDependencies = factory.dependsOn.filter(
-    (dependencyKey: GenericKey) => {
-      return !isRegistered(dependencyKey, factories);
-    },
-  );
+  const missingDependencies: GenericKey[] = [];
+
+  factory.dependsOn.forEach((dependencyKey: GenericKey) => {
+    // For ServiceSelectorKey, check all contained keys are registered
+    if (dependencyKey instanceof ServiceSelectorKey) {
+      dependencyKey.values.forEach((key) => {
+        if (!isRegistered(key, factories)) {
+          missingDependencies.push(key);
+        }
+      });
+    } else if (!isRegistered(dependencyKey, factories)) {
+      missingDependencies.push(dependencyKey);
+    }
+  });
+
   if (missingDependencies.length === 0) {
     return;
   }

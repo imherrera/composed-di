@@ -1,8 +1,14 @@
-import { ServiceKey } from './serviceKey';
+import { ServiceKey, ServiceSelectorKey } from './serviceKey';
 import { ServiceScope } from './serviceScope';
+import { ServiceSelector } from './serviceSelector';
 
-// Helper types to extract the type from ServiceKey
-type ServiceType<T> = T extends ServiceKey<infer U> ? U : never;
+// Helper types to extract the type from ServiceKey or ServiceSelectorKey
+type ServiceType<T> =
+  T extends ServiceSelectorKey<infer U>
+    ? ServiceSelector<U>
+    : T extends ServiceKey<infer U>
+      ? U
+      : never;
 
 // Helper types to convert an array/tuple of ServiceKey to tuple of their types
 type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
