@@ -7,7 +7,20 @@ import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors';
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;
 
+/**
+ * ServiceModule is a container for service factories and manages dependency resolution.
+ *
+ * It provides a way to retrieve service instances based on their ServiceKey,
+ * ensuring that all dependencies are resolved and initialized in the correct order.
+ * It also handles circular dependency detection and missing dependency validation
+ * at the time of module creation.
+ */
 export class ServiceModule {
+  /**
+   * Private constructor to enforce module creation through the `static from` method.
+   *
+   * @param factories An array of service factories that this module will manage.
+   */
   private constructor(readonly factories: GenericFactory[]) {
     checkCircularDependencies(this.factories);
     factories.forEach((factory) => {
@@ -55,9 +68,9 @@ export class ServiceModule {
    * This method is useful for cleaning up resources and instances held by service factories,
    * such as singleton factories, as they may hold database connections or other resources that need to be released.
    *
-   * @param {ServiceScope} [scope] The scope to filter the factories to be disposed.
+   * @param scope The scope to filter the factories to be disposed.
    * If not provided, all factories are disposed of.
-   * @return {void} No return value.
+   * @return No return value.
    */
   public dispose(scope?: ServiceScope) {
     const factories = scope
@@ -73,9 +86,9 @@ export class ServiceModule {
    * If multiple factories provide the same
    * ServiceKey, the last one in the list takes precedence.
    *
-   * @param {Array<ServiceModule | GenericFactory>} entries - An array of ServiceModule or GenericFactory
+   * @param entries - An array of ServiceModule or GenericFactory
    * instances to be processed into a single ServiceModule.
-   * @return {ServiceModule} A new ServiceModule containing the deduplicated factories.
+   * @return A new ServiceModule containing the deduplicated factories.
    * @throws {ServiceModuleInitError} If circular or missing dependencies are detected during module creation.
    */
   static from(entries: (ServiceModule | GenericFactory)[]): ServiceModule {
@@ -94,6 +107,12 @@ export class ServiceModule {
   }
 }
 
+/**
+ * Validates that there are no circular dependencies among the provided factories.
+ *
+ * @param factories The list of factories to check for cycles.
+ * @throws {ServiceModuleInitError} If a circular dependency is detected.
+ */
 function checkCircularDependencies(factories: GenericFactory[]) {
   const factoryMap = new Map<symbol, GenericFactory>();
   for (const f of factories) {
@@ -140,6 +159,13 @@ function checkCircularDependencies(factories: GenericFactory[]) {
   }
 }
 
+/**
+ * Validates that all dependencies of a given factory are present in the list of factories.
+ *
+ * @param factory The factory whose dependencies are to be checked.
+ * @param factories The list of available factories in the module.
+ * @throws {ServiceModuleInitError} If any dependency is missing.
+ */
 function checkMissingDependencies(
   factory: GenericFactory,
   factories: GenericFactory[],
@@ -171,10 +197,24 @@ function checkMissingDependencies(
   );
 }
 
+/**
+ * Checks if a ServiceKey is registered among the provided factories.
+ *
+ * @param key The ServiceKey to look for.
+ * @param factories The list of factories to search in.
+ * @returns True if a factory provides the given key, false otherwise.
+ */
 function isRegistered(key: GenericKey, factories: GenericFactory[]) {
   return factories.some((factory) => factory.provides?.symbol === key?.symbol);
 }
 
+/**
+ * Determines if a factory is suitable for providing a specific ServiceKey.
+ *
+ * @param key The ServiceKey being requested.
+ * @param factory The factory to check.
+ * @returns True if the factory provides the key, false otherwise.
+ */
 function isSuitable<T, D extends readonly ServiceKey<any>[]>(
   key: ServiceKey<T>,
   factory: ServiceFactory<any, D>,
