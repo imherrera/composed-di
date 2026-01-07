@@ -9,8 +9,8 @@ type GenericKey = ServiceKey<any>;
 
 export class ServiceModule {
   private constructor(readonly factories: GenericFactory[]) {
+    checkCircularDependencies(this.factories);
     factories.forEach((factory) => {
-      checkRecursiveDependencies(factory);
       checkMissingDependencies(factory, this.factories);
     });
   }
@@ -94,15 +94,49 @@ export class ServiceModule {
   }
 }
 
-function checkRecursiveDependencies(factory: GenericFactory) {
-  const recursive = factory.dependsOn.some((dependencyKey) => {
-    return dependencyKey === factory.provides;
-  });
+function checkCircularDependencies(factories: GenericFactory[]) {
+  const factoryMap = new Map<symbol, GenericFactory>();
+  for (const f of factories) {
+    factoryMap.set(f.provides.symbol, f);
+  }
 
-  if (recursive) {
-    throw new ServiceModuleInitError(
-      'Recursive dependency detected on: ' + factory.provides.name,
-    );
+  const visited = new Set<symbol>();
+  const stack = new Set<symbol>();
+
+  function walk(factory: GenericFactory, path: string[]) {
+    const symbol = factory.provides.symbol;
+
+    if (stack.has(symbol)) {
+      const cyclePath = [...path, factory.provides.name].join(' -> ');
+      throw new ServiceModuleInitError(
+        `Circular dependency detected: ${cyclePath}`,
+      );
+    }
+
+    if (visited.has(symbol)) {
+      return;
+    }
+
+    visited.add(symbol);
+    stack.add(symbol);
+
+    for (const depKey of factory.dependsOn) {
+      const keysToCheck =
+        depKey instanceof ServiceSelectorKey ? depKey.values : [depKey];
+
+      for (const key of keysToCheck) {
+        const depFactory = factoryMap.get(key.symbol);
+        if (depFactory) {
+          walk(depFactory, [...path, factory.provides.name]);
+        }
+      }
+    }
+
+    stack.delete(symbol);
+  }
+
+  for (const factory of factories) {
+    walk(factory, []);
   }
 }
 
