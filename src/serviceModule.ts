@@ -3,6 +3,7 @@ import { ServiceFactory } from './serviceFactory';
 import { ServiceScope } from './serviceScope';
 import { ServiceSelector } from './serviceSelector';
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors';
+import { ServiceTracer } from './serviceTracer';
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;
@@ -108,7 +109,10 @@ export class ServiceModule {
    * @return A new ServiceModule containing the deduplicated factories.
    * @throws {ServiceModuleInitError} If circular or missing dependencies are detected during module creation.
    */
-  static from(entries: (ServiceModule | GenericFactory)[]): ServiceModule {
+  static from(
+    entries: (ServiceModule | GenericFactory)[],
+    tracer?: ServiceTracer,
+  ): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
     const flattened = entries.flatMap((e) =>
       e instanceof ServiceModule ? e.factories : [e],
@@ -118,6 +122,14 @@ export class ServiceModule {
     // Later factories overwrite earlier ones (last-wins)
     for (const f of flattened) {
       byKey.set(f.provides.symbol, f);
+    }
+
+    if (tracer) {
+      return new ServiceModule(
+        Array.from(byKey.values()).map((factory) => {
+          return makeTraceable(tracer, factory);
+        }),
+      );
     }
 
     return new ServiceModule(Array.from(byKey.values()));
@@ -237,4 +249,63 @@ function isSuitable<T, D extends readonly ServiceKey<any>[]>(
   factory: ServiceFactory<any, D>,
 ): factory is ServiceFactory<T, D> {
   return factory?.provides?.symbol === key?.symbol;
+}
+
+/**
+ * Wraps a given service factory with instrumentation to trace method calls and lifecycle events.
+ *
+ * @param tracer The tracer instance used to trace lifecycle and method calls.
+ * @param delegate The original service factory to be instrumented.
+ * @return A new service factory that provides the same dependencies but includes tracing logic.
+ */
+function makeTraceable<T, D extends readonly ServiceKey<any>[]>(
+  tracer: ServiceTracer,
+  delegate: ServiceFactory<any, D>,
+): ServiceFactory<T, D> {
+  return ServiceFactory.singleton({
+    scope: delegate.scope,
+    provides: delegate.provides,
+    dependsOn: delegate.dependsOn,
+    dispose: () => {
+      const dispose = delegate.dispose;
+      if (dispose) {
+        tracer.trace(`${delegate.provides.name}.dispose`, () => {
+          dispose();
+        });
+      }
+    },
+    initialize: async (...args) => {
+      return await tracer.trace(
+        `${delegate.provides.name}.initialize`,
+        async () => {
+          const instance = await delegate.initialize(...args);
+          return traceMethodCalls(instance, tracer);
+        },
+      );
+    },
+  });
+}
+
+/**
+ * Wraps an object with a Proxy to trace method calls using the provided tracer.
+ *
+ * @param thing The object whose method calls need to be traced.
+ * @param tracer The tracer instance used to log or track method calls.
+ * @return A Proxy wrapping the input object, with all method calls being traced.
+ */
+function traceMethodCalls(thing: any, tracer: ServiceTracer): any {
+  if (typeof thing !== 'object' || thing === null) {
+    return thing;
+  }
+
+  return new Proxy(thing, {
+    get(target, prop) {
+      const value = Reflect.get(target, prop);
+      if (typeof value === 'function' && typeof prop === 'string') {
+        return (...args: unknown[]) =>
+          tracer.trace(prop, () => value.apply(target, args));
+      }
+      return value;
+    },
+  });
 }

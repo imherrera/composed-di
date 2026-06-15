@@ -3,5 +3,6 @@ export * from './serviceModule';
 export * from './serviceFactory';
 export * from './serviceScope';
 export * from './serviceSelector';
+export * from './serviceTracer';
 export * from './errors';
 export * from './utils';
