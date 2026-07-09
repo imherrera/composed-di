@@ -2,6 +2,8 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/observability" }
+    { "path": "packages/observability" },
+    { "path": "packages/observability-otel" },
+    { "path": "packages/observability-xray" }
   ]
 }

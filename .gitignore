@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.tsbuildinfo
 *.tgz
+build/
+.idea

@@ -1,5 +1,5 @@
 {
-  "name": "@composed-di/observability",
+  "name": "@composed-di/observability-otel",
   "private": false,
   "version": "0.5.0-alpha",
   "author": "Juan Herrera juanhr454@gmail.com",
@@ -13,9 +13,6 @@
       "default": "./dist/index.js"
     }
   },
-  "bin": {
-    "composed-di-dashboard": "./dist/cli.js"
-  },
   "files": [
     "dist",
     "src"
@@ -25,14 +22,15 @@
     "dependency injection",
     "di",
     "observability",
-    "dashboard",
+    "opentelemetry",
+    "otel",
     "tracing"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/imherrera/composed-di.git",
-    "directory": "packages/observability"
+    "directory": "packages/observability-otel"
   },
   "scripts": {
     "build": "tsc --build",
@@ -41,6 +39,13 @@
   },
   "dependencies": {
     "@composed-di/core": "file:../core"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/sdk-trace-base": "^2.9.0"
   },
   "publishConfig": {
     "access": "public"

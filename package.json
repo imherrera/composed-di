@@ -12,7 +12,9 @@
     "build": "tsc --build",
     "clean": "tsc --build --clean",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:types": "tsc --build",
+    "dev:dashboard": "tsc --build && node packages/observability/dist/cli.js"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.10",
