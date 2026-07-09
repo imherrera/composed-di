@@ -35,22 +35,24 @@ export interface OtelEventListenerOptions {
   tracer?: Tracer;
 
   /**
-   * Record method arguments as the `composed_di.args` span attribute,
-   * serialized to JSON. Off by default: arguments may be large or contain
-   * secrets, and they end up wherever spans are exported.
+   * Record method arguments as the `composed_di.service.function.arguments`
+   * span attribute, serialized to JSON. Off by default: arguments may be
+   * large or contain secrets, and they end up wherever spans are exported.
    */
   captureArguments?: boolean;
 
   /**
-   * Record return / resolved values as the `composed_di.result` span
-   * attribute, serialized to JSON. Off by default, for the same reasons
-   * as `captureArguments`. Applies to method call and initialize spans.
+   * Record return / resolved values as the
+   * `composed_di.service.function.result` span attribute, serialized to
+   * JSON. Off by default, for the same reasons as `captureArguments`.
+   * Applies to method call and initialize spans.
    */
   captureResults?: boolean;
 
   /**
-   * Maximum length of a serialized `composed_di.args` / `composed_di.result`
-   * attribute value; longer values are truncated. Default 1024.
+   * Maximum length of a serialized `composed_di.service.function.arguments`
+   * / `composed_di.service.function.result` attribute value; longer values
+   * are truncated. Default 1024.
    */
   maxCaptureLength?: number;
 }
@@ -62,7 +64,7 @@ export interface OtelEventListenerOptions {
  * Span names are `<service>.<operation>` (e.g. "Database.query"). Spans carry
  * the standard `code.function.name` attribute (the fully-qualified name, per
  * the OpenTelemetry code semantic conventions) alongside the domain-specific
- * attributes `composed_di.service` and
+ * attributes `composed_di.service.name` and
  * `composed_di.event` ('initialize' | 'dispose' | 'call'). Failed
  * operations record the exception, set the span status to ERROR with the
  * exception message as its description, and set `error.type` as the general
@@ -119,11 +121,11 @@ export class OtelEventListener implements ServiceEventListener {
   ): EventSpan {
     const attributes: Attributes = {
       [ATTR_CODE_FUNCTION_NAME]: `${service}.${functionName}`,
-      'composed_di.service': service,
+      'composed_di.service.name': service,
       'composed_di.event': event,
     };
     if (serializedArgs !== undefined) {
-      attributes['composed_di.args'] = serializedArgs;
+      attributes['composed_di.service.function.arguments'] = serializedArgs;
     }
 
     const parent = this.activeContext.getStore() ?? otelContext.active();
@@ -142,7 +144,7 @@ export class OtelEventListener implements ServiceEventListener {
       end: (outcome) => {
         if (captureResult && outcome !== undefined) {
           span.setAttribute(
-            'composed_di.result',
+            'composed_di.service.function.result',
             this.serialize(outcome.result),
           );
         }
