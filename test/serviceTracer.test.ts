@@ -233,9 +233,7 @@ describe('ServiceTracer', () => {
       expect(calls.filter((c) => c.endsWith('foo'))).toHaveLength(1);
     });
 
-    // Method spans are bare property names; lifecycle spans are qualified.
-    // Spans from different services are indistinguishable in a trace viewer.
-    it.fails('should qualify method spans with the service name', async () => {
+    it('should qualify method spans with the service name', async () => {
       const Key = new ServiceKey<{ greet(): string }>('svc');
       const factory = ServiceFactory.singleton({
         provides: Key,
