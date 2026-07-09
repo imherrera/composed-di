@@ -83,6 +83,14 @@ export interface MethodCallContext {
   key: ServiceKey<unknown>;
 
   /**
+   * The name of the class implementing the service (the instance's
+   * constructor name), which may differ from `key.name`. Undefined for
+   * services that are not instances of a named class, such as plain
+   * object literals.
+   */
+  className?: string;
+
+  /**
    * The name of the method that is being called.
    */
   methodName: string;

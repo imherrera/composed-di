@@ -205,6 +205,51 @@ describe('ServiceEventListener', () => {
     });
   });
 
+  describe('class name', () => {
+    it('should deliver the constructor name for class-based services', async () => {
+      class GreeterImpl {
+        greet(): string {
+          return 'hi';
+        }
+      }
+      const Key = new ServiceKey<GreeterImpl>('greeter');
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => new GreeterImpl(),
+      });
+      const classNames: (string | undefined)[] = [];
+      const listener: ServiceEventListener = {
+        onMethodCall: ({ className }) => {
+          classNames.push(className);
+        },
+      };
+      const module = ServiceModule.from([factory], listener);
+
+      const svc = await module.get(Key);
+      svc.greet();
+      expect(classNames).toEqual(['GreeterImpl']);
+    });
+
+    it('should leave className undefined for plain object literals', async () => {
+      const Key = new ServiceKey<{ greet(): string }>('svc');
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => ({ greet: () => 'hi' }),
+      });
+      const classNames: (string | undefined)[] = [];
+      const listener: ServiceEventListener = {
+        onMethodCall: ({ className }) => {
+          classNames.push(className);
+        },
+      };
+      const module = ServiceModule.from([factory], listener);
+
+      const svc = await module.get(Key);
+      svc.greet();
+      expect(classNames).toEqual([undefined]);
+    });
+  });
+
   describe('error events', () => {
     it('should report an error event when initialization throws', async () => {
       const Key = new ServiceKey<{ x: number }>('svc');

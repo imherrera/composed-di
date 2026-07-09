@@ -334,6 +334,8 @@ function observeMethodCalls(
     return thing;
   }
 
+  const className = classNameOf(thing);
+
   return new Proxy(thing, {
     get(target, prop) {
       const value = Reflect.get(target, prop);
@@ -341,6 +343,7 @@ function observeMethodCalls(
         return (...args: unknown[]) => {
           const span = listener.onMethodCall?.({
             key,
+            className,
             methodName: prop,
             args,
           });
@@ -369,4 +372,17 @@ function observeMethodCalls(
       return value;
     },
   });
+}
+
+/**
+ * Resolves the class name of a service instance, or undefined for values
+ * that are not instances of a named class (plain object literals,
+ * null-prototype objects).
+ *
+ * @param thing The service instance to inspect.
+ * @returns The constructor name, or undefined when there is none to report.
+ */
+function classNameOf(thing: object): string | undefined {
+  const name = thing.constructor?.name;
+  return name && name !== 'Object' ? name : undefined;
 }
