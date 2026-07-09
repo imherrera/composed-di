@@ -365,100 +365,117 @@ describe('ServiceEventListener', () => {
     // Unobserved modules call delegate.dispose unconditionally; the observed
     // wrapper gates it behind the singleton cache, silently skipping
     // disposal of services that were never requested.
-    it.fails('should dispose delegates even when the service was never resolved', async () => {
-      const Key = new ServiceKey<{ x: number }>('eager');
-      let disposed = false;
-      const factory: ServiceFactory<{ x: number }, []> = {
-        provides: Key,
-        dependsOn: [],
-        scope: undefined,
-        initialize: () => ({ x: 1 }),
-        dispose: () => {
-          disposed = true;
-        },
-      };
-      const module = ServiceModule.from([factory], makeListener([]));
+    it.fails(
+      'should dispose delegates even when the service was never resolved',
+      async () => {
+        const Key = new ServiceKey<{ x: number }>('eager');
+        let disposed = false;
+        const factory: ServiceFactory<{ x: number }, []> = {
+          provides: Key,
+          dependsOn: [],
+          scope: undefined,
+          initialize: () => ({ x: 1 }),
+          dispose: () => {
+            disposed = true;
+          },
+        };
+        const module = ServiceModule.from([factory], makeListener([]));
 
-      module.dispose();
-      expect(disposed).toBe(true);
-    });
+        module.dispose();
+        expect(disposed).toBe(true);
+      },
+    );
   });
 
   describe('known issues (remove .fails as each is fixed)', () => {
     // The get trap allocates a fresh closure per property access, which
     // breaks cached method references and listener deduplication.
-    it.fails('should return the same function for repeated method access', async () => {
-      const Key = new ServiceKey<{ foo(): number }>('svc');
-      const factory = ServiceFactory.singleton({
-        provides: Key,
-        initialize: () => ({ foo: () => 1 }),
-      });
-      const module = ServiceModule.from([factory], makeListener([]));
+    it.fails(
+      'should return the same function for repeated method access',
+      async () => {
+        const Key = new ServiceKey<{ foo(): number }>('svc');
+        const factory = ServiceFactory.singleton({
+          provides: Key,
+          initialize: () => ({ foo: () => 1 }),
+        });
+        const module = ServiceModule.from([factory], makeListener([]));
 
-      const svc = await module.get(Key);
-      expect(svc.foo).toBe(svc.foo);
-    });
+        const svc = await module.get(Key);
+        expect(svc.foo).toBe(svc.foo);
+      },
+    );
 
     // Methods are invoked with the raw target as receiver, so a method
     // returning `this` hands back the unwrapped instance and the rest of
     // the chain escapes observation.
-    it.fails('should keep observing methods chained off `this`-returning methods', async () => {
-      class Builder {
-        parts: string[] = [];
-        with(p: string): this {
-          this.parts.push(p);
-          return this;
+    it.fails(
+      'should keep observing methods chained off `this`-returning methods',
+      async () => {
+        class Builder {
+          parts: string[] = [];
+          with(p: string): this {
+            this.parts.push(p);
+            return this;
+          }
+          build(): string {
+            return this.parts.join('-');
+          }
         }
-        build(): string {
-          return this.parts.join('-');
-        }
-      }
-      const Key = new ServiceKey<Builder>('builder');
-      const factory = ServiceFactory.singleton({
-        provides: Key,
-        initialize: () => new Builder(),
-      });
-      const events: string[] = [];
-      const module = ServiceModule.from([factory], makeListener(events));
+        const Key = new ServiceKey<Builder>('builder');
+        const factory = ServiceFactory.singleton({
+          provides: Key,
+          initialize: () => new Builder(),
+        });
+        const events: string[] = [];
+        const module = ServiceModule.from([factory], makeListener(events));
 
-      const svc = await module.get(Key);
-      expect(svc.with('a').build()).toBe('a');
-      expect(events.filter((e) => e === 'builder.build:start')).toHaveLength(1);
-    });
+        const svc = await module.get(Key);
+        expect(svc.with('a').build()).toBe('a');
+        expect(events.filter((e) => e === 'builder.build:start')).toHaveLength(
+          1,
+        );
+      },
+    );
 
     // ServiceModule.from re-wraps factories of an already-observed module,
     // producing two proxy layers and duplicate events per call.
-    it.fails('should not report duplicate events when composing an already observed module', async () => {
-      const Key = new ServiceKey<{ foo(): number }>('svc');
-      const factory = ServiceFactory.singleton({
-        provides: Key,
-        initialize: () => ({ foo: () => 1 }),
-      });
-      const events: string[] = [];
-      const listener = makeListener(events);
-      const inner = ServiceModule.from([factory], listener);
-      const outer = ServiceModule.from([inner], listener);
+    it.fails(
+      'should not report duplicate events when composing an already observed module',
+      async () => {
+        const Key = new ServiceKey<{ foo(): number }>('svc');
+        const factory = ServiceFactory.singleton({
+          provides: Key,
+          initialize: () => ({ foo: () => 1 }),
+        });
+        const events: string[] = [];
+        const listener = makeListener(events);
+        const inner = ServiceModule.from([factory], listener);
+        const outer = ServiceModule.from([inner], listener);
 
-      const svc = await outer.get(Key);
-      svc.foo();
-      expect(events.filter((e) => e === 'svc.foo:start')).toHaveLength(1);
-    });
+        const svc = await outer.get(Key);
+        svc.foo();
+        expect(events.filter((e) => e === 'svc.foo:start')).toHaveLength(1);
+      },
+    );
 
     // makeObservable always builds a singleton wrapper, so one-shot
     // delegates are initialized once and cached instead of per request.
-    it.fails('should initialize one-shot delegates on every get()', async () => {
-      const Key = new ServiceKey<{ id: number }>('oneShot');
-      let counter = 0;
-      const factory = ServiceFactory.oneShot({
-        provides: Key,
-        dependsOn: [],
-        initialize: () => ({ id: ++counter }),
-      });
-      const module = ServiceModule.from([factory], makeListener([]));
+    it.fails(
+      'should initialize one-shot delegates on every get()',
+      async () => {
+        const Key = new ServiceKey<{ id: number }>('oneShot');
+        let counter = 0;
+        const factory = ServiceFactory.oneShot({
+          provides: Key,
+          dependsOn: [],
+          initialize: () => ({ id: ++counter }),
+        });
+        const module = ServiceModule.from([factory], makeListener([]));
 
-      await module.get(Key);
-      await module.get(Key);
-      expect(counter).toBe(2);
-    });
+        await module.get(Key);
+        await module.get(Key);
+        expect(counter).toBe(2);
+      },
+    );
   });
 });

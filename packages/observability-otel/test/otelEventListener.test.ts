@@ -51,16 +51,42 @@ describe('OtelEventListener', () => {
     const init = byName('svc.initialize');
     expect(init.attributes).toMatchObject({
       'code.function.name': 'svc.initialize',
-      'composed_di.service.name': 'svc',
-      'composed_di.event': 'initialize',
+      'composed_di.service.key': 'svc',
+      'composed_di.service.event': 'initialize',
     });
     const call = byName('svc.greet');
     expect(call.attributes).toMatchObject({
       'code.function.name': 'svc.greet',
-      'composed_di.service.name': 'svc',
-      'composed_di.event': 'call',
+      'composed_di.service.key': 'svc',
+      'composed_di.service.event': 'call',
     });
     expect(call.attributes['composed_di.method']).toBeUndefined();
+  });
+
+  it('should qualify code.function.name with the class name when the service is class-based', async () => {
+    class GreeterImpl {
+      greet(): string {
+        return 'hi';
+      }
+    }
+    const Key = new ServiceKey<GreeterImpl>('greeter');
+    const factory = ServiceFactory.singleton({
+      provides: Key,
+      initialize: () => new GreeterImpl(),
+    });
+    const module = ServiceModule.from([factory], makeListener());
+
+    const svc = await module.get(Key);
+    svc.greet();
+
+    // The span is named after the service key; code.function.name points
+    // at the implementing class.
+    const call = byName('greeter.greet');
+    expect(call.attributes).toMatchObject({
+      'code.function.name': 'GreeterImpl.greet',
+      'composed_di.service.key': 'greeter',
+      'composed_di.service.event': 'call',
+    });
   });
 
   it('should record dispose spans', async () => {
@@ -77,7 +103,7 @@ describe('OtelEventListener', () => {
     await module.get(Key);
     module.dispose();
     expect(byName('svc.dispose').attributes).toMatchObject({
-      'composed_di.event': 'dispose',
+      'composed_di.service.event': 'dispose',
     });
   });
 
@@ -180,8 +206,12 @@ describe('OtelEventListener', () => {
     const svc = await module.get(Key);
     svc.add(2, 3);
     const span = byName('svc.add');
-    expect(span.attributes['composed_di.service.function.arguments']).toBeUndefined();
-    expect(span.attributes['composed_di.service.function.result']).toBeUndefined();
+    expect(
+      span.attributes['composed_di.service.function.arguments'],
+    ).toBeUndefined();
+    expect(
+      span.attributes['composed_di.service.function.result'],
+    ).toBeUndefined();
   });
 
   it('should capture arguments and results when opted in', async () => {
@@ -198,7 +228,9 @@ describe('OtelEventListener', () => {
     const svc = await module.get(Key);
     svc.add(2, 3);
     const span = byName('svc.add');
-    expect(span.attributes['composed_di.service.function.arguments']).toBe('[2,3]');
+    expect(span.attributes['composed_di.service.function.arguments']).toBe(
+      '[2,3]',
+    );
     expect(span.attributes['composed_di.service.function.result']).toBe('5');
   });
 
@@ -215,7 +247,9 @@ describe('OtelEventListener', () => {
 
     const svc = await module.get(Key);
     svc.echo('x'.repeat(100));
-    const args = byName('svc.echo').attributes['composed_di.service.function.arguments'] as string;
+    const args = byName('svc.echo').attributes[
+      'composed_di.service.function.arguments'
+    ] as string;
     expect(args).toHaveLength(11); // 10 chars + ellipsis
     expect(args.endsWith('…')).toBe(true);
   });

@@ -64,8 +64,12 @@ export interface OtelEventListenerOptions {
  * Span names are `<service>.<operation>` (e.g. "Database.query"). Spans carry
  * the standard `code.function.name` attribute (the fully-qualified name, per
  * the OpenTelemetry code semantic conventions) alongside the domain-specific
- * attributes `composed_di.service.name` and
- * `composed_di.event` ('initialize' | 'dispose' | 'call'). Failed
+ * attributes `composed_di.service.key` and
+ * `composed_di.service.event` ('initialize' | 'dispose' | 'call'). When the service
+ * is implemented by a named class, `code.function.name` is qualified with
+ * the class name (e.g. "PostgresDatabase.query") since it identifies the
+ * actual code; span names and `composed_di.service.key` always use the
+ * ServiceKey name, which is what the module resolves and queries group by. Failed
  * operations record the exception, set the span status to ERROR with the
  * exception message as its description, and set `error.type` as the general
  * error semantic conventions recommend.
@@ -97,32 +101,53 @@ export class OtelEventListener implements ServiceEventListener {
   }
 
   onInitialize({ key }: InitializeContext): EventSpan {
-    return this.startSpan(key.name, 'initialize', 'initialize', undefined);
+    return this.startSpan({
+      serviceKey: key.name,
+      functionName: 'initialize',
+      event: 'initialize',
+    });
   }
 
   onDispose({ key }: DisposeContext): EventSpan {
-    return this.startSpan(key.name, 'dispose', 'dispose', undefined);
+    return this.startSpan({
+      serviceKey: key.name,
+      functionName: 'dispose',
+      event: 'dispose',
+    });
   }
 
-  onMethodCall({ key, methodName, args }: MethodCallContext): EventSpan {
-    return this.startSpan(
-      key.name,
-      methodName,
-      'call',
-      this.captureArguments ? this.serialize(args) : undefined,
-    );
+  onMethodCall({
+    key,
+    className,
+    methodName,
+    args,
+  }: MethodCallContext): EventSpan {
+    return this.startSpan({
+      serviceKey: key.name,
+      className,
+      functionName: methodName,
+      event: 'call',
+      serializedArgs: this.captureArguments ? this.serialize(args) : undefined,
+    });
   }
 
-  private startSpan(
-    service: string,
-    functionName: string,
-    event: 'initialize' | 'dispose' | 'call',
-    serializedArgs: string | undefined,
-  ): EventSpan {
+  private startSpan({
+    serviceKey,
+    className,
+    functionName,
+    event,
+    serializedArgs,
+  }: {
+    serviceKey: string;
+    className?: string;
+    functionName: string;
+    event: 'initialize' | 'dispose' | 'call';
+    serializedArgs?: string;
+  }): EventSpan {
     const attributes: Attributes = {
-      [ATTR_CODE_FUNCTION_NAME]: `${service}.${functionName}`,
-      'composed_di.service.name': service,
-      'composed_di.event': event,
+      [ATTR_CODE_FUNCTION_NAME]: `${className ?? serviceKey}.${functionName}`,
+      'composed_di.service.key': serviceKey,
+      'composed_di.service.event': event,
     };
     if (serializedArgs !== undefined) {
       attributes['composed_di.service.function.arguments'] = serializedArgs;
@@ -130,7 +155,7 @@ export class OtelEventListener implements ServiceEventListener {
 
     const parent = this.activeContext.getStore() ?? otelContext.active();
     const span = this.tracer.startSpan(
-      `${service}.${functionName}`,
+      `${serviceKey}.${functionName}`,
       { attributes },
       parent,
     );
