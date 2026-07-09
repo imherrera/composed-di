@@ -279,7 +279,7 @@ function makeTraceable<T, D extends readonly ServiceKey<any>[]>(
         `${delegate.provides.name}.initialize`,
         async () => {
           const instance = await delegate.initialize(...args);
-          return traceMethodCalls(instance, tracer);
+          return traceMethodCalls(instance, tracer, delegate.provides.name);
         },
       );
     },
@@ -291,9 +291,14 @@ function makeTraceable<T, D extends readonly ServiceKey<any>[]>(
  *
  * @param thing The object whose method calls need to be traced.
  * @param tracer The tracer instance used to log or track method calls.
+ * @param serviceName The service name used to qualify method span names.
  * @return A Proxy wrapping the input object, with all method calls being traced.
  */
-function traceMethodCalls(thing: any, tracer: ServiceTracer): any {
+function traceMethodCalls(
+  thing: any,
+  tracer: ServiceTracer,
+  serviceName: string,
+): any {
   if (typeof thing !== 'object' || thing === null) {
     return thing;
   }
@@ -303,7 +308,9 @@ function traceMethodCalls(thing: any, tracer: ServiceTracer): any {
       const value = Reflect.get(target, prop);
       if (typeof value === 'function' && typeof prop === 'string') {
         return (...args: unknown[]) =>
-          tracer.trace(prop, () => value.apply(target, args));
+          tracer.trace(`${serviceName}.${prop}`, () =>
+            value.apply(target, args),
+          );
       }
       return value;
     },
