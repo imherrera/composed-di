@@ -37,9 +37,6 @@
     "prepare": "npm run build"
   },
   "devDependencies": {
-    "@opentelemetry/api": "^1.9.1",
-    "@opentelemetry/context-async-hooks": "^2.8.0",
-    "@opentelemetry/sdk-trace-base": "^2.8.0",
     "@tsconfig/recommended": "^1.0.10",
     "@types/node": "24.0.10",
     "prettier": "^3.3.1",
