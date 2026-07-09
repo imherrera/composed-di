@@ -1,28 +1,8 @@
 {
-  "name": "composed-di",
-  "private": false,
-  "version": "0.3.1",
+  "name": "composed-di-monorepo",
+  "private": true,
+  "version": "0.5.0-alpha",
   "author": "Juan Herrera juanhr454@gmail.com",
-  "type": "commonjs",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "sideEffects": false,
-  "keywords": [
-    "dependency injection",
-    "di",
-    "lazy dependency injection"
-  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -31,10 +11,8 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "prepublishOnly": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "prepare": "npm run build"
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.10",

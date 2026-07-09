@@ -3,7 +3,7 @@ import { ServiceFactory } from './serviceFactory';
 import { ServiceScope } from './serviceScope';
 import { ServiceSelector } from './serviceSelector';
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors';
-import { ServiceEventListener } from './serviceEventListener';
+import type { ServiceEventListener } from './serviceEventListener';
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;

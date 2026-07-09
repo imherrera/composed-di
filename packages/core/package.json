@@ -1,0 +1,40 @@
+{
+  "name": "@composed-di/core",
+  "private": false,
+  "version": "0.5.0-alpha",
+  "author": "Juan Herrera juanhr454@gmail.com",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "dependency injection",
+    "di",
+    "lazy dependency injection"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/imherrera/composed-di.git",
+    "directory": "packages/core"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

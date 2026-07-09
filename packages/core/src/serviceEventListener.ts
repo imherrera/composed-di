@@ -1,4 +1,4 @@
-import { ServiceKey } from './serviceKey';
+import type { ServiceKey } from './serviceKey';
 
 /**
  * A handle representing a single in-flight operation (initialization,

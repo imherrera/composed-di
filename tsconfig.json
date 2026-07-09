@@ -1,18 +1,7 @@
 {
-  "extends": "@tsconfig/recommended/tsconfig.json",
-  "compilerOptions": {
-    "noEmit": false,
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "dist",
-    "esModuleInterop": true,
-    "rootDir": "src",
-    "strict": true
-  },
-  "include": [
-    "src"
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/observability" }
   ]
 }
