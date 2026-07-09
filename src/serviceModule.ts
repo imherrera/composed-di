@@ -3,7 +3,7 @@ import { ServiceFactory } from './serviceFactory';
 import { ServiceScope } from './serviceScope';
 import { ServiceSelector } from './serviceSelector';
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors';
-import { ServiceTracer } from './serviceTracer';
+import { ServiceEventListener } from './serviceEventListener';
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;
@@ -104,14 +104,23 @@ export class ServiceModule {
    * If multiple factories provide the same
    * ServiceKey, the last one in the list takes precedence.
    *
+   * When a listener is provided, every factory is wrapped with instrumentation:
+   * the listener is notified when a service is initialized or disposed and when
+   * a method is called on a service instance, and may return an EventSpan per
+   * operation to observe its completion. Service instances are wrapped in a
+   * Proxy to observe method calls, and errors are rethrown after being
+   * reported, so behavior is otherwise unchanged.
+   *
    * @param entries - An array of ServiceModule or GenericFactory
    * instances to be processed into a single ServiceModule.
+   * @param listener - An optional ServiceEventListener notified of service
+   * lifecycle events and method calls in the resulting module.
    * @return A new ServiceModule containing the deduplicated factories.
    * @throws {ServiceModuleInitError} If circular or missing dependencies are detected during module creation.
    */
   static from(
     entries: (ServiceModule | GenericFactory)[],
-    tracer?: ServiceTracer,
+    listener?: ServiceEventListener,
   ): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
     const flattened = entries.flatMap((e) =>
@@ -124,10 +133,10 @@ export class ServiceModule {
       byKey.set(f.provides.symbol, f);
     }
 
-    if (tracer) {
+    if (listener) {
       return new ServiceModule(
         Array.from(byKey.values()).map((factory) => {
-          return makeTraceable(tracer, factory);
+          return makeObservable(listener, factory);
         }),
       );
     }
@@ -252,16 +261,24 @@ function isSuitable<T, D extends readonly ServiceKey<any>[]>(
 }
 
 /**
- * Wraps a given service factory with instrumentation to trace method calls and lifecycle events.
+ * Wraps a given service factory with instrumentation to notify a listener of
+ * lifecycle events and method calls.
  *
- * @param tracer The tracer instance used to trace lifecycle and method calls.
+ * For each of initialize, dispose, and method calls, the listener is invoked
+ * at the start of the operation and may return an EventSpan whose `end` or
+ * `error` is called when the operation finishes. Errors are rethrown after
+ * being reported.
+ *
+ * @param listener The listener notified of lifecycle and method call events.
  * @param delegate The original service factory to be instrumented.
- * @return A new service factory that provides the same dependencies but includes tracing logic.
+ * @return A new service factory that provides the same dependencies but includes event notification logic.
  */
-function makeTraceable<T, D extends readonly ServiceKey<any>[]>(
-  tracer: ServiceTracer,
+function makeObservable<T, D extends readonly ServiceKey<any>[]>(
+  listener: ServiceEventListener,
   delegate: ServiceFactory<any, D>,
 ): ServiceFactory<T, D> {
+  const key = delegate.provides;
+
   return ServiceFactory.singleton({
     scope: delegate.scope,
     provides: delegate.provides,
@@ -269,35 +286,49 @@ function makeTraceable<T, D extends readonly ServiceKey<any>[]>(
     dispose: () => {
       const dispose = delegate.dispose;
       if (dispose) {
-        tracer.trace(`${delegate.provides.name}.dispose`, () => {
+        const span = listener.onDispose?.({ key });
+        try {
           dispose();
-        });
+        } catch (error) {
+          span?.error?.(error);
+          throw error;
+        }
+        span?.end?.();
       }
     },
     initialize: async (...args) => {
-      return await tracer.trace(
-        `${delegate.provides.name}.initialize`,
-        async () => {
-          const instance = await delegate.initialize(...args);
-          return traceMethodCalls(instance, tracer, delegate.provides.name);
-        },
-      );
+      const span = listener.onInitialize?.({ key });
+      try {
+        const instance = observeMethodCalls(
+          await delegate.initialize(...args),
+          listener,
+          key,
+        );
+        span?.end?.({ result: instance });
+        return instance;
+      } catch (error) {
+        span?.error?.(error);
+        throw error;
+      }
     },
   });
 }
 
 /**
- * Wraps an object with a Proxy to trace method calls using the provided tracer.
+ * Wraps an object with a Proxy to notify the listener of method calls.
  *
- * @param thing The object whose method calls need to be traced.
- * @param tracer The tracer instance used to log or track method calls.
- * @param serviceName The service name used to qualify method span names.
- * @return A Proxy wrapping the input object, with all method calls being traced.
+ * Methods returning a promise report end/error when the promise settles,
+ * not when the method returns.
+ *
+ * @param thing The object whose method calls need to be observed.
+ * @param listener The listener notified of method call events.
+ * @param key The service key used to identify the service in events.
+ * @return A Proxy wrapping the input object, with all method calls being reported.
  */
-function traceMethodCalls(
+function observeMethodCalls(
   thing: any,
-  tracer: ServiceTracer,
-  serviceName: string,
+  listener: ServiceEventListener,
+  key: ServiceKey<unknown>,
 ): any {
   if (typeof thing !== 'object' || thing === null) {
     return thing;
@@ -307,10 +338,33 @@ function traceMethodCalls(
     get(target, prop) {
       const value = Reflect.get(target, prop);
       if (typeof value === 'function' && typeof prop === 'string') {
-        return (...args: unknown[]) =>
-          tracer.trace(`${serviceName}.${prop}`, () =>
-            value.apply(target, args),
-          );
+        return (...args: unknown[]) => {
+          const span = listener.onMethodCall?.({
+            key,
+            methodName: prop,
+            args,
+          });
+          try {
+            const result = value.apply(target, args);
+            if (result instanceof Promise) {
+              return result.then(
+                (resolved) => {
+                  span?.end?.({ result: resolved });
+                  return resolved;
+                },
+                (error) => {
+                  span?.error?.(error);
+                  throw error;
+                },
+              );
+            }
+            span?.end?.({ result });
+            return result;
+          } catch (error) {
+            span?.error?.(error);
+            throw error;
+          }
+        };
       }
       return value;
     },
