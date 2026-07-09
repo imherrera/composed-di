@@ -50,16 +50,17 @@ describe('OtelEventListener', () => {
 
     const init = byName('svc.initialize');
     expect(init.attributes).toMatchObject({
+      'code.function.name': 'svc.initialize',
       'composed_di.service': 'svc',
-      'composed_di.method': 'initialize',
-      'composed_di.operation': 'initialize',
+      'composed_di.event': 'initialize',
     });
     const call = byName('svc.greet');
     expect(call.attributes).toMatchObject({
+      'code.function.name': 'svc.greet',
       'composed_di.service': 'svc',
-      'composed_di.method': 'greet',
-      'composed_di.operation': 'call',
+      'composed_di.event': 'call',
     });
+    expect(call.attributes['composed_di.method']).toBeUndefined();
   });
 
   it('should record dispose spans', async () => {
@@ -76,7 +77,7 @@ describe('OtelEventListener', () => {
     await module.get(Key);
     module.dispose();
     expect(byName('svc.dispose').attributes).toMatchObject({
-      'composed_di.operation': 'dispose',
+      'composed_di.event': 'dispose',
     });
   });
 
@@ -127,7 +128,28 @@ describe('OtelEventListener', () => {
     const span = byName('svc.boom');
     expect(span.status.code).toBe(SpanStatusCode.ERROR);
     expect(span.status.message).toBe('kaput');
+    expect(span.attributes['error.type']).toBe('Error');
     expect(span.events.some((e) => e.name === 'exception')).toBe(true);
+  });
+
+  it('should set error.type to _OTHER for non-Error throws', async () => {
+    const Key = new ServiceKey<{ boom(): never }>('svc');
+    const factory = ServiceFactory.singleton({
+      provides: Key,
+      initialize: () => ({
+        boom: () => {
+          throw 'string kaput';
+        },
+      }),
+    });
+    const module = ServiceModule.from([factory], makeListener());
+
+    const svc = await module.get(Key);
+    expect(() => svc.boom()).toThrow('string kaput');
+
+    const span = byName('svc.boom');
+    expect(span.status.code).toBe(SpanStatusCode.ERROR);
+    expect(span.attributes['error.type']).toBe('_OTHER');
   });
 
   it('should end async method spans when the promise settles', async () => {

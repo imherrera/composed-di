@@ -7,6 +7,11 @@ import {
   trace,
   Tracer,
 } from '@opentelemetry/api';
+import {
+  ATTR_CODE_FUNCTION_NAME,
+  ATTR_ERROR_TYPE,
+  ERROR_TYPE_VALUE_OTHER,
+} from '@opentelemetry/semantic-conventions';
 import type {
   DisposeContext,
   EventSpan,
@@ -14,6 +19,12 @@ import type {
   MethodCallContext,
   ServiceEventListener,
 } from '@composed-di/core';
+
+/**
+ * Reported as the instrumentation scope version of the default tracer.
+ * Keep in sync with package.json.
+ */
+const PACKAGE_VERSION = '0.5.0-alpha';
 
 export interface OtelEventListenerOptions {
   /**
@@ -48,10 +59,14 @@ export interface OtelEventListenerOptions {
  * A ServiceEventListener that records service initialization, disposal, and
  * method calls as OpenTelemetry spans.
  *
- * Span names are `<service>.<operation>` (e.g. "Database.query") with the
- * attributes `composed_di.service`, `composed_di.method`, and
- * `composed_di.operation` ('initialize' | 'dispose' | 'call'). Failed
- * operations record the exception and set the span status to ERROR.
+ * Span names are `<service>.<operation>` (e.g. "Database.query"). Spans carry
+ * the standard `code.function.name` attribute (the fully-qualified name, per
+ * the OpenTelemetry code semantic conventions) alongside the domain-specific
+ * attributes `composed_di.service` and
+ * `composed_di.event` ('initialize' | 'dispose' | 'call'). Failed
+ * operations record the exception, set the span status to ERROR with the
+ * exception message as its description, and set `error.type` as the general
+ * error semantic conventions recommend.
  *
  * Nesting: spans started by this listener parent to each other across
  * sync and async boundaries (e.g. UserService.getUser -> Database.query),
@@ -72,7 +87,8 @@ export class OtelEventListener implements ServiceEventListener {
 
   constructor(options: OtelEventListenerOptions = {}) {
     this.tracer =
-      options.tracer ?? trace.getTracer('@composed-di/observability-otel');
+      options.tracer ??
+      trace.getTracer('@composed-di/observability-otel', PACKAGE_VERSION);
     this.captureArguments = options.captureArguments ?? false;
     this.captureResults = options.captureResults ?? false;
     this.maxCaptureLength = options.maxCaptureLength ?? 1024;
@@ -97,14 +113,14 @@ export class OtelEventListener implements ServiceEventListener {
 
   private startSpan(
     service: string,
-    method: string,
-    operation: 'initialize' | 'dispose' | 'call',
+    functionName: string,
+    event: 'initialize' | 'dispose' | 'call',
     serializedArgs: string | undefined,
   ): EventSpan {
     const attributes: Attributes = {
+      [ATTR_CODE_FUNCTION_NAME]: `${service}.${functionName}`,
       'composed_di.service': service,
-      'composed_di.method': method,
-      'composed_di.operation': operation,
+      'composed_di.event': event,
     };
     if (serializedArgs !== undefined) {
       attributes['composed_di.args'] = serializedArgs;
@@ -112,7 +128,7 @@ export class OtelEventListener implements ServiceEventListener {
 
     const parent = this.activeContext.getStore() ?? otelContext.active();
     const span = this.tracer.startSpan(
-      `${service}.${method}`,
+      `${service}.${functionName}`,
       { attributes },
       parent,
     );
@@ -121,7 +137,7 @@ export class OtelEventListener implements ServiceEventListener {
     // the parent of spans this listener starts inside the operation.
     this.activeContext.enterWith(trace.setSpan(parent, span));
 
-    const captureResult = operation !== 'dispose' && this.captureResults;
+    const captureResult = event !== 'dispose' && this.captureResults;
     return {
       end: (outcome) => {
         if (captureResult && outcome !== undefined) {
@@ -133,8 +149,12 @@ export class OtelEventListener implements ServiceEventListener {
         span.end();
       },
       error: (error) => {
-        span.recordException(
-          error instanceof Error ? error : String(error),
+        span.recordException(error instanceof Error ? error : String(error));
+        span.setAttribute(
+          ATTR_ERROR_TYPE,
+          error instanceof Error
+            ? error.name || ERROR_TYPE_VALUE_OTHER
+            : ERROR_TYPE_VALUE_OTHER,
         );
         span.setStatus({
           code: SpanStatusCode.ERROR,

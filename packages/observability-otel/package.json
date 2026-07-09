@@ -38,7 +38,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@composed-di/core": "file:../core"
+    "@composed-di/core": "file:../core",
+    "@opentelemetry/semantic-conventions": "^1.30.0"
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0"
