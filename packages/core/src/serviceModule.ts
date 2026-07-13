@@ -344,7 +344,7 @@ function observeMethodCalls(
           const span = listener.onMethodCall?.({
             key,
             className,
-            methodName: prop,
+            functionName: prop,
             args,
           });
           try {

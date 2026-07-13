@@ -93,7 +93,7 @@ export interface MethodCallContext {
   /**
    * The name of the method that is being called.
    */
-  methodName: string;
+  functionName: string;
 
   /**
    * The arguments the method was invoked with, passed by reference;
