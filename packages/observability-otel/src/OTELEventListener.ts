@@ -104,7 +104,7 @@ export class OTELEventListener implements ServiceEventListener {
   }
 
   private buildSpan(spanName: string, attributes: Attributes): EventSpan {
-    const parent = liveFrame(this.activeFrame.getStore());
+    const parent = findParentFrame(this.activeFrame.getStore());
     const parentContext = parent?.context ?? otelContext.active();
     const span = this.tracer.startSpan(spanName, { attributes }, parentContext);
 
@@ -174,7 +174,7 @@ export class OTELEventListener implements ServiceEventListener {
  * or undefined when every ancestor has ended (the ambient OTEL context is
  * the parent then).
  */
-function liveFrame(frame: SpanFrame | undefined): SpanFrame | undefined {
+function findParentFrame(frame: SpanFrame | undefined): SpanFrame | undefined {
   while (frame && frame.ended) {
     frame = frame.parent;
   }
