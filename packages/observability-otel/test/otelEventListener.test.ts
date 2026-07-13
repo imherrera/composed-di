@@ -8,9 +8,9 @@ import {
 import { SpanStatusCode } from '@opentelemetry/api';
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
 import {
-  OtelEventListener,
-  OtelEventListenerOptions,
-} from '../src/otelEventListener';
+  OTELEventListener,
+  OTELEventListenerOptions,
+} from '../src/OTELEventListener';
 
 let exporter: InMemorySpanExporter;
 let provider: BasicTracerProvider;
@@ -22,8 +22,8 @@ beforeEach(() => {
   });
 });
 
-const makeListener = (options: OtelEventListenerOptions = {}) =>
-  new OtelEventListener({ tracer: provider.getTracer('test'), ...options });
+const makeListener = (options: Partial<OTELEventListenerOptions> = {}) =>
+  new OTELEventListener({ tracer: provider.getTracer('test'), ...options });
 
 const spans = () => exporter.getFinishedSpans();
 const byName = (name: string) => {
@@ -242,7 +242,7 @@ describe('OtelEventListener', () => {
     });
     const module = ServiceModule.from(
       [factory],
-      makeListener({ captureArguments: true, maxCaptureLength: 10 }),
+      makeListener({ captureArguments: true }),
     );
 
     const svc = await module.get(Key);

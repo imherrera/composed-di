@@ -18,7 +18,7 @@ const makeListener = (events: string[]): ServiceEventListener => {
   return {
     onInitialize: ({ key }) => span(`${key.name}.initialize`),
     onDispose: ({ key }) => span(`${key.name}.dispose`),
-    onMethodCall: ({ key, methodName }) => span(`${key.name}.${methodName}`),
+    onMethodCall: ({ key, functionName }) => span(`${key.name}.${functionName}`),
   };
 };
 
@@ -147,10 +147,10 @@ describe('ServiceEventListener', () => {
       const events: string[] = [];
       let seq = 0;
       const listener: ServiceEventListener = {
-        onMethodCall: ({ methodName }) => {
+        onMethodCall: ({ functionName }) => {
           const id = ++seq;
-          events.push(`${methodName}#${id}:start`);
-          return { end: () => events.push(`${methodName}#${id}:end`) };
+          events.push(`${functionName}#${id}:start`);
+          return { end: () => events.push(`${functionName}#${id}:end`) };
         },
       };
       const module = ServiceModule.from([factory], listener);
@@ -187,7 +187,7 @@ describe('ServiceEventListener', () => {
         onMethodCall: (context) => ({
           end: (outcome) =>
             observed.push({
-              method: context.methodName,
+              method: context.functionName,
               args: [...context.args],
               result: outcome?.result,
             }),

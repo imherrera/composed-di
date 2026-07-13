@@ -95,10 +95,10 @@ export class XrayEventListener implements ServiceEventListener {
     return this.observe(key.name, 'dispose', 'dispose', undefined);
   }
 
-  onMethodCall({ key, methodName, args }: MethodCallContext): EventSpan | void {
+  onMethodCall({ key, functionName, args }: MethodCallContext): EventSpan | void {
     return this.observe(
       key.name,
-      methodName,
+      functionName,
       'call',
       this.captureArguments ? this.serialize(args) : undefined,
     );

@@ -1,1 +1,1 @@
-export * from './otelEventListener';
+export * from './OTELEventListener';

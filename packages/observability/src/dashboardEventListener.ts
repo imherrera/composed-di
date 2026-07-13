@@ -50,8 +50,8 @@ export class DashboardEventListener implements ServiceEventListener {
     return this.startSpan(key.name, 'dispose', 'dispose');
   }
 
-  onMethodCall({ key, methodName }: MethodCallContext): EventSpan {
-    return this.startSpan(key.name, methodName, 'call');
+  onMethodCall({ key, functionName }: MethodCallContext): EventSpan {
+    return this.startSpan(key.name, functionName, 'call');
   }
 
   private startSpan(service: string, method: string, kind: SpanKind): EventSpan {
