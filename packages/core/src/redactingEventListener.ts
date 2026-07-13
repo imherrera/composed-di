@@ -4,8 +4,8 @@ import type {
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceEventListener,
-} from './serviceEventListener';
+  ServiceModuleListener,
+} from './serviceModuleListener';
 import type { ServiceKey } from './serviceKey';
 
 /**
@@ -59,9 +59,9 @@ export function redactionRule<T>(key: ServiceKey<T>, properties?: Extract<keyof 
  * );
  * ```
  */
-export class RedactingEventListener implements ServiceEventListener {
+export class RedactingEventListener implements ServiceModuleListener {
   constructor(
-    private readonly delegate: ServiceEventListener,
+    private readonly delegate: ServiceModuleListener,
     private readonly rules: readonly RedactionRule<any>[],
   ) {}
 

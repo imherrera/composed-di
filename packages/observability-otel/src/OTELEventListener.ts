@@ -16,7 +16,7 @@ import {
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceEventListener,
+  ServiceModuleListener,
   ServiceKey,
 } from '@composed-di/core';
 
@@ -46,7 +46,7 @@ export interface OTELEventListenerOptions {
   captureResults?: boolean;
 }
 
-export class OTELEventListener implements ServiceEventListener {
+export class OTELEventListener implements ServiceModuleListener {
   private readonly tracer: Tracer;
   private readonly captureArguments: boolean;
   private readonly captureResults: boolean;

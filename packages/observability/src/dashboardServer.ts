@@ -6,7 +6,10 @@ import {
 } from 'node:http';
 import { AddressInfo } from 'node:net';
 import { ServiceModule } from '@composed-di/core';
-import { DashboardEventListener } from './dashboardEventListener';
+import {
+  DashboardEventListener,
+  DashboardEventListenerOptions,
+} from './dashboardEventListener';
 import { ModuleGraph, moduleGraph } from './moduleGraph';
 import { renderDashboardHtml } from './dashboardHtml';
 import {
@@ -20,7 +23,7 @@ import {
   WireEvent,
 } from './events';
 
-export interface ServiceDashboardOptions {
+export interface ServiceDashboardOptions extends DashboardEventListenerOptions {
   /** How many recent events to keep for late-joining clients. Default 200. */
   recentEventLimit?: number;
 }
@@ -60,7 +63,7 @@ const HEARTBEAT_INTERVAL_MS = 15_000;
  */
 export class ServiceDashboard {
   /** Pass this as the second argument to ServiceModule.from. */
-  readonly listener = new DashboardEventListener();
+  readonly listener: DashboardEventListener;
 
   private nodes: GraphNode[] = [];
   private edges: GraphEdge[] = [];
@@ -76,7 +79,11 @@ export class ServiceDashboard {
   private server: Server | null = null;
   private heartbeat: NodeJS.Timeout | null = null;
 
-  constructor({ recentEventLimit = 200 }: ServiceDashboardOptions = {}) {
+  constructor({
+    recentEventLimit = 200,
+    ...listenerOptions
+  }: ServiceDashboardOptions = {}) {
+    this.listener = new DashboardEventListener(listenerOptions);
     this.recentEventLimit = recentEventLimit;
     this.listener.subscribe((event) => this.onSpanEvent(event));
   }
@@ -274,8 +281,9 @@ export class ServiceDashboard {
         method: event.method,
         kind: event.kind,
         parentService: this.parentServiceOf(event),
+        args: event.args ?? null,
         // Copy so the recent-events buffer keeps at-the-time values.
-        stats: stats ? { ...stats } : null,
+        stats: stats ? copyStats(stats) : null,
       };
     } else {
       const start = this.openSpans.get(event.id);
@@ -287,7 +295,8 @@ export class ServiceDashboard {
         method: start?.method ?? '?',
         kind: start?.kind ?? 'call',
         parentService: start ? this.parentServiceOf(start) : null,
-        stats: stats ? { ...stats } : null,
+        args: start?.args ?? null,
+        stats: stats ? copyStats(stats) : null,
       };
     }
 
@@ -329,6 +338,16 @@ export class ServiceDashboard {
       call: () => {
         stats.calls += 1;
         stats.totalCallMs += event.durationMs;
+        const method = (stats.methods[start.method] ??= {
+          calls: 0,
+          errors: 0,
+          totalMs: 0,
+          lastMs: 0,
+        });
+        method.calls += 1;
+        method.totalMs += event.durationMs;
+        method.lastMs = event.durationMs;
+        if (event.error !== null) method.errors += 1;
       },
     };
     transitions[start.kind]();
@@ -355,6 +374,20 @@ function freshStats(): ServiceStats {
     calls: 0,
     errors: 0,
     totalCallMs: 0,
+    methods: {},
+  };
+}
+
+/** Deep enough that the recent-events buffer keeps at-the-time values. */
+function copyStats(stats: ServiceStats): ServiceStats {
+  return {
+    ...stats,
+    methods: Object.fromEntries(
+      Object.entries(stats.methods).map(([name, method]) => [
+        name,
+        { ...method },
+      ]),
+    ),
   };
 }
 

@@ -6,6 +6,12 @@
  * dependency ranks, dependencies on the left), a stat-tile row, a services
  * table, and an event log. Service state is shown as a status glyph + word,
  * never color alone.
+ *
+ * Visual language: warm paper surfaces, ink text, hairline rules. The orange
+ * accent is reserved for live activity (call flashes, active edges,
+ * selection); blue means initializing, green means ready. Display type is
+ * Poppins and editorial notes are Lora — both resolve to local fonts only
+ * (Arial / Georgia fallbacks), keeping the no-CDN contract.
  */
 export function renderDashboardHtml(): string {
   return HTML;
@@ -19,147 +25,229 @@ const HTML = `<!doctype html>
 <title>composed-di dashboard</title>
 <style>
   :root {
-    --page:            #f9f9f7;
-    --surface:         #fcfcfb;
-    --ink:             #0b0b0b;
-    --ink-secondary:   #52514e;
-    --ink-muted:       #898781;
-    --grid:            #e1e0d9;
-    --border:          rgba(11, 11, 11, 0.10);
-    --accent:          #2a78d6;
-    --good:            #0ca30c;
-    --warning:         #fab219;
-    --critical:        #d03b3b;
+    --page:            #faf9f5;
+    --surface:         #fffefb;
+    --ink:             #141413;
+    --ink-secondary:   #5c5a53;
+    --ink-muted:       #87857c;
+    --ink-faint:       #b0aea5;
+    --grid:            #e8e6dc;
+    --edge:            #d6d3c8;
+    --border:          rgba(20, 20, 19, 0.10);
+    --accent:          #d97757;
+    --good:            #788c5d;
+    --busy:            #6a9bcc;
+    --critical:        #b8442f;
+    --shadow:          0 1px 2px rgba(20, 20, 19, 0.04);
+    --overlay-shadow:  -14px 0 32px rgba(20, 20, 19, 0.14);
+    --font-display:    "Poppins", "Avenir Next", "Segoe UI", Arial, sans-serif;
+    --font-serif:      "Lora", Georgia, "Times New Roman", serif;
+    --font-mono:       ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   }
   /* Dark values apply via the system preference, or ?theme=dark|light. */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --page:            #0d0d0d;
-      --surface:         #1a1a19;
-      --ink:             #ffffff;
-      --ink-secondary:   #c3c2b7;
-      --ink-muted:       #898781;
-      --grid:            #2c2c2a;
-      --border:          rgba(255, 255, 255, 0.10);
-      --accent:          #3987e5;
+      --page:            #141413;
+      --surface:         #1e1d1a;
+      --ink:             #faf9f5;
+      --ink-secondary:   #b0aea5;
+      --ink-muted:       #8c8a80;
+      --ink-faint:       #57554e;
+      --grid:            #2c2b27;
+      --edge:            #3a382f;
+      --border:          rgba(250, 249, 245, 0.10);
+      --accent:          #d97757;
+      --good:            #8fa571;
+      --busy:            #7ba3ce;
+      --critical:        #dd5f4b;
+      --shadow:          0 1px 2px rgba(0, 0, 0, 0.25);
+      --overlay-shadow:  -14px 0 32px rgba(0, 0, 0, 0.45);
     }
   }
   :root[data-theme="dark"] {
-    --page:            #0d0d0d;
-    --surface:         #1a1a19;
-    --ink:             #ffffff;
-    --ink-secondary:   #c3c2b7;
-    --ink-muted:       #898781;
-    --grid:            #2c2c2a;
-    --border:          rgba(255, 255, 255, 0.10);
-    --accent:          #3987e5;
+    --page:            #141413;
+    --surface:         #1e1d1a;
+    --ink:             #faf9f5;
+    --ink-secondary:   #b0aea5;
+    --ink-muted:       #8c8a80;
+    --ink-faint:       #57554e;
+    --grid:            #2c2b27;
+    --edge:            #3a382f;
+    --border:          rgba(250, 249, 245, 0.10);
+    --accent:          #d97757;
+    --good:            #8fa571;
+    --busy:            #7ba3ce;
+    --critical:        #dd5f4b;
+    --shadow:          0 1px 2px rgba(0, 0, 0, 0.25);
+    --overlay-shadow:  -14px 0 32px rgba(0, 0, 0, 0.45);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--page);
+    background-image: radial-gradient(1100px 380px at 75% -120px,
+      color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%);
     color: var(--ink);
-    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 14px/1.5 var(--font-display);
   }
+  /* Brand rule: a single orange hairline crowning the page. */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+    z-index: 30;
+  }
+  ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+  }
+  header, .tiles, main > * { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) backwards; }
+  .tiles { animation-delay: 0.06s; }
+  main > :nth-child(1) { animation-delay: 0.12s; }
+  main > :nth-child(2) { animation-delay: 0.18s; }
+
   header {
     display: flex;
-    align-items: baseline;
-    gap: 12px;
-    padding: 16px 20px 0;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 24px 0;
   }
-  header h1 { font-size: 16px; font-weight: 650; margin: 0; }
-  header .sub { color: var(--ink-muted); font-size: 12px; }
+  header .mark { flex: none; }
+  header h1 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  header .sub {
+    color: var(--ink-muted);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 13px;
+  }
   #conn {
     margin-left: auto;
     font-size: 12px;
     color: var(--ink-secondary);
     border: 1px solid var(--border);
+    background: var(--surface);
     border-radius: 999px;
-    padding: 2px 10px;
+    padding: 3px 12px;
   }
-  #conn.live::before { content: "● "; color: var(--good); }
-  #conn.down::before { content: "● "; color: var(--critical); }
+  #conn.live::before {
+    content: "\\25CF  ";
+    color: var(--good);
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  #conn.down::before { content: "\\25CF  "; color: var(--critical); }
+  @keyframes breathe { 50% { opacity: 0.35; } }
 
   .tiles {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
-    padding: 14px 20px;
+    padding: 18px 24px 14px;
   }
   .tile {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 16px;
-    min-width: 132px;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 12px 18px 14px;
+    min-width: 148px;
   }
   .tile .label {
-    font-size: 11px;
-    letter-spacing: 0.06em;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    font-weight: 500;
     color: var(--ink-muted);
   }
-  .tile .value { font-size: 24px; font-weight: 650; margin-top: 2px; }
-  .tile .value small { font-size: 13px; font-weight: 400; color: var(--ink-secondary); }
+  .tile .value {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .tile .value.bad { color: var(--critical); }
+  .tile .value small { font-size: 13px; font-weight: 400; color: var(--ink-muted); }
 
   main {
     display: grid;
     grid-template-columns: 1fr 340px;
-    gap: 12px;
-    padding: 0 20px 20px;
+    gap: 14px;
+    padding: 0 24px 24px;
     align-items: start;
   }
   .panel {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
     overflow: hidden;
   }
   .panel h2 {
-    font-size: 12px;
-    letter-spacing: 0.06em;
+    font-size: 11px;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--ink-muted);
     font-weight: 600;
     margin: 0;
-    padding: 10px 14px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--grid);
   }
   #graph-panel svg { display: block; width: 100%; }
-  #graph-empty { padding: 32px; color: var(--ink-muted); text-align: center; }
+  #graph-empty {
+    padding: 40px 32px;
+    color: var(--ink-muted);
+    text-align: center;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 14px;
+  }
 
   .legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px;
-    padding: 10px 14px;
+    gap: 16px;
+    padding: 10px 16px;
     border-top: 1px solid var(--grid);
     font-size: 12px;
     color: var(--ink-secondary);
   }
   .legend .glyph { font-size: 11px; }
+  .legend .hint {
+    margin-left: auto;
+    color: var(--ink-muted);
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
 
   /* Graph marks */
   .edge {
     fill: none;
-    stroke: var(--grid);
+    stroke: var(--edge);
     stroke-width: 1.5;
     transition: stroke 0.45s ease;
   }
   .edge.active { stroke: var(--accent); stroke-width: 2.5; transition: none; }
   .node rect {
     fill: var(--surface);
-    stroke: var(--ink-muted);
+    stroke: var(--ink-faint);
     stroke-width: 1.5;
-    rx: 6;
+    rx: 8;
   }
   .node text { fill: var(--ink); font-size: 13px; font-weight: 600; }
   .node .status { fill: var(--ink-secondary); font-size: 11px; font-weight: 400; }
   .node .glyph { font-size: 10px; }
-  .node.pending rect { stroke: var(--ink-muted); stroke-dasharray: 4 3; }
+  .node.pending rect { stroke: var(--ink-faint); stroke-dasharray: 4 3; }
   .node.pending .glyph { fill: var(--ink-muted); }
-  .node.initializing rect { stroke: var(--warning); animation: pulse 1s ease-in-out infinite; }
-  .node.initializing .glyph { fill: var(--warning); }
+  .node.initializing rect { stroke: var(--busy); animation: pulse 1s ease-in-out infinite; }
+  .node.initializing .glyph { fill: var(--busy); }
   .node.ready rect { stroke: var(--good); }
   .node.ready .glyph { fill: var(--good); }
   .node.error rect { stroke: var(--critical); stroke-width: 2; }
@@ -167,62 +255,209 @@ const HTML = `<!doctype html>
   .node.disposed rect { stroke: var(--grid); }
   .node.disposed .glyph { fill: var(--ink-muted); }
   .node.disposed text { fill: var(--ink-muted); }
-  .node.flash rect { stroke: var(--accent); stroke-width: 2.5; }
+  .node { cursor: pointer; }
+  .node.flash rect {
+    stroke: var(--accent);
+    stroke-width: 2.5;
+    fill: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  }
+  .node.selected rect { stroke: var(--accent); stroke-width: 2.5; }
+  .node:focus-visible { outline: none; }
+  .node:focus-visible rect { stroke: var(--accent); }
   @keyframes pulse { 50% { stroke-opacity: 0.35; } }
 
   /* Tables */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 6px 14px; border-top: 1px solid var(--grid); }
+  th, td { text-align: left; padding: 7px 16px; border-top: 1px solid var(--grid); }
   thead th {
     border-top: none;
-    font-size: 11px;
-    letter-spacing: 0.06em;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--ink-muted);
     font-weight: 600;
   }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.num, th.num { text-align: right; }
+  td.num { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  td.err { color: var(--critical); font-weight: 600; }
   td .glyph { font-size: 10px; }
 
-  /* Event log */
+  /* Clickable service rows + per-method drill-down */
+  tr.svc-row { cursor: pointer; }
+  tr.svc-row:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  tr.svc-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  tr.svc-row.selected { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  tr.svc-row .caret {
+    display: inline-block;
+    width: 14px;
+    color: var(--ink-faint);
+    font-size: 10px;
+  }
+  tr.method-detail > td { padding: 0; background: var(--page); }
+  .methods table { font-size: 12px; }
+  .methods thead th { font-size: 10px; }
+  .methods th:first-child, .methods td:first-child { padding-left: 46px; }
+  .methods .empty {
+    padding: 8px 16px 10px 46px;
+    color: var(--ink-muted);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 12px;
+  }
+
+  /* Event log (shared row styles with the inspector's call history) */
+  #log, .insp-body { scrollbar-width: thin; scrollbar-color: var(--grid) transparent; }
   #log { max-height: 520px; overflow-y: auto; }
-  #log .row {
+  .log .row {
     display: flex;
     gap: 8px;
-    padding: 5px 14px;
+    padding: 5px 16px;
     border-top: 1px solid var(--grid);
     font-size: 12px;
     align-items: baseline;
   }
-  #log .time { color: var(--ink-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  #log .name { flex: 1; color: var(--ink); word-break: break-all; }
-  #log .dur { color: var(--ink-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  #log .row.error .name { color: var(--critical); }
-  #log .row.lifecycle .name { color: var(--ink-secondary); }
-  #log .err-msg { color: var(--critical); }
+  #log .row { animation: row-in 0.35s ease backwards; }
+  @keyframes row-in { from { opacity: 0; transform: translateX(4px); } }
+  .log .time {
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .log .name { flex: 1; color: var(--ink); word-break: break-all; }
+  .log .dur {
+    color: var(--ink-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .log .row.error { box-shadow: inset 2px 0 0 var(--critical); }
+  .log .row.error .name { color: var(--critical); }
+  .log .row.lifecycle .name { color: var(--ink-secondary); }
+  .log .err-msg { color: var(--critical); }
+  .log .detail {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-secondary);
+    word-break: break-all;
+    margin-top: 1px;
+  }
+  .log .detail .k { color: var(--ink-muted); }
+
+  /* Inspector side panel */
+  #inspector {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 380px;
+    max-width: 92vw;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    box-shadow: var(--overlay-shadow);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0.2s;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+  }
+  #inspector.open { transform: none; visibility: visible; }
+  .insp-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px;
+    border-bottom: 1px solid var(--grid);
+  }
+  .insp-head .insp-name { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; word-break: break-all; }
+  .insp-head .insp-status { font-size: 12px; color: var(--ink-secondary); margin-top: 2px; }
+  .insp-head .insp-status .glyph { font-size: 10px; }
+  #insp-close {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--ink-secondary);
+    font: inherit;
+    font-size: 14px;
+    line-height: 1;
+    padding: 5px 9px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  #insp-close:hover { color: var(--ink); border-color: var(--ink-faint); }
+  #insp-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .insp-body { flex: 1; overflow-y: auto; padding-bottom: 12px; }
+  .insp-body h3 {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 600;
+    margin: 0;
+    padding: 16px 16px 4px;
+  }
+  #insp-summary { padding-top: 10px; }
+  .i-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 16px;
+    font-size: 12px;
+    color: var(--ink-secondary);
+  }
+  .i-row b {
+    color: var(--ink);
+    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+  }
+  #insp-methods table { font-size: 12px; }
+  #insp-methods thead th { font-size: 10px; }
+  .empty-note {
+    padding: 4px 16px 6px;
+    color: var(--ink-muted);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 12px;
+  }
 
   #tooltip {
     position: fixed;
     display: none;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    padding: 8px 12px;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(20, 20, 19, 0.18);
+    padding: 10px 12px;
     font-size: 12px;
     pointer-events: none;
     z-index: 10;
     max-width: 280px;
   }
-  #tooltip .t-name { font-weight: 650; margin-bottom: 4px; }
+  #tooltip .t-name { font-weight: 600; margin-bottom: 4px; }
   #tooltip .t-row { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-secondary); }
-  #tooltip .t-row b { color: var(--ink); font-weight: 550; font-variant-numeric: tabular-nums; }
+  #tooltip .t-row b {
+    color: var(--ink);
+    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+  }
 
   @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
 <header>
+  <svg class="mark" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+    <path d="M7 6.5 L15 11 M7 15.5 L15 11" stroke="var(--ink-faint)" stroke-width="1.5" fill="none"/>
+    <circle cx="6" cy="6" r="3" fill="#6a9bcc"/>
+    <circle cx="6" cy="16" r="3" fill="#788c5d"/>
+    <circle cx="16" cy="11" r="3.5" fill="#d97757"/>
+  </svg>
   <h1>composed-di</h1>
   <span class="sub">service dashboard</span>
   <span id="conn" class="down">connecting…</span>
@@ -241,15 +476,15 @@ const HTML = `<!doctype html>
       <h2>Dependency graph</h2>
       <div id="graph-host"><div id="graph-empty">Waiting for module…</div></div>
       <div class="legend">
-        <span><span class="glyph" style="color:var(--ink-muted)">○</span> pending</span>
-        <span><span class="glyph" style="color:var(--warning)">◐</span> initializing</span>
+        <span><span class="glyph" style="color:var(--busy)">◐</span> initializing</span>
         <span><span class="glyph" style="color:var(--good)">●</span> ready</span>
         <span><span class="glyph" style="color:var(--critical)">✕</span> error</span>
         <span><span class="glyph" style="color:var(--ink-muted)">◌</span> disposed</span>
         <span><span class="glyph" style="color:var(--accent)">━</span> edge / node flash = live method call</span>
+        <span class="hint">click a node to inspect its calls</span>
       </div>
     </div>
-    <div class="panel" style="margin-top:12px">
+    <div class="panel" style="margin-top:14px">
       <h2>Services</h2>
       <table>
         <thead><tr>
@@ -263,9 +498,25 @@ const HTML = `<!doctype html>
   </div>
   <div class="panel">
     <h2>Event log</h2>
-    <div id="log"></div>
+    <div id="log" class="log"></div>
   </div>
 </main>
+<aside id="inspector" aria-label="Service inspector">
+  <div class="insp-head">
+    <div>
+      <div class="insp-name" id="insp-name"></div>
+      <div class="insp-status" id="insp-status"></div>
+    </div>
+    <button id="insp-close" aria-label="Close inspector" title="Close (Esc)">&#x2715;</button>
+  </div>
+  <div class="insp-body">
+    <div id="insp-summary"></div>
+    <h3>Methods</h3>
+    <div id="insp-methods"></div>
+    <h3>Call history</h3>
+    <div id="insp-history" class="log"></div>
+  </div>
+</aside>
 <div id="tooltip"></div>
 
 <script>
@@ -286,8 +537,12 @@ const HTML = `<!doctype html>
   };
   var NODE_W = 176, NODE_H = 56, COL_W = 248, ROW_H = 84, PAD = 24;
   var MAX_LOG_ROWS = 200;
+  var MAX_HISTORY = 100;  /* completed calls kept per service for the inspector */
 
   var state = { nodes: [], edges: [], services: {} };
+  var selectedService = null;  /* service whose table row is expanded */
+  var inspected = null;        /* service shown in the inspector side panel */
+  var callHistory = {};        /* service name -> completed calls, newest first */
   var nodeEls = {};   /* service name -> { group, statusText, glyph } */
   var edgeEls = {};   /* "from\\u0000to" -> path element */
   var flashTimers = {};
@@ -308,9 +563,15 @@ const HTML = `<!doctype html>
 
   /* ---------- graph layout: rank = longest path to a leaf ---------- */
 
-  function computeRanks() {
+  /** Only services whose initialization has at least started are drawn. */
+  function isShown(name) {
+    var stats = state.services[name];
+    return !!stats && stats.status !== 'pending';
+  }
+
+  function computeRanks(nodes) {
     var deps = {};
-    state.nodes.forEach(function (n) { deps[n.name] = []; });
+    nodes.forEach(function (n) { deps[n.name] = []; });
     state.edges.forEach(function (e) {
       if (deps[e.from] && e.to in deps) deps[e.from].push(e.to);
     });
@@ -325,7 +586,7 @@ const HTML = `<!doctype html>
       ranks[name] = r;
       return r;
     }
-    state.nodes.forEach(function (n) { rankOf(n.name); });
+    nodes.forEach(function (n) { rankOf(n.name); });
     return ranks;
   }
 
@@ -334,18 +595,21 @@ const HTML = `<!doctype html>
     host.textContent = '';
     nodeEls = {};
     edgeEls = {};
-    if (!state.nodes.length) {
+    var shown = state.nodes.filter(function (n) { return isShown(n.name); });
+    if (!shown.length) {
       var empty = document.createElement('div');
       empty.id = 'graph-empty';
-      empty.textContent = 'No services yet \\u2014 waiting for an application to connect.';
+      empty.textContent = state.nodes.length
+        ? 'No services initialized yet \\u2014 nodes appear when initialization starts.'
+        : 'No services yet \\u2014 waiting for an application to connect.';
       host.appendChild(empty);
       return;
     }
 
-    var ranks = computeRanks();
+    var ranks = computeRanks(shown);
     var columns = {};
     var maxRank = 0;
-    state.nodes.forEach(function (n) {
+    shown.forEach(function (n) {
       var r = ranks[n.name];
       maxRank = Math.max(maxRank, r);
       (columns[r] = columns[r] || []).push(n.name);
@@ -406,7 +670,7 @@ const HTML = `<!doctype html>
       edgeEls[e.from + '\\u0000' + e.to] = path;
     });
 
-    state.nodes.forEach(function (n) {
+    shown.forEach(function (n) {
       var p = pos[n.name];
       var g = svgEl('g');
       g.setAttribute('transform', 'translate(' + p.x + ' ' + p.y + ')');
@@ -414,7 +678,7 @@ const HTML = `<!doctype html>
       var rect = svgEl('rect');
       rect.setAttribute('width', NODE_W);
       rect.setAttribute('height', NODE_H);
-      rect.setAttribute('rx', 6);
+      rect.setAttribute('rx', 8);
       g.appendChild(rect);
 
       var label = svgEl('text');
@@ -435,8 +699,18 @@ const HTML = `<!doctype html>
       status.setAttribute('y', 42);
       g.appendChild(status);
 
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('role', 'button');
+      g.setAttribute('aria-label', 'Inspect ' + n.name);
       g.addEventListener('mousemove', function (ev) { showTooltip(n.name, ev); });
       g.addEventListener('mouseleave', hideTooltip);
+      g.addEventListener('click', function () { inspect(n.name); });
+      g.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          inspect(n.name);
+        }
+      });
 
       svg.appendChild(g);
       nodeEls[n.name] = { group: g, statusText: status, glyph: glyph };
@@ -451,7 +725,9 @@ const HTML = `<!doctype html>
     var stats = state.services[name];
     if (!el || !stats) return;
     var flashing = el.group.classList.contains('flash');
-    el.group.setAttribute('class', 'node ' + stats.status + (flashing ? ' flash' : ''));
+    el.group.setAttribute('class', 'node ' + stats.status
+      + (flashing ? ' flash' : '')
+      + (name === inspected ? ' selected' : ''));
     el.glyph.textContent = GLYPHS[stats.status] || '';
     var line = stats.status;
     if (stats.calls > 0) {
@@ -531,24 +807,43 @@ const HTML = `<!doctype html>
     $('tile-calls').textContent = String(calls);
     $('tile-avg').textContent = calls > 0 ? fmtMs(callMs / calls) + ' ms' : '–';
     $('tile-errors').textContent = String(errors);
+    $('tile-errors').className = 'value' + (errors > 0 ? ' bad' : '');
 
     var tbody = $('service-rows');
     tbody.textContent = '';
     names.sort().forEach(function (n) {
       var s = state.services[n];
+      var selected = n === selectedService;
       var tr = document.createElement('tr');
+      tr.className = 'svc-row' + (selected ? ' selected' : '');
+      tr.tabIndex = 0;
+      tr.setAttribute('role', 'button');
+      tr.setAttribute('aria-expanded', selected ? 'true' : 'false');
+      tr.addEventListener('click', function () { toggleService(n); });
+      tr.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          toggleService(n);
+        }
+      });
       function cell(text, cls) {
         var td = document.createElement('td');
         if (cls) td.className = cls;
         td.textContent = text;
         return td;
       }
-      tr.appendChild(cell(n));
+      var nameCell = cell('');
+      var caret = document.createElement('span');
+      caret.className = 'caret';
+      caret.textContent = selected ? '\\u25BE' : '\\u25B8'; /* ▾ / ▸ */
+      nameCell.appendChild(caret);
+      nameCell.appendChild(document.createTextNode(n));
+      tr.appendChild(nameCell);
       var status = cell('');
       var glyph = document.createElement('span');
       glyph.className = 'glyph';
       glyph.textContent = GLYPHS[s.status] + ' ';
-      var color = { ready: 'var(--good)', initializing: 'var(--warning)', error: 'var(--critical)' }[s.status];
+      var color = { ready: 'var(--good)', initializing: 'var(--busy)', error: 'var(--critical)' }[s.status];
       glyph.style.color = color || 'var(--ink-muted)';
       status.appendChild(glyph);
       status.appendChild(document.createTextNode(s.status));
@@ -556,9 +851,220 @@ const HTML = `<!doctype html>
       tr.appendChild(cell(fmtMs(s.initMs), 'num'));
       tr.appendChild(cell(String(s.calls), 'num'));
       tr.appendChild(cell(s.calls > 0 ? fmtMs(s.totalCallMs / s.calls) : '–', 'num'));
-      tr.appendChild(cell(String(s.errors), 'num'));
+      tr.appendChild(cell(String(s.errors), 'num' + (s.errors > 0 ? ' err' : '')));
       tbody.appendChild(tr);
+      if (selected) tbody.appendChild(methodDetailRow(s));
     });
+  }
+
+  /* ---------- per-method drill-down ---------- */
+
+  function toggleService(name) {
+    selectedService = selectedService === name ? null : name;
+    renderSummary();
+  }
+
+  /** A per-method stats table for a service, or null when it has none. */
+  function methodsTable(methods) {
+    var names = Object.keys(methods);
+    if (!names.length) return null;
+    names.sort(function (a, b) {
+      return methods[b].calls - methods[a].calls || a.localeCompare(b);
+    });
+    var table = document.createElement('table');
+    var thead = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    [['Method'], ['Calls', 'num'], ['Avg ms', 'num'], ['Last ms', 'num'], ['Errors', 'num']]
+      .forEach(function (h) {
+        var th = document.createElement('th');
+        if (h[1]) th.className = h[1];
+        th.textContent = h[0];
+        headRow.appendChild(th);
+      });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    var body = document.createElement('tbody');
+    names.forEach(function (m) {
+      var stat = methods[m];
+      var row = document.createElement('tr');
+      function cell(text, cls) {
+        var c = document.createElement('td');
+        if (cls) c.className = cls;
+        c.textContent = text;
+        return c;
+      }
+      row.appendChild(cell(m));
+      row.appendChild(cell(String(stat.calls), 'num'));
+      row.appendChild(cell(fmtMs(stat.totalMs / stat.calls), 'num'));
+      row.appendChild(cell(fmtMs(stat.lastMs), 'num'));
+      row.appendChild(cell(String(stat.errors), 'num' + (stat.errors > 0 ? ' err' : '')));
+      body.appendChild(row);
+    });
+    table.appendChild(body);
+    return table;
+  }
+
+  /** The expanded row under a selected service: its method-call breakdown. */
+  function methodDetailRow(stats) {
+    var tr = document.createElement('tr');
+    tr.className = 'method-detail';
+    var td = document.createElement('td');
+    td.colSpan = 6;
+    var table = methodsTable(stats.methods || {});
+    if (table) {
+      var wrap = document.createElement('div');
+      wrap.className = 'methods';
+      wrap.appendChild(table);
+      td.appendChild(wrap);
+    } else {
+      var empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'No method calls yet.';
+      td.appendChild(empty);
+    }
+    tr.appendChild(td);
+    return tr;
+  }
+
+  /* ---------- inspector side panel ---------- */
+
+  /** Opens the panel for a service; same service (or null) closes it. */
+  function inspect(name) {
+    inspected = (name === null || inspected === name) ? null : name;
+    renderInspector();
+    Object.keys(nodeEls).forEach(function (n) { applyNodeState(n); });
+  }
+
+  function renderInspector() {
+    var panel = $('inspector');
+    var stats = inspected ? state.services[inspected] : null;
+    if (!stats) {
+      inspected = null;
+      panel.classList.remove('open');
+      return;
+    }
+    panel.classList.add('open');
+    $('insp-name').textContent = inspected;
+
+    var status = $('insp-status');
+    status.textContent = '';
+    var glyph = document.createElement('span');
+    glyph.className = 'glyph';
+    glyph.textContent = GLYPHS[stats.status] + ' ';
+    var color = { ready: 'var(--good)', initializing: 'var(--busy)', error: 'var(--critical)' }[stats.status];
+    glyph.style.color = color || 'var(--ink-muted)';
+    status.appendChild(glyph);
+    status.appendChild(document.createTextNode(stats.status));
+
+    var summary = $('insp-summary');
+    summary.textContent = '';
+    var avg = stats.calls > 0 ? stats.totalCallMs / stats.calls : null;
+    [
+      ['Init', stats.initMs == null ? '–' : fmtMs(stats.initMs) + ' ms'],
+      ['Calls', String(stats.calls)],
+      ['Avg call', avg == null ? '–' : fmtMs(avg) + ' ms'],
+      ['Errors', String(stats.errors)]
+    ].forEach(function (pair) {
+      var row = document.createElement('div');
+      row.className = 'i-row';
+      var k = document.createElement('span');
+      k.textContent = pair[0];
+      var v = document.createElement('b');
+      v.textContent = pair[1];
+      row.appendChild(k);
+      row.appendChild(v);
+      summary.appendChild(row);
+    });
+
+    var methodsHost = $('insp-methods');
+    methodsHost.textContent = '';
+    var table = methodsTable(stats.methods || {});
+    if (table) methodsHost.appendChild(table);
+    else methodsHost.appendChild(emptyNote('No method calls yet.'));
+
+    var historyHost = $('insp-history');
+    historyHost.textContent = '';
+    var entries = callHistory[inspected] || [];
+    if (!entries.length) {
+      historyHost.appendChild(emptyNote('No calls recorded yet.'));
+    } else {
+      entries.forEach(function (entry) {
+        historyHost.appendChild(historyRow(entry));
+      });
+    }
+  }
+
+  function emptyNote(text) {
+    var div = document.createElement('div');
+    div.className = 'empty-note';
+    div.textContent = text;
+    return div;
+  }
+
+  function historyRow(entry) {
+    var row = document.createElement('div');
+    row.className = 'row' + (entry.error ? ' error' : '');
+
+    var time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = fmtTime(entry.time);
+    row.appendChild(time);
+
+    var name = document.createElement('span');
+    name.className = 'name';
+    var text = entry.method;
+    if (entry.parentService && entry.parentService !== inspected) {
+      text = entry.parentService + ' \\u2192 ' + text;
+    }
+    name.textContent = text;
+    /* "[]" (no arguments) and "undefined" (void return) carry no signal. */
+    if (entry.args != null && entry.args !== '[]') {
+      name.appendChild(detailLine('args', entry.args));
+    }
+    if (entry.result != null && entry.result !== 'undefined') {
+      name.appendChild(detailLine('\\u2192', entry.result));
+    }
+    if (entry.error) {
+      var err = document.createElement('div');
+      err.className = 'err-msg';
+      err.textContent = '\\u2715 ' + entry.error;
+      name.appendChild(err);
+    }
+    row.appendChild(name);
+
+    var dur = document.createElement('span');
+    dur.className = 'dur';
+    dur.textContent = fmtMs(entry.durationMs) + ' ms';
+    row.appendChild(dur);
+    return row;
+  }
+
+  function detailLine(label, text) {
+    var div = document.createElement('div');
+    div.className = 'detail';
+    var k = document.createElement('span');
+    k.className = 'k';
+    k.textContent = label + ' ';
+    div.appendChild(k);
+    div.appendChild(document.createTextNode(text));
+    return div;
+  }
+
+  /** Keeps the per-service history the inspector shows, newest first. */
+  function recordCall(wire) {
+    if (wire.kind !== 'call' || wire.span.type !== 'end' || !wire.service) return;
+    var list = callHistory[wire.service] = callHistory[wire.service] || [];
+    list.unshift({
+      method: wire.method,
+      parentService: wire.parentService,
+      time: wire.span.time,
+      durationMs: wire.span.durationMs,
+      error: wire.span.error,
+      args: wire.args,
+      result: wire.span.result != null ? wire.span.result : null
+    });
+    if (list.length > MAX_HISTORY) list.length = MAX_HISTORY;
   }
 
   /* ---------- event log ---------- */
@@ -608,10 +1114,13 @@ const HTML = `<!doctype html>
 
   function applyEvent(wire) {
     if (wire.service && wire.stats) {
-      var known = wire.service in state.services;
+      var wasDrawn = wire.service in nodeEls;
       state.services[wire.service] = wire.stats;
-      if (!known) renderGraph();
-      applyNodeState(wire.service);
+      if (isShown(wire.service) !== wasDrawn) {
+        renderGraph(); /* the node just became visible (or vanished) */
+      } else {
+        applyNodeState(wire.service);
+      }
     }
     if (wire.kind === 'call' && wire.service) {
       var el = nodeEls[wire.service];
@@ -620,8 +1129,10 @@ const HTML = `<!doctype html>
         flash(edgeEls[wire.parentService + '\\u0000' + wire.service], 'e:' + wire.parentService + '>' + wire.service);
       }
     }
+    recordCall(wire);
     logEvent(wire);
     renderSummary();
+    if (inspected && wire.service === inspected) renderInspector();
   }
 
   function connect() {
@@ -641,8 +1152,12 @@ const HTML = `<!doctype html>
       state.nodes = snap.nodes;
       state.edges = snap.edges;
       state.services = snap.services;
+      callHistory = {};
+      /* recent is oldest-first; recordCall unshifts, so newest ends up first */
+      snap.recent.forEach(recordCall);
       renderGraph();
       renderSummary();
+      renderInspector(); /* refreshes, or closes if the service is gone */
       $('log').textContent = '';
       snap.recent.forEach(logEvent);
     });
@@ -650,6 +1165,11 @@ const HTML = `<!doctype html>
       applyEvent(JSON.parse(ev.data));
     });
   }
+
+  $('insp-close').addEventListener('click', function () { inspect(null); });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') inspect(null);
+  });
 
   connect();
 })();

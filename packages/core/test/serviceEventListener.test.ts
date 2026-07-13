@@ -4,11 +4,11 @@ import { ServiceModule } from '../src/serviceModule';
 import { ServiceKey } from '../src/serviceKey';
 import { ServiceFactory } from '../src/serviceFactory';
 import { ServiceScope } from '../src/serviceScope';
-import { EventSpan, ServiceEventListener } from '../src/serviceEventListener';
+import { EventSpan, ServiceModuleListener } from '../src/serviceModuleListener';
 
 // Records every event as `<service>.<operation>:<phase>` so tests can
 // assert on what was observed.
-const makeListener = (events: string[]): ServiceEventListener => {
+const makeListener = (events: string[]): ServiceModuleListener => {
   const span = (name: string): EventSpan => {
     events.push(`${name}:start`);
     return {
@@ -116,7 +116,7 @@ describe('ServiceEventListener', () => {
         initialize: () => ({ greet: () => 'hi' }),
       });
       let constructed: unknown;
-      const listener: ServiceEventListener = {
+      const listener: ServiceModuleListener = {
         onInitialize: () => ({
           end: (outcome) => {
             constructed = outcome.type === 'success' ? outcome.value : undefined;
@@ -147,7 +147,7 @@ describe('ServiceEventListener', () => {
       });
       const events: string[] = [];
       let seq = 0;
-      const listener: ServiceEventListener = {
+      const listener: ServiceModuleListener = {
         onMethodCall: ({ functionName }) => {
           const id = ++seq;
           events.push(`${functionName}#${id}:start`);
@@ -184,7 +184,7 @@ describe('ServiceEventListener', () => {
       });
       const observed: { method: string; args: unknown[]; result: unknown }[] =
         [];
-      const listener: ServiceEventListener = {
+      const listener: ServiceModuleListener = {
         onMethodCall: (context) => ({
           end: (outcome) =>
             observed.push({
@@ -219,7 +219,7 @@ describe('ServiceEventListener', () => {
         initialize: () => new GreeterImpl(),
       });
       const classNames: (string | undefined)[] = [];
-      const listener: ServiceEventListener = {
+      const listener: ServiceModuleListener = {
         onMethodCall: ({ className }) => {
           classNames.push(className);
         },
@@ -238,7 +238,7 @@ describe('ServiceEventListener', () => {
         initialize: () => ({ greet: () => 'hi' }),
       });
       const classNames: (string | undefined)[] = [];
-      const listener: ServiceEventListener = {
+      const listener: ServiceModuleListener = {
         onMethodCall: ({ className }) => {
           classNames.push(className);
         },
@@ -483,7 +483,7 @@ describe('ServiceEventListener', () => {
   describe('run wrapper', () => {
     it('should invoke the operation through run exactly once and pass the result through', async () => {
       const calls: string[] = [];
-      const listener: ServiceEventListener = {
+      const listener: ServiceModuleListener = {
         onMethodCall: () => ({
           run: <T,>(fn: () => T): T => {
             calls.push('run');
@@ -507,7 +507,7 @@ describe('ServiceEventListener', () => {
     it('should let run establish ambient state visible to nested calls', async () => {
       const als = new AsyncLocalStorage<string>();
       const ambientAtStart: (string | undefined)[] = [];
-      const listener: ServiceEventListener = {
+      const listener: ServiceModuleListener = {
         onMethodCall: ({ functionName }) => {
           ambientAtStart.push(als.getStore());
           return {

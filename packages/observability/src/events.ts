@@ -22,6 +22,8 @@ export interface SpanStart {
   kind: SpanKind;
   /** Epoch milliseconds. */
   time: number;
+  /** Method arguments serialized to JSON, when capture is enabled. */
+  args?: string;
 }
 
 /** Emitted when a traced function finishes (or throws/rejects). */
@@ -34,6 +36,8 @@ export interface SpanEnd {
   durationMs: number;
   /** The error message when the traced function threw or rejected. */
   error: string | null;
+  /** Return / resolved value serialized to JSON, when capture is enabled. */
+  result?: string;
 }
 
 export type SpanEvent = SpanStart | SpanEnd;
@@ -44,6 +48,18 @@ export type ServiceStatus =
   | 'ready'
   | 'error'
   | 'disposed';
+
+/** Aggregated counters for a single method of a service. */
+export interface MethodStats {
+  /** Number of completed call spans for this method. */
+  calls: number;
+  /** Number of those calls that ended with an error. */
+  errors: number;
+  /** Sum of completed call durations, for averaging. */
+  totalMs: number;
+  /** Duration of the most recently completed call. */
+  lastMs: number;
+}
 
 /** Aggregated per-service counters maintained by the dashboard. */
 export interface ServiceStats {
@@ -56,6 +72,8 @@ export interface ServiceStats {
   errors: number;
   /** Sum of completed method-call durations, for averaging. */
   totalCallMs: number;
+  /** Per-method call breakdown, keyed by method name. */
+  methods: Record<string, MethodStats>;
 }
 
 export interface GraphNode {
@@ -81,6 +99,8 @@ export interface WireEvent {
   kind: SpanKind;
   /** Service of the parent span, when the span was started by another service. */
   parentService: string | null;
+  /** Serialized arguments; on end events resolved from the matching start. */
+  args: string | null;
   /** Updated stats for `service`, present when the event changed them. */
   stats: ServiceStats | null;
 }

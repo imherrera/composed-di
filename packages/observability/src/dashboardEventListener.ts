@@ -5,13 +5,32 @@ import type {
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceEventListener,
+  ServiceModuleListener,
 } from '@composed-di/core';
 import { SpanEvent, SpanKind } from './events';
 
 /** The span context propagated across sync and async call boundaries. */
 interface SpanContext {
   id: number;
+}
+
+export interface DashboardEventListenerOptions {
+  /**
+   * Serialize method arguments onto call spans, so the dashboard can show
+   * them. On by default — the dashboard is a development tool — but turn
+   * this off when arguments may contain secrets, or when events are
+   * exported to a dashboard server you don't control.
+   */
+  captureArguments?: boolean;
+
+  /**
+   * Serialize return / resolved values onto call spans. On by default,
+   * with the same caveats as `captureArguments`.
+   */
+  captureResults?: boolean;
+
+  /** Longest serialized value kept; longer ones are truncated. Default 200. */
+  maxValueLength?: number;
 }
 
 /**
@@ -27,10 +46,23 @@ interface SpanContext {
  *   resolved among still-open spans.
  * - Emits events synchronously to subscribers; it never buffers.
  */
-export class DashboardEventListener implements ServiceEventListener {
+export class DashboardEventListener implements ServiceModuleListener {
   private readonly context = new AsyncLocalStorage<SpanContext>();
   private readonly listeners = new Set<(event: SpanEvent) => void>();
   private nextId = 1;
+  private readonly captureArguments: boolean;
+  private readonly captureResults: boolean;
+  private readonly maxValueLength: number;
+
+  constructor({
+    captureArguments = true,
+    captureResults = true,
+    maxValueLength = 200,
+  }: DashboardEventListenerOptions = {}) {
+    this.captureArguments = captureArguments;
+    this.captureResults = captureResults;
+    this.maxValueLength = maxValueLength;
+  }
 
   /**
    * Subscribes to span events.
@@ -50,11 +82,21 @@ export class DashboardEventListener implements ServiceEventListener {
     return this.startSpan(key.name, 'dispose', 'dispose');
   }
 
-  onMethodCall({ key, functionName }: MethodCallContext): EventSpan {
-    return this.startSpan(key.name, functionName, 'call');
+  onMethodCall({ key, functionName, args }: MethodCallContext): EventSpan {
+    return this.startSpan(
+      key.name,
+      functionName,
+      'call',
+      this.captureArguments ? this.serialize(args) : undefined,
+    );
   }
 
-  private startSpan(service: string, method: string, kind: SpanKind): EventSpan {
+  private startSpan(
+    service: string,
+    method: string,
+    kind: SpanKind,
+    args?: string,
+  ): EventSpan {
     const id = this.nextId++;
     const parent = this.context.getStore();
 
@@ -67,11 +109,12 @@ export class DashboardEventListener implements ServiceEventListener {
       method,
       kind,
       time: Date.now(),
+      args,
     });
 
     const startedAt = performance.now();
     let ended = false;
-    const end = (error: string | null) => {
+    const end = (error: string | null, result?: string) => {
       if (ended) return;
       ended = true;
       this.emit({
@@ -80,6 +123,7 @@ export class DashboardEventListener implements ServiceEventListener {
         time: Date.now(),
         durationMs: performance.now() - startedAt,
         error,
+        result,
       });
     };
 
@@ -89,9 +133,27 @@ export class DashboardEventListener implements ServiceEventListener {
     this.context.enterWith({ id });
 
     return {
-      end: (outcome) =>
-        end(outcome.type === 'failure' ? errorMessage(outcome.error) : null),
+      end: (outcome) => {
+        if (outcome.type === 'failure') {
+          end(errorMessage(outcome.error));
+        } else {
+          const capture = kind === 'call' && this.captureResults;
+          end(null, capture ? this.serialize(outcome.value) : undefined);
+        }
+      },
     };
+  }
+
+  private serialize(value: unknown): string {
+    let text: string;
+    try {
+      text = JSON.stringify(value) ?? String(value);
+    } catch {
+      text = '[unserializable]';
+    }
+    return text.length > this.maxValueLength
+      ? text.slice(0, this.maxValueLength) + '…'
+      : text;
   }
 
   private emit(event: SpanEvent): void {

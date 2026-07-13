@@ -12,7 +12,7 @@ import {
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceEventListener,
+  ServiceModuleListener,
   ServiceKey,
 } from '@composed-di/core';
 
@@ -75,7 +75,7 @@ export interface XrayEventListenerOptions {
  * `captureAsyncFunc`, ...). In manual mode there is no ambient context, so
  * all subsegments attach flat to the `segmentSource` segment.
  */
-export class XrayEventListener implements ServiceEventListener {
+export class XrayEventListener implements ServiceModuleListener {
   private readonly segmentSource?: () => Segment | Subsegment | undefined;
   private readonly captureArguments: boolean;
   private readonly captureResults: boolean;

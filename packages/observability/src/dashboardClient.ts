@@ -1,9 +1,12 @@
 import { ServiceModule } from '@composed-di/core';
-import { DashboardEventListener } from './dashboardEventListener';
+import {
+  DashboardEventListener,
+  DashboardEventListenerOptions,
+} from './dashboardEventListener';
 import { SpanEvent } from './events';
 import { ModuleGraph, moduleGraph } from './moduleGraph';
 
-export interface DashboardClientOptions {
+export interface DashboardClientOptions extends DashboardEventListenerOptions {
   /** Base URL of the standalone dashboard server, e.g. "http://localhost:4321". */
   url: string;
   /** How long to buffer events before exporting a batch. Default 250ms. */
@@ -38,7 +41,7 @@ export interface DashboardClientOptions {
  */
 export class DashboardClient {
   /** Pass this as the second argument to ServiceModule.from. */
-  readonly listener = new DashboardEventListener();
+  readonly listener: DashboardEventListener;
 
   private readonly url: string;
   private readonly flushIntervalMs: number;
@@ -61,7 +64,9 @@ export class DashboardClient {
     maxBatchSize = 64,
     maxQueueSize = 5000,
     onError,
+    ...listenerOptions
   }: DashboardClientOptions) {
+    this.listener = new DashboardEventListener(listenerOptions);
     this.url = url.replace(/\/$/, '');
     this.flushIntervalMs = flushIntervalMs;
     this.maxBatchSize = maxBatchSize;

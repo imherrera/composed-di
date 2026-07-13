@@ -5,7 +5,7 @@ import {
   MethodCallContext,
   RedactingEventListener,
   RedactionRule,
-  ServiceEventListener,
+  ServiceModuleListener,
   ServiceFactory,
   ServiceKey,
   ServiceModule,
@@ -24,7 +24,7 @@ interface RecordedEvent {
  * A delegate that records every context and outcome it is handed, so
  * tests can assert on exactly what crossed the redaction boundary.
  */
-class RecordingListener implements ServiceEventListener {
+class RecordingListener implements ServiceModuleListener {
   readonly events: RecordedEvent[] = [];
 
   onInitialize(context: { key: ServiceKey<unknown> }) {
