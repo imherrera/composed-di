@@ -22,9 +22,13 @@ import {
 
 export interface OTELEventListenerOptions {
   /**
-   * The tracer used to create spans.
+   * The tracer used to create spans. Defaults to a tracer obtained from
+   * the global tracer provider — the one `NodeSDK` (and therefore
+   * `@opentelemetry/auto-instrumentations-node`) registers on startup —
+   * so most setups can omit it. The global lookup is lazy: it also works
+   * when the listener is constructed before the SDK starts.
    */
-  tracer: Tracer;
+  tracer?: Tracer;
 
   /**
    * Record method arguments as the `composed_di.service.function.arguments`
@@ -47,8 +51,9 @@ export class OTELEventListener implements ServiceEventListener {
   private readonly captureArguments: boolean;
   private readonly captureResults: boolean;
 
-  constructor(options: OTELEventListenerOptions) {
-    this.tracer = options.tracer;
+  constructor(options: OTELEventListenerOptions = {}) {
+    this.tracer =
+      options.tracer ?? trace.getTracer('@composed-di/observability-otel');
     this.captureArguments = options.captureArguments ?? false;
     this.captureResults = options.captureResults ?? false;
   }
