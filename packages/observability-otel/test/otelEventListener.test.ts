@@ -5,7 +5,11 @@ import {
   ReadableSpan,
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
-import { context as otelContext, SpanStatusCode } from '@opentelemetry/api';
+import {
+  context as otelContext,
+  SpanStatusCode,
+  trace,
+} from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
 import {
@@ -111,6 +115,28 @@ describe('OtelEventListener', () => {
     expect(byName('svc.dispose').attributes).toMatchObject({
       'composed_di.service.event': 'dispose',
     });
+  });
+
+  it('should fall back to the global tracer provider when no tracer is given', async () => {
+    // Re-register per test: the API keeps the first global otherwise.
+    trace.disable();
+    trace.setGlobalTracerProvider(provider);
+    try {
+      const Key = new ServiceKey<{ greet(): string }>('svc');
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => ({ greet: () => 'hi' }),
+      });
+      const module = ServiceModule.from([factory], new OTELEventListener());
+
+      const svc = await module.get(Key);
+      svc.greet();
+      expect(byName('svc.greet').attributes).toMatchObject({
+        'composed_di.service.event': 'call',
+      });
+    } finally {
+      trace.disable();
+    }
   });
 
   it('should parent nested service calls across async boundaries', async () => {

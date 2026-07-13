@@ -1,11 +1,19 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
-import { getSegment, Segment, Subsegment } from 'aws-xray-sdk-core';
-import type {
+import {
+  getNamespace,
+  getSegment,
+  isAutomaticMode,
+  Segment,
+  setSegment,
+  Subsegment,
+} from 'aws-xray-sdk-core';
+import {
   DisposeContext,
+  EventOutcome,
   EventSpan,
   InitializeContext,
   MethodCallContext,
   ServiceEventListener,
+  ServiceKey,
 } from '@composed-di/core';
 
 /** X-Ray rejects subsegment names longer than 200 characters. */
@@ -13,11 +21,12 @@ const MAX_NAME_LENGTH = 200;
 
 export interface XrayEventListenerOptions {
   /**
-   * Resolves the segment or subsegment new subsegments should attach to
-   * when no composed-di operation is already active. Defaults to the SDK's
-   * `getSegment()`, which reads the ambient context set by the X-Ray
-   * middleware (Express, Lambda, ...). Operations observed while this
-   * yields nothing (no sampled trace in flight) are not recorded.
+   * Fallback that resolves the segment or subsegment new subsegments
+   * should attach to when the SDK has no ambient segment — e.g. in manual
+   * mode, or in automatic mode without the X-Ray middleware. The ambient
+   * segment (the SDK's `getSegment()`) is always consulted first.
+   * Operations observed while neither yields a segment (no sampled trace
+   * in flight) are not recorded.
    */
   segmentSource?: () => Segment | Subsegment | undefined;
 
@@ -42,12 +51,6 @@ export interface XrayEventListenerOptions {
   maxCaptureLength?: number;
 }
 
-/** Tracks a subsegment this listener opened, and whether it was closed. */
-interface ActiveOperation {
-  subsegment: Subsegment;
-  closed: boolean;
-}
-
 /**
  * A ServiceEventListener that records service initialization, disposal, and
  * method calls as AWS X-Ray subsegments.
@@ -65,98 +68,105 @@ interface ActiveOperation {
  * trace are silently not recorded — an observer must never break or slow
  * the service path, so every hook swallows its own failures.
  *
- * Nesting: subsegments opened by this listener parent to each other across
- * sync and async boundaries (e.g. UserService.getUser -> Database.query).
- * Because a listener does not control the invocation it observes, it cannot
- * update the SDK's own ambient segment: subsegments the application opens
- * *inside* an observed method attach to the middleware's segment, not to
- * the method's subsegment.
+ * Nesting: each observed operation runs with its subsegment as the SDK's
+ * ambient segment (via the SDK's own CLS namespace), so subsegments of
+ * nested service calls nest under each other, and so do subsegments the
+ * application opens *inside* an observed method (captured AWS SDK clients,
+ * `captureAsyncFunc`, ...). In manual mode there is no ambient context, so
+ * all subsegments attach flat to the `segmentSource` segment.
  */
 export class XrayEventListener implements ServiceEventListener {
-  /** The parent operation propagated across the listener's own subsegments. */
-  private readonly activeOperation = new AsyncLocalStorage<ActiveOperation>();
-  private readonly segmentSource: () => Segment | Subsegment | undefined;
+  private readonly segmentSource?: () => Segment | Subsegment | undefined;
   private readonly captureArguments: boolean;
   private readonly captureResults: boolean;
   private readonly maxCaptureLength: number;
 
   constructor(options: XrayEventListenerOptions = {}) {
-    this.segmentSource = options.segmentSource ?? (() => getSegment());
+    this.segmentSource = options.segmentSource;
     this.captureArguments = options.captureArguments ?? false;
     this.captureResults = options.captureResults ?? false;
     this.maxCaptureLength = options.maxCaptureLength ?? 1024;
   }
 
-  onInitialize({ key }: InitializeContext): EventSpan | void {
-    return this.observe(key.name, 'initialize', 'initialize', undefined);
+  onInitialize(context: InitializeContext): EventSpan | void {
+    const annotations = this.buildAnnotations({
+      key: context.key,
+      event: 'initialize',
+      functionName: 'initialize',
+    });
+    const spanName = `${context.key.name}.initialize`;
+    return this.buildSpan(spanName, annotations, undefined, this.captureResults);
   }
 
-  onDispose({ key }: DisposeContext): EventSpan | void {
-    return this.observe(key.name, 'dispose', 'dispose', undefined);
+  onDispose(context: DisposeContext): EventSpan | void {
+    const annotations = this.buildAnnotations({
+      key: context.key,
+      event: 'dispose',
+      functionName: 'dispose',
+    });
+    const spanName = `${context.key.name}.dispose`;
+    return this.buildSpan(spanName, annotations, undefined, false);
   }
 
-  onMethodCall({ key, functionName, args }: MethodCallContext): EventSpan | void {
-    return this.observe(
-      key.name,
-      functionName,
-      'call',
-      this.captureArguments ? this.serialize(args) : undefined,
+  onMethodCall(context: MethodCallContext): EventSpan | void {
+    const annotations = this.buildAnnotations({
+      key: context.key,
+      event: 'call',
+      functionName: context.functionName,
+    });
+    const spanName = `${context.key.name}.${context.functionName}`;
+    const serializedArgs = this.captureArguments
+      ? serialize(context.args, this.maxCaptureLength)
+      : undefined;
+    return this.buildSpan(
+      spanName,
+      annotations,
+      serializedArgs,
+      this.captureResults,
     );
   }
 
-  private observe(
-    service: string,
-    method: string,
-    operation: 'initialize' | 'dispose' | 'call',
+  private buildSpan(
+    spanName: string,
+    annotations: { [key: string]: string },
     serializedArgs: string | undefined,
+    captureResult: boolean,
   ): EventSpan | void {
-    let state: ActiveOperation;
+    let subsegment: Subsegment;
     try {
       const parent = this.resolveParent();
       if (!parent) {
         return; // No sampled trace in flight — observe nothing.
       }
 
-      const subsegment = parent.addNewSubsegment(
-        `${service}.${method}`.slice(0, MAX_NAME_LENGTH),
-      );
-      subsegment.addAnnotation('composed_di_service', service);
-      subsegment.addAnnotation('composed_di_method', method);
-      subsegment.addAnnotation('composed_di_operation', operation);
+      subsegment = parent.addNewSubsegment(spanName.slice(0, MAX_NAME_LENGTH));
+      for (const [name, value] of Object.entries(annotations)) {
+        subsegment.addAnnotation(name, value);
+      }
       if (serializedArgs !== undefined) {
         subsegment.addMetadata('args', serializedArgs, 'composed_di');
       }
-
-      state = { subsegment, closed: false };
-      // The observed operation runs right after this hook returns, in the
-      // same synchronous frame, so entering the context here makes this
-      // subsegment the parent of subsegments opened inside the operation.
-      this.activeOperation.enterWith(state);
     } catch {
       return; // Instrumentation failures must never reach the application.
     }
 
-    const captureResult = operation !== 'dispose' && this.captureResults;
     return {
-      end: (outcome) => {
+      run: (fn) => runWithAmbientSegment(subsegment, fn),
+      end: (outcome: EventOutcome) => {
         try {
           if (outcome.type === 'failure') {
             const error = outcome.error;
-            state.closed = true;
-            state.subsegment.close(
-              error instanceof Error ? error : String(error),
-            );
+            subsegment.close(error instanceof Error ? error : String(error));
             return;
           }
           if (captureResult) {
-            state.subsegment.addMetadata(
+            subsegment.addMetadata(
               'result',
-              this.serialize(outcome.value),
+              serialize(outcome.value, this.maxCaptureLength),
               'composed_di',
             );
           }
-          state.closed = true;
-          state.subsegment.close();
+          subsegment.close();
         } catch {
           // Swallow: see above.
         }
@@ -164,29 +174,75 @@ export class XrayEventListener implements ServiceEventListener {
     };
   }
 
+  private buildAnnotations(params: {
+    key: ServiceKey<unknown>;
+    event: 'initialize' | 'dispose' | 'call';
+    functionName: string;
+  }) {
+    const annotations: { [key: string]: string } = {
+      composed_di_service: params.key.name,
+      composed_di_method: params.functionName,
+      composed_di_operation: params.event,
+    };
+
+    return annotations;
+  }
+
   private resolveParent(): Segment | Subsegment | undefined {
-    const active = this.activeOperation.getStore();
-    if (active && !active.closed) {
-      return active.subsegment;
+    // Inside an observed operation the ambient segment is that operation's
+    // subsegment (established by `run`), so nesting needs no bookkeeping.
+    if (isAutomaticMode()) {
+      try {
+        const ambient = getSegment();
+        if (ambient) {
+          return ambient;
+        }
+      } catch {
+        // getSegment() throws under the RUNTIME_ERROR context-missing
+        // strategy when no trace is in flight.
+      }
     }
     try {
-      return this.segmentSource() ?? undefined;
+      return this.segmentSource?.() ?? undefined;
     } catch {
-      // The SDK's getSegment() throws under the RUNTIME_ERROR
-      // context-missing strategy when no trace is in flight.
       return undefined;
     }
   }
+}
 
-  private serialize(value: unknown): string {
-    let text: string;
-    try {
-      text = JSON.stringify(value) ?? String(value);
-    } catch {
-      text = '[unserializable]';
-    }
-    return text.length > this.maxCaptureLength
-      ? `${text.slice(0, this.maxCaptureLength)}…`
-      : text;
+/**
+ * Runs the operation with the given subsegment as the SDK's ambient
+ * segment, inside a fresh CLS context that the operation body and its
+ * async continuations inherit. In manual mode (no ambient context), or if
+ * the SDK context is unavailable, the operation runs unwrapped — it must
+ * be invoked exactly once either way.
+ */
+function runWithAmbientSegment<T>(subsegment: Subsegment, fn: () => T): T {
+  let namespace: ReturnType<typeof getNamespace> | undefined;
+  try {
+    namespace = isAutomaticMode() ? getNamespace() : undefined;
+  } catch {
+    namespace = undefined;
   }
+  if (!namespace) {
+    return fn();
+  }
+  return namespace.runAndReturn(() => {
+    try {
+      setSegment(subsegment);
+    } catch {
+      // Instrumentation failures must never reach the application.
+    }
+    return fn();
+  });
+}
+
+function serialize(value: unknown, maxLength: number): string {
+  let text: string;
+  try {
+    text = JSON.stringify(value) ?? String(value);
+  } catch {
+    text = '[unserializable]';
+  }
+  return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
 }

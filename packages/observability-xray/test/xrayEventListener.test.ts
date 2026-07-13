@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Segment, Subsegment } from 'aws-xray-sdk-core';
+import { getSegment, Segment, Subsegment } from 'aws-xray-sdk-core';
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
 import {
   XrayEventListener,
@@ -124,6 +124,28 @@ describe('XrayEventListener', () => {
     );
   });
 
+  it('should parent application subsegments opened inside observed methods', async () => {
+    const Key = new ServiceKey<{ work(): string }>('svc');
+    const factory = ServiceFactory.singleton({
+      provides: Key,
+      initialize: () => ({
+        work: () => {
+          // What captured AWS SDK clients and captureFunc do internally:
+          // attach a subsegment to the SDK's ambient segment.
+          getSegment()!.addNewSubsegment('app.manual').close();
+          return 'done';
+        },
+      }),
+    });
+    const module = ServiceModule.from([factory], makeListener());
+
+    const svc = await module.get(Key);
+    expect(svc.work()).toBe('done');
+    expect((byName('svc.work').subsegments ?? []).map((s) => s.name)).toContain(
+      'app.manual',
+    );
+  });
+
   it('should mark failed operations as faults with the exception', async () => {
     const Key = new ServiceKey<{ boom(): never }>('svc');
     const factory = ServiceFactory.singleton({
@@ -167,7 +189,7 @@ describe('XrayEventListener', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     });
-    // Default segmentSource: the SDK's getSegment(), which throws here
+    // No segmentSource, and the SDK's ambient getSegment() throws here
     // because no X-Ray context is in flight. Services must still work.
     const module = ServiceModule.from([factory], new XrayEventListener());
 
