@@ -89,8 +89,8 @@ export class DashboardEventListener implements ServiceEventListener {
     this.context.enterWith({ id });
 
     return {
-      end: () => end(null),
-      error: (error) => end(errorMessage(error)),
+      end: (outcome) =>
+        end(outcome.type === 'failure' ? errorMessage(outcome.error) : null),
     };
   }
 

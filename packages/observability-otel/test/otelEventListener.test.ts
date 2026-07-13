@@ -5,7 +5,8 @@ import {
   ReadableSpan,
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
-import { SpanStatusCode } from '@opentelemetry/api';
+import { context as otelContext, SpanStatusCode } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
 import {
   OTELEventListener,
@@ -20,6 +21,11 @@ beforeEach(() => {
   provider = new BasicTracerProvider({
     spanProcessors: [new SimpleSpanProcessor(exporter)],
   });
+  // Nesting relies on the ambient OTEL context, which only propagates when
+  // a context manager is registered (NodeSDK does this in real setups).
+  otelContext.setGlobalContextManager(
+    new AsyncLocalStorageContextManager().enable(),
+  );
 });
 
 const makeListener = (options: Partial<OTELEventListenerOptions> = {}) =>

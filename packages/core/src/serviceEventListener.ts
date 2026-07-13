@@ -5,50 +5,51 @@ import type { ServiceKey } from './serviceKey';
  * disposal, or method call), returned by a ServiceEventListener when the
  * operation starts.
  *
- * Exactly one of `end` or `error` is invoked when the operation finishes,
- * so implementations can close over per-call state (start time, an
- * OpenTelemetry span, a correlation id) without any bookkeeping to pair
- * concurrent start/finish events.
+ * `end` is invoked exactly once when the operation finishes, so
+ * implementations can close over per-call state (a start time, a span
+ * handle, a correlation id) without any bookkeeping to pair concurrent
+ * start/finish events.
  */
 export interface EventSpan {
   /**
-   * Invoked when the operation completes successfully. For methods that
-   * return a promise, this fires when the promise resolves, not when the
-   * method returns.
+   * Optional wrapper around the operation itself. When present, the module
+   * invokes the operation as `run(() => operation())`, so the listener can
+   * establish ambient state that the operation body and its async
+   * continuations inherit — this is what lets spans of nested service
+   * calls form a parent-child hierarchy.
    *
-   * Whether to retain or log the outcome is the implementation's choice;
-   * the value is passed by reference, so implementations must not mutate it.
+   * Implementations must invoke `fn` exactly once, synchronously, and
+   * return its result unchanged (for async operations, the promise itself).
+   * `end` is still delivered separately when the operation finishes.
    *
-   * @param outcome - The outcome of the operation. Present for method call
-   * spans (the return or resolved value) and initialize spans (the service
-   * instance), absent for dispose spans.
-   * @return void
+   * @param fn - A thunk that performs the operation.
+   * @return The value returned by `fn`.
    */
-  end?(outcome?: EventOutcome): void;
+  run?<T>(fn: () => T): T;
 
   /**
-   * Invoked when the operation throws or rejects. Terminal like `end`;
-   * the two are mutually exclusive. The error is rethrown to the caller
-   * after this is invoked.
+   * Invoked exactly once when the operation finishes, whether it succeeded
+   * or failed. For methods that return a promise, this fires when the
+   * promise settles, not when the method returns. On failure, the error is
+   * rethrown to the caller after this is invoked.
    *
-   * @param error - The error object or value that was thrown or rejected.
+   * Whether to retain or log the outcome is the implementation's choice;
+   * values are passed by reference, so implementations must not mutate them.
+   *
+   * @param outcome - How the operation finished, and its value or error.
    * @return void
    */
-  error?(error: unknown): void;
+  end?(outcome: EventOutcome): void;
 }
 
 /**
- * The successful outcome of an operation, delivered to EventSpan.end.
- * Future fields (e.g. a correlation id) are added here rather than as
- * extra parameters.
+ * How an operation finished, delivered to EventSpan.end: `success` carries
+ * the value produced by the operation (the return or resolved value for
+ * method calls, the service instance for initialize, undefined for
+ * dispose); `failure` carries the error that was thrown or rejected.
  */
-export interface EventOutcome {
-  /**
-   * The value produced by the operation: the return value for synchronous
-   * methods, or the resolved value for methods returning a promise.
-   */
-  result: unknown;
-}
+export type EventOutcome =
+  { type: 'success'; value: unknown } | { type: 'failure'; error: unknown };
 
 /**
  * Context of a service initialization, delivered to onInitialize.

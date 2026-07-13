@@ -3,7 +3,10 @@ import { ServiceFactory } from './serviceFactory';
 import { ServiceScope } from './serviceScope';
 import { ServiceSelector } from './serviceSelector';
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors';
-import type { ServiceEventListener } from './serviceEventListener';
+import type {
+  EventSpan,
+  ServiceEventListener,
+} from './serviceEventListener';
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;
@@ -265,9 +268,9 @@ function isSuitable<T, D extends readonly ServiceKey<any>[]>(
  * lifecycle events and method calls.
  *
  * For each of initialize, dispose, and method calls, the listener is invoked
- * at the start of the operation and may return an EventSpan whose `end` or
- * `error` is called when the operation finishes. Errors are rethrown after
- * being reported.
+ * at the start of the operation and may return an EventSpan whose `end` is
+ * called with the outcome when the operation finishes. Errors are rethrown
+ * after being reported.
  *
  * @param listener The listener notified of lifecycle and method call events.
  * @param delegate The original service factory to be instrumented.
@@ -288,26 +291,26 @@ function makeObservable<T, D extends readonly ServiceKey<any>[]>(
       if (dispose) {
         const span = listener.onDispose?.({ key });
         try {
-          dispose();
+          invokeWithin(span, dispose);
         } catch (error) {
-          span?.error?.(error);
+          span?.end?.({ type: 'failure', error });
           throw error;
         }
-        span?.end?.();
+        span?.end?.({ type: 'success', value: undefined });
       }
     },
     initialize: async (...args) => {
       const span = listener.onInitialize?.({ key });
       try {
         const instance = observeMethodCalls(
-          await delegate.initialize(...args),
+          await invokeWithin(span, () => delegate.initialize(...args)),
           listener,
           key,
         );
-        span?.end?.({ result: instance });
+        span?.end?.({ type: 'success', value: instance });
         return instance;
       } catch (error) {
-        span?.error?.(error);
+        span?.end?.({ type: 'failure', error });
         throw error;
       }
     },
@@ -317,8 +320,8 @@ function makeObservable<T, D extends readonly ServiceKey<any>[]>(
 /**
  * Wraps an object with a Proxy to notify the listener of method calls.
  *
- * Methods returning a promise report end/error when the promise settles,
- * not when the method returns.
+ * Methods returning a promise report their outcome when the promise
+ * settles, not when the method returns.
  *
  * @param thing The object whose method calls need to be observed.
  * @param listener The listener notified of method call events.
@@ -348,23 +351,23 @@ function observeMethodCalls(
             args,
           });
           try {
-            const result = value.apply(target, args);
+            const result = invokeWithin(span, () => value.apply(target, args));
             if (result instanceof Promise) {
               return result.then(
                 (resolved) => {
-                  span?.end?.({ result: resolved });
+                  span?.end?.({ type: 'success', value: resolved });
                   return resolved;
                 },
                 (error) => {
-                  span?.error?.(error);
+                  span?.end?.({ type: 'failure', error });
                   throw error;
                 },
               );
             }
-            span?.end?.({ result });
+            span?.end?.({ type: 'success', value: result });
             return result;
           } catch (error) {
-            span?.error?.(error);
+            span?.end?.({ type: 'failure', error });
             throw error;
           }
         };
@@ -372,6 +375,19 @@ function observeMethodCalls(
       return value;
     },
   });
+}
+
+/**
+ * Invokes an operation through the EventSpan's `run` wrapper when the
+ * listener provided one, so it can establish ambient state (tracing
+ * context) around the operation; invokes the operation directly otherwise.
+ *
+ * @param span The EventSpan returned by the listener, if any.
+ * @param fn The thunk performing the operation.
+ * @returns The value returned by `fn`.
+ */
+function invokeWithin<T>(span: EventSpan | void, fn: () => T): T {
+  return span?.run ? span.run(fn) : fn();
 }
 
 /**

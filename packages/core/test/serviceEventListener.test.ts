@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, it, expect } from 'vitest';
 import { ServiceModule } from '../src/serviceModule';
 import { ServiceKey } from '../src/serviceKey';
@@ -11,8 +12,8 @@ const makeListener = (events: string[]): ServiceEventListener => {
   const span = (name: string): EventSpan => {
     events.push(`${name}:start`);
     return {
-      end: () => events.push(`${name}:end`),
-      error: () => events.push(`${name}:error`),
+      end: (outcome) =>
+        events.push(`${name}:${outcome.type === 'success' ? 'end' : 'error'}`),
     };
   };
   return {
@@ -118,7 +119,7 @@ describe('ServiceEventListener', () => {
       const listener: ServiceEventListener = {
         onInitialize: () => ({
           end: (outcome) => {
-            constructed = outcome?.result;
+            constructed = outcome.type === 'success' ? outcome.value : undefined;
           },
         }),
       };
@@ -189,7 +190,7 @@ describe('ServiceEventListener', () => {
             observed.push({
               method: context.functionName,
               args: [...context.args],
-              result: outcome?.result,
+              result: outcome.type === 'success' ? outcome.value : undefined,
             }),
         }),
       };
@@ -477,5 +478,59 @@ describe('ServiceEventListener', () => {
         expect(counter).toBe(2);
       },
     );
+  });
+
+  describe('run wrapper', () => {
+    it('should invoke the operation through run exactly once and pass the result through', async () => {
+      const calls: string[] = [];
+      const listener: ServiceEventListener = {
+        onMethodCall: () => ({
+          run: <T,>(fn: () => T): T => {
+            calls.push('run');
+            return fn();
+          },
+          end: () => calls.push('end'),
+        }),
+      };
+      const Key = new ServiceKey<{ greet(): string }>('svc');
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => ({ greet: () => 'hi' }),
+      });
+      const module = ServiceModule.from([factory], listener);
+
+      const svc = await module.get(Key);
+      expect(svc.greet()).toBe('hi');
+      expect(calls).toEqual(['run', 'end']);
+    });
+
+    it('should let run establish ambient state visible to nested calls', async () => {
+      const als = new AsyncLocalStorage<string>();
+      const ambientAtStart: (string | undefined)[] = [];
+      const listener: ServiceEventListener = {
+        onMethodCall: ({ functionName }) => {
+          ambientAtStart.push(als.getStore());
+          return {
+            run: <T,>(fn: () => T): T => als.run(functionName, fn),
+          };
+        },
+      };
+      const DbKey = new ServiceKey<{ query(): Promise<string> }>('db');
+      const UserKey = new ServiceKey<{ getUser(): Promise<string> }>('users');
+      const db = ServiceFactory.singleton({
+        provides: DbKey,
+        initialize: () => ({ query: async () => 'row' }),
+      });
+      const users = ServiceFactory.singleton({
+        provides: UserKey,
+        dependsOn: [DbKey],
+        initialize: (database) => ({ getUser: () => database.query() }),
+      });
+      const module = ServiceModule.from([db, users], listener);
+
+      const svc = await module.get(UserKey);
+      await svc.getUser();
+      expect(ambientAtStart).toEqual([undefined, 'getUser']);
+    });
   });
 });

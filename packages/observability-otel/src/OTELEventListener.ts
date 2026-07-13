@@ -1,7 +1,5 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
 import {
   Attributes,
-  Context,
   context as otelContext,
   SpanStatusCode,
   trace,
@@ -44,21 +42,7 @@ export interface OTELEventListenerOptions {
   captureResults?: boolean;
 }
 
-/**
- * One in-flight listener span, linked to the frame that was active when it
- * started. AsyncLocalStorage.enterWith cannot be undone once the operation
- * finishes (end/error may fire in a different async context than the one
- * the frame was entered in), so instead of detaching, finished frames are
- * marked `ended` and readers skip them via `liveFrame`.
- */
-interface SpanFrame {
-  readonly context: Context;
-  readonly parent: SpanFrame | undefined;
-  ended: boolean;
-}
-
 export class OTELEventListener implements ServiceEventListener {
-  private readonly activeFrame = new AsyncLocalStorage<SpanFrame>();
   private readonly tracer: Tracer;
   private readonly captureArguments: boolean;
   private readonly captureResults: boolean;
@@ -77,7 +61,7 @@ export class OTELEventListener implements ServiceEventListener {
       functionName: 'initialize',
     });
     const spanName = `ServiceFactory[${context.key.name}].initialize`;
-    return this.buildSpan(spanName, attributes);
+    return this.buildSpan(spanName, attributes, this.captureResults);
   }
 
   onDispose(context: DisposeContext): EventSpan {
@@ -88,7 +72,7 @@ export class OTELEventListener implements ServiceEventListener {
       functionName: 'dispose',
     });
     const spanName = `ServiceFactory[${context.key.name}].dispose`;
-    return this.buildSpan(spanName, attributes);
+    return this.buildSpan(spanName, attributes, false);
   }
 
   onMethodCall(context: MethodCallContext): EventSpan {
@@ -100,47 +84,40 @@ export class OTELEventListener implements ServiceEventListener {
       args: context.args,
     });
     const spanName = attributes[ATTR_CODE_FUNCTION_NAME];
-    return this.buildSpan(spanName, attributes);
+    return this.buildSpan(spanName, attributes, this.captureResults);
   }
 
-  private buildSpan(spanName: string, attributes: Attributes): EventSpan {
-    const parent = findParentFrame(this.activeFrame.getStore());
-    const parentContext = parent?.context ?? otelContext.active();
+  private buildSpan(
+    spanName: string,
+    attributes: Attributes,
+    captureResult: boolean,
+  ): EventSpan {
+    const parentContext = otelContext.active();
     const span = this.tracer.startSpan(spanName, { attributes }, parentContext);
-
-    const frame: SpanFrame = {
-      context: trace.setSpan(parentContext, span),
-      parent,
-      ended: false,
-    };
-    // The operation body runs in this same async context right after the
-    // listener returns, so it and its async continuations see this frame.
-    this.activeFrame.enterWith(frame);
+    const spanContext = trace.setSpan(parentContext, span);
 
     return {
-      end: (outcome?: EventOutcome) => {
-        frame.ended = true;
-        if (this.captureResults && outcome !== undefined) {
+      run: (fn) => otelContext.with(spanContext, fn),
+      end: (outcome: EventOutcome) => {
+        if (outcome.type === 'failure') {
+          const error = outcome.error;
+          span.recordException(error instanceof Error ? error : String(error));
+          span.setAttribute(
+            ATTR_ERROR_TYPE,
+            error instanceof Error
+              ? error.name || ERROR_TYPE_VALUE_OTHER
+              : ERROR_TYPE_VALUE_OTHER,
+          );
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        } else if (captureResult) {
           span.setAttribute(
             'composed_di.service.function.result',
-            serialize(outcome.result),
+            serialize(outcome.value),
           );
         }
-        span.end();
-      },
-      error: (error: unknown) => {
-        frame.ended = true;
-        span.recordException(error instanceof Error ? error : String(error));
-        span.setAttribute(
-          ATTR_ERROR_TYPE,
-          error instanceof Error
-            ? error.name || ERROR_TYPE_VALUE_OTHER
-            : ERROR_TYPE_VALUE_OTHER,
-        );
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: error instanceof Error ? error.message : String(error),
-        });
         span.end();
       },
     };
@@ -167,18 +144,6 @@ export class OTELEventListener implements ServiceEventListener {
 
     return attributes;
   }
-}
-
-/**
- * Walks up the frame chain to the nearest span that has not finished yet,
- * or undefined when every ancestor has ended (the ambient OTEL context is
- * the parent then).
- */
-function findParentFrame(frame: SpanFrame | undefined): SpanFrame | undefined {
-  while (frame && frame.ended) {
-    frame = frame.parent;
-  }
-  return frame;
 }
 
 function serialize(value: unknown): string {

@@ -140,25 +140,23 @@ export class XrayEventListener implements ServiceEventListener {
     return {
       end: (outcome) => {
         try {
-          if (captureResult && outcome !== undefined) {
+          if (outcome.type === 'failure') {
+            const error = outcome.error;
+            state.closed = true;
+            state.subsegment.close(
+              error instanceof Error ? error : String(error),
+            );
+            return;
+          }
+          if (captureResult) {
             state.subsegment.addMetadata(
               'result',
-              this.serialize(outcome.result),
+              this.serialize(outcome.value),
               'composed_di',
             );
           }
           state.closed = true;
           state.subsegment.close();
-        } catch {
-          // Swallow: see above.
-        }
-      },
-      error: (error) => {
-        try {
-          state.closed = true;
-          state.subsegment.close(
-            error instanceof Error ? error : String(error),
-          );
         } catch {
           // Swallow: see above.
         }
