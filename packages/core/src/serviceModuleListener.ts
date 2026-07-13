@@ -111,7 +111,7 @@ export interface MethodCallContext {
  * return an EventSpan that is notified when that operation finishes.
  * Returning nothing opts out of completion tracking for that call.
  */
-export interface ServiceEventListener {
+export interface ServiceModuleListener {
   /**
    * Invoked at the start of the initialization process for a specific service.
    *

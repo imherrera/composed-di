@@ -5,8 +5,8 @@ import { ServiceSelector } from './serviceSelector';
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors';
 import type {
   EventSpan,
-  ServiceEventListener,
-} from './serviceEventListener';
+  ServiceModuleListener,
+} from './serviceModuleListener';
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
 type GenericKey = ServiceKey<any>;
@@ -123,7 +123,7 @@ export class ServiceModule {
    */
   static from(
     entries: (ServiceModule | GenericFactory)[],
-    listener?: ServiceEventListener,
+    listener?: ServiceModuleListener,
   ): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
     const flattened = entries.flatMap((e) =>
@@ -277,7 +277,7 @@ function isSuitable<T, D extends readonly ServiceKey<any>[]>(
  * @return A new service factory that provides the same dependencies but includes event notification logic.
  */
 function makeObservable<T, D extends readonly ServiceKey<any>[]>(
-  listener: ServiceEventListener,
+  listener: ServiceModuleListener,
   delegate: ServiceFactory<any, D>,
 ): ServiceFactory<T, D> {
   const key = delegate.provides;
@@ -330,7 +330,7 @@ function makeObservable<T, D extends readonly ServiceKey<any>[]>(
  */
 function observeMethodCalls(
   thing: any,
-  listener: ServiceEventListener,
+  listener: ServiceModuleListener,
   key: ServiceKey<unknown>,
 ): any {
   if (typeof thing !== 'object' || thing === null) {
