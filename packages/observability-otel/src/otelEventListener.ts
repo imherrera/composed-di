@@ -12,12 +12,14 @@ import {
   ATTR_ERROR_TYPE,
   ERROR_TYPE_VALUE_OTHER,
 } from '@opentelemetry/semantic-conventions';
-import type {
+import {
   DisposeContext,
+  EventOutcome,
   EventSpan,
   InitializeContext,
   MethodCallContext,
   ServiceEventListener,
+  ServiceKey,
 } from '@composed-di/core';
 
 /**
@@ -100,82 +102,55 @@ export class OtelEventListener implements ServiceEventListener {
     this.maxCaptureLength = options.maxCaptureLength ?? 1024;
   }
 
-  onInitialize({ key }: InitializeContext): EventSpan {
-    return this.startSpan({
-      serviceKey: key.name,
-      functionName: 'initialize',
-      event: 'initialize',
-    });
-  }
-
-  onDispose({ key }: DisposeContext): EventSpan {
-    return this.startSpan({
-      serviceKey: key.name,
-      functionName: 'dispose',
-      event: 'dispose',
-    });
-  }
-
-  onMethodCall({
-    key,
-    className,
-    methodName,
-    args,
-  }: MethodCallContext): EventSpan {
-    return this.startSpan({
-      serviceKey: key.name,
-      className,
-      functionName: methodName,
+  onInitialize(context: InitializeContext): EventSpan {
+    const attributes = this.buildAttributes({
+      key: context.key,
       event: 'call',
-      serializedArgs: this.captureArguments ? this.serialize(args) : undefined,
+      className: 'ServiceFactory',
+      functionName: 'initialize',
     });
+    const spanName = `ServiceFactory[${context.key.name}].initialize`;
+    return this.buildSpan(spanName, attributes);
   }
 
-  private startSpan({
-    serviceKey,
-    className,
-    functionName,
-    event,
-    serializedArgs,
-  }: {
-    serviceKey: string;
-    className?: string;
-    functionName: string;
-    event: 'initialize' | 'dispose' | 'call';
-    serializedArgs?: string;
-  }): EventSpan {
-    const attributes: Attributes = {
-      [ATTR_CODE_FUNCTION_NAME]: `${className ?? serviceKey}.${functionName}`,
-      'composed_di.service.key': serviceKey,
-      'composed_di.service.event': event,
-    };
-    if (serializedArgs !== undefined) {
-      attributes['composed_di.service.function.arguments'] = serializedArgs;
-    }
+  onDispose(context: DisposeContext): EventSpan {
+    const attributes = this.buildAttributes({
+      key: context.key,
+      event: 'dispose',
+      className: 'ServiceFactory',
+      functionName: 'dispose',
+    });
+    const spanName = `ServiceFactory[${context.key.name}].dispose`;
+    return this.buildSpan(spanName, attributes);
+  }
 
-    const parent = this.activeContext.getStore() ?? otelContext.active();
-    const span = this.tracer.startSpan(
-      `${serviceKey}.${functionName}`,
-      { attributes },
-      parent,
-    );
-    // The observed operation runs right after this hook returns, in the
-    // same synchronous frame, so entering the context here makes this span
-    // the parent of spans this listener starts inside the operation.
-    this.activeContext.enterWith(trace.setSpan(parent, span));
+  onMethodCall(context: MethodCallContext): EventSpan {
+    const attributes = this.buildAttributes({
+      key: context.key,
+      event: 'call',
+      className: context.className,
+      functionName: context.functionName,
+      args: context.args,
+    });
+    const spanName = attributes[ATTR_CODE_FUNCTION_NAME];
+    return this.buildSpan(spanName, attributes);
+  }
 
-    const captureResult = event !== 'dispose' && this.captureResults;
+  private buildSpan(spanName: string, attributes: Attributes): EventSpan {
+    const context = this.activeContext.getStore() ?? otelContext.active();
+    const span = this.tracer.startSpan(spanName, { attributes }, context);
+
     return {
-      end: (outcome) => {
-        if (captureResult && outcome !== undefined) {
+      end: (outcome?: EventOutcome) => {
+        if (this.captureResults && outcome !== undefined) {
           span.setAttribute(
             'composed_di.service.function.result',
-            this.serialize(outcome.result),
+            serialize(outcome.result),
           );
         }
         span.end();
       },
-      error: (error) => {
+      error: (error: unknown) => {
         span.recordException(error instanceof Error ? error : String(error));
         span.setAttribute(
           ATTR_ERROR_TYPE,
@@ -192,15 +167,35 @@ export class OtelEventListener implements ServiceEventListener {
     };
   }
 
-  private serialize(value: unknown): string {
-    let text: string;
-    try {
-      text = JSON.stringify(value) ?? String(value);
-    } catch {
-      text = '[unserializable]';
+  private buildAttributes(params: {
+    key: ServiceKey<unknown>;
+    event: 'initialize' | 'dispose' | 'call';
+    className?: string;
+    functionName: string;
+    args?: readonly unknown[];
+  }) {
+    const attributes: { [key: string]: string } = {
+      [ATTR_CODE_FUNCTION_NAME]: `${params.className ?? params.key.name}.${params.functionName}`,
+      'composed_di.service.key': params.key.name,
+      'composed_di.service.event': params.event,
+    };
+
+    if (params.args && this.captureArguments) {
+      attributes['composed_di.service.function.arguments'] = serialize(
+        params.args,
+      );
     }
-    return text.length > this.maxCaptureLength
-      ? `${text.slice(0, this.maxCaptureLength)}…`
-      : text;
+
+    return attributes;
   }
+}
+
+function serialize(value: unknown): string {
+  let text: string;
+  try {
+    text = JSON.stringify(value) ?? String(value);
+  } catch {
+    text = '[unserializable]';
+  }
+  return text;
 }
