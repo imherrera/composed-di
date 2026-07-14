@@ -92,8 +92,6 @@ export class RedactingEventListener implements ServiceModuleListener {
     return redactSpan(span, redacted);
   }
 
-  // 1. Si expiro el dbr `EXPIRED` el cron debe mandar a `FACE_MISMATCH`?
-  // 2. Si hubo un matchLevel intermediario el cron debe mandar a `FACE_MISMATCH`? (Probablemente no)
   private isRedacted(key: ServiceKey<any>, propertyName?: string): boolean {
     return this.rules.some(
       (rule) =>
