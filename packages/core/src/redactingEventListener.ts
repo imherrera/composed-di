@@ -124,6 +124,13 @@ export class RedactionRuleBuilder<T> {
   }
 
   build(): RedactionRule<any> {
+    if (!this.redactAllFlag && Object.keys(this.overrides).length === 0) {
+      throw new Error(
+        `redactionRule(${this.key.name}) has no effect: call .redactAll() and/or .redact(...) ` +
+          'before .build(), otherwise this rule never redacts anything.',
+      );
+    }
+
     const redactAllFlag = this.redactAllFlag;
     const overrides = this.overrides;
 

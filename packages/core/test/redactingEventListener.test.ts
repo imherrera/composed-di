@@ -313,6 +313,16 @@ describe('RedactingEventListener', () => {
     });
   });
 
+  it('build() throws when neither redactAll nor redact was called', () => {
+    expect(() => redactionRule(SecretKey).build()).toThrow(/has no effect/);
+  });
+
+  it('build() does not throw when only exclude was called', () => {
+    expect(() =>
+      redactionRule(SecretKey).exclude('listSecretNames').build(),
+    ).not.toThrow();
+  });
+
   it('should not redact services outside the rules', async () => {
     const PlainKey = new ServiceKey<{ add(a: number, b: number): number }>(
       'Calculator',
