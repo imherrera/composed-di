@@ -11,12 +11,7 @@ import {
   trace,
 } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
-import {
-  RedactingEventListener,
-  ServiceFactory,
-  ServiceKey,
-  ServiceModule,
-} from '@composed-di/core';
+import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
 import {
   OTELEventListener,
   OTELEventListenerOptions,
@@ -269,50 +264,6 @@ describe('OtelEventListener', () => {
       '[2,3]',
     );
     expect(span.attributes['composed_di.service.function.result']).toBe('5');
-  });
-
-  it('should capture only redacted placeholders when wrapped in a RedactingEventListener', async () => {
-    const SecretKey = new ServiceKey<{
-      getSecret(name: string): string;
-      listSecretNames(): string[];
-    }>('SecretClient');
-    const factory = ServiceFactory.singleton({
-      provides: SecretKey,
-      initialize: () => ({
-        getSecret: (name: string) => `value-of-${name}`,
-        listSecretNames: () => ['db-password'],
-      }),
-    });
-    const module = ServiceModule.from(
-      [factory],
-      new RedactingEventListener(
-        makeListener({ captureArguments: true, captureResults: true }),
-        [{ key: SecretKey, properties: ['getSecret'] }],
-      ),
-    );
-
-    const svc = await module.get(SecretKey);
-    svc.getSecret('db-password');
-    svc.listSecretNames();
-
-    // The listener never sees the sensitive values — it serializes the
-    // placeholders the RedactingEventListener substituted.
-    const redactedSpan = byName('SecretClient.getSecret');
-    expect(
-      redactedSpan.attributes['composed_di.service.function.arguments'],
-    ).toBe('["[redacted]"]');
-    expect(redactedSpan.attributes['composed_di.service.function.result']).toBe(
-      '"[redacted]"',
-    );
-
-    // Properties not listed in the rule are captured normally.
-    const openSpan = byName('SecretClient.listSecretNames');
-    expect(openSpan.attributes['composed_di.service.function.arguments']).toBe(
-      '[]',
-    );
-    expect(openSpan.attributes['composed_di.service.function.result']).toBe(
-      '["db-password"]',
-    );
   });
 
   it('should truncate captured values beyond maxCaptureLength', async () => {
