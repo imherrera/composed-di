@@ -80,13 +80,17 @@ export interface RedactionRule<T> {
  * @example
  * ```ts
  * const rules = [
- *   redactionRule(SecretClientKey).redactAll().build(), // whole service is sensitive
+ *   redactionRule(SecretClientKey)
+ *     .redactAll()
+ *     .build(), // whole service is sensitive
  *   redactionRule(BillingKey)
  *     .redactAll()
  *     .redact('chargeCard', { maskResult: (card) => `card ending in ${card.number.slice(-4)}` })
  *     .exclude('ping') // redact everything except this, with one custom mask
  *     .build(),
- *   redactionRule(VaultKey).redact('getSecret').build(), // only this call, nothing else
+ *   redactionRule(VaultKey)
+ *     .redact('getSecret')
+ *     .build(), // only this call, nothing else
  * ];
  * ```
  */
