@@ -18,6 +18,7 @@
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "publish:all": "pnpm -r publish --access public",
     "dev:dashboard": "tsc --build && node packages/observability/dist/cli.js"
   },
   "devDependencies": {
