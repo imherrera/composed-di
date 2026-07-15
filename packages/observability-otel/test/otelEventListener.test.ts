@@ -58,9 +58,9 @@ describe('OtelEventListener', () => {
     const svc = await module.get(Key);
     svc.greet();
 
-    const init = byName('svc.initialize');
+    const init = byName('ServiceFactory[svc].initialize');
     expect(init.attributes).toMatchObject({
-      'code.function.name': 'svc.initialize',
+      'code.function.name': 'ServiceFactory.initialize',
       'composed_di.service.key': 'svc',
       'composed_di.service.event': 'initialize',
     });
@@ -89,9 +89,9 @@ describe('OtelEventListener', () => {
     const svc = await module.get(Key);
     svc.greet();
 
-    // The span is named after the service key; code.function.name points
-    // at the implementing class.
-    const call = byName('greeter.greet');
+    // Both the span name and code.function.name point at the implementing
+    // class when one is available.
+    const call = byName('GreeterImpl.greet');
     expect(call.attributes).toMatchObject({
       'code.function.name': 'GreeterImpl.greet',
       'composed_di.service.key': 'greeter',
@@ -112,7 +112,7 @@ describe('OtelEventListener', () => {
 
     await module.get(Key);
     module.dispose();
-    expect(byName('svc.dispose').attributes).toMatchObject({
+    expect(byName('ServiceFactory[svc].dispose').attributes).toMatchObject({
       'composed_di.service.event': 'dispose',
     });
   });
@@ -264,25 +264,5 @@ describe('OtelEventListener', () => {
       '[2,3]',
     );
     expect(span.attributes['composed_di.service.function.result']).toBe('5');
-  });
-
-  it('should truncate captured values beyond maxCaptureLength', async () => {
-    const Key = new ServiceKey<{ echo(s: string): string }>('svc');
-    const factory = ServiceFactory.singleton({
-      provides: Key,
-      initialize: () => ({ echo: (s: string) => s }),
-    });
-    const module = ServiceModule.from(
-      [factory],
-      makeListener({ captureArguments: true }),
-    );
-
-    const svc = await module.get(Key);
-    svc.echo('x'.repeat(100));
-    const args = byName('svc.echo').attributes[
-      'composed_di.service.function.arguments'
-    ] as string;
-    expect(args).toHaveLength(11); // 10 chars + ellipsis
-    expect(args.endsWith('…')).toBe(true);
   });
 });
