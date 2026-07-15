@@ -31,20 +31,6 @@ export interface XrayInstrumentationOptions {
   segmentSource?: () => Segment | Subsegment | undefined
 
   /**
-   * Record method arguments as `composed_di.args` subsegment metadata,
-   * serialized to JSON. Off by default: arguments may be large or contain
-   * secrets, and they end up in the X-Ray console and API.
-   */
-  captureArguments?: boolean
-
-  /**
-   * Record return / resolved values as `composed_di.result` subsegment
-   * metadata, serialized to JSON. Off by default, for the same reasons as
-   * `captureArguments`. Applies to method call and initialize subsegments.
-   */
-  captureResults?: boolean
-
-  /**
    * Maximum length of a serialized args / result metadata value; longer
    * values are truncated. Default 1024.
    */
@@ -62,6 +48,11 @@ export interface XrayInstrumentationOptions {
  * `annotation.composed_di_service = "Database"`. Failed operations record
  * the exception and are marked as faults.
  *
+ * Arguments and results are recorded (as `composed_di.args` /
+ * `composed_di.result` subsegment metadata, serialized to JSON) exactly
+ * when `instrument()` delivers them — capture and redaction policy live
+ * in the InstrumentOptions, not here.
+ *
  * This instrumentation creates no segments of its own: it attaches subsegments to
  * the trace the application already has in flight (via the X-Ray middleware
  * or a custom `segmentSource`). Operations that run outside any sampled
@@ -77,14 +68,10 @@ export interface XrayInstrumentationOptions {
  */
 export class XrayInstrumentation implements ServiceInstrumentation {
   private readonly segmentSource?: () => Segment | Subsegment | undefined
-  private readonly captureArguments: boolean
-  private readonly captureResults: boolean
   private readonly maxCaptureLength: number
 
   constructor(options: XrayInstrumentationOptions = {}) {
     this.segmentSource = options.segmentSource
-    this.captureArguments = options.captureArguments ?? false
-    this.captureResults = options.captureResults ?? false
     this.maxCaptureLength = options.maxCaptureLength ?? 1024
   }
 
@@ -95,7 +82,7 @@ export class XrayInstrumentation implements ServiceInstrumentation {
       functionName: 'initialize',
     })
     const spanName = `${context.key.name}.initialize`
-    return this.buildSpan(spanName, annotations, undefined, this.captureResults)
+    return this.buildSpan(spanName, annotations, undefined)
   }
 
   onDispose(context: DisposeContext): EventSpan | void {
@@ -105,7 +92,7 @@ export class XrayInstrumentation implements ServiceInstrumentation {
       functionName: 'dispose',
     })
     const spanName = `${context.key.name}.dispose`
-    return this.buildSpan(spanName, annotations, undefined, false)
+    return this.buildSpan(spanName, annotations, undefined)
   }
 
   onMethodCall(context: MethodCallContext): EventSpan | void {
@@ -115,22 +102,18 @@ export class XrayInstrumentation implements ServiceInstrumentation {
       functionName: context.functionName,
     })
     const spanName = `${context.key.name}.${context.functionName}`
-    const serializedArgs = this.captureArguments
+    // Args are present exactly when argument capture is enabled in the
+    // InstrumentOptions; they arrive already redacted.
+    const serializedArgs = context.args
       ? serialize(context.args, this.maxCaptureLength)
       : undefined
-    return this.buildSpan(
-      spanName,
-      annotations,
-      serializedArgs,
-      this.captureResults,
-    )
+    return this.buildSpan(spanName, annotations, serializedArgs)
   }
 
   private buildSpan(
     spanName: string,
     annotations: { [key: string]: string },
     serializedArgs: string | undefined,
-    captureResult: boolean,
   ): EventSpan | void {
     let subsegment: Subsegment
     try {
@@ -159,7 +142,9 @@ export class XrayInstrumentation implements ServiceInstrumentation {
             subsegment.close(error instanceof Error ? error : String(error))
             return
           }
-          if (captureResult) {
+          if ('value' in outcome) {
+            // Present exactly when result capture is enabled in the
+            // InstrumentOptions; the value arrives already redacted.
             subsegment.addMetadata(
               'result',
               serialize(outcome.value, this.maxCaptureLength),

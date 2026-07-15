@@ -43,13 +43,21 @@ export interface EventSpan {
 }
 
 /**
- * How an operation finished, delivered to EventSpan.end: `success` carries
- * the value produced by the operation (the return or resolved value for
- * method calls, the service instance for initialize, undefined for
- * dispose); `failure` carries the error that was thrown or rejected.
+ * How an operation finished, delivered to EventSpan.end: `success` may
+ * carry the return or resolved value of a method call (initialize and
+ * dispose outcomes never carry one); `failure` carries the error that was
+ * thrown or rejected.
+ *
+ * Whether `value` is present is decided by {@link instrument}, not by the
+ * implementation: it is absent unless result capture is enabled in the
+ * InstrumentOptions, and holds the redacted value when a redaction rule
+ * matches. Implementations must record the value exactly when it is
+ * present (`'value' in outcome` — a captured `undefined` return is
+ * delivered as a present `value: undefined`) and must not record any
+ * result when it is absent.
  */
 export type EventOutcome =
-  | { type: 'success'; value: unknown }
+  | { type: 'success'; value?: unknown }
   | { type: 'failure'; error: unknown }
 
 /**
@@ -98,10 +106,16 @@ export interface MethodCallContext {
   functionName: string
 
   /**
-   * The arguments the method was invoked with, passed by reference;
+   * The arguments to report for this call, passed by reference;
    * implementations must not mutate them.
+   *
+   * Whether they are present is decided by {@link instrument}, not by the
+   * implementation: absent unless argument capture is enabled in the
+   * InstrumentOptions, and already redacted when a redaction rule matches.
+   * Implementations must record the arguments exactly when present and
+   * must not record any arguments when absent.
    */
-  args: readonly unknown[]
+  args?: readonly unknown[]
 }
 
 /**

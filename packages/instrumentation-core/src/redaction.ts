@@ -1,11 +1,3 @@
-import type {
-  DisposeContext,
-  EventOutcome,
-  EventSpan,
-  InitializeContext,
-  MethodCallContext,
-  ServiceInstrumentation,
-} from './serviceInstrumentation'
 import type { ServiceKey } from '@composed-di/core'
 
 /**
@@ -46,7 +38,11 @@ interface PropertyOverride {
 
 /**
  * Marks a service — or specific properties of it — as sensitive, so the
- * values flowing through its events are redacted. Returned by
+ * values flowing through its events are redacted. Passed to
+ * {@link instrument} via InstrumentOptions.redactionRules and applied
+ * centrally, after the capture flags: values a rule matches are scrubbed
+ * before the instrumentation ever sees them, and when capture is off
+ * there is nothing to redact. Returned by
  * {@link RedactionRuleBuilder.build}, which is the only way to construct
  * one — the `redactAll`/per-property merge logic lives entirely inside
  * `maskArgs`/`maskResult`, so callers never need to know how a rule
@@ -62,12 +58,11 @@ export interface RedactionRule<T> {
   maskArgs(functionName: string, args: readonly unknown[]): readonly unknown[]
 
   /**
-   * The value to report for a success outcome: unchanged if not
-   * redacted, otherwise blanked or run through a custom `maskResult`.
-   * Omit `functionName` to ask about the initialize result (the service
-   * instance itself), which only the rule's `redactAll` default touches.
+   * The value to report for a method call's success outcome: unchanged
+   * if not redacted, otherwise blanked or run through a custom
+   * `maskResult`.
    */
-  maskResult(functionName: string | undefined, result: unknown): unknown
+  maskResult(functionName: string, result: unknown): unknown
 }
 
 /**
@@ -101,7 +96,7 @@ export class RedactionRuleBuilder<T> {
 
   constructor(private readonly key: ServiceKey<T>) {}
 
-  /** Redacts every property, plus the initialize result, by default. */
+  /** Redacts every property by default. */
   redactAll(): this {
     this.redactAllFlag = true
     this.hasRedact = true
@@ -160,8 +155,7 @@ export class RedactionRuleBuilder<T> {
             args.map(() => REDACTED_VALUE)
       },
       maskResult(functionName, result) {
-        const override =
-          functionName === undefined ? undefined : overrides[functionName]
+        const override = overrides[functionName]
         const redacted = override ? override.redacted : redactAllFlag
         if (!redacted) {
           return result
@@ -176,86 +170,4 @@ export class RedactionRuleBuilder<T> {
 
 export function redactionRule<T>(key: ServiceKey<T>): RedactionRuleBuilder<T> {
   return new RedactionRuleBuilder(key)
-}
-
-/**
- * A ServiceInstrumentation decorator that redacts sensitive values before
- * they reach the wrapped instrumentation. Works with any implementation via
- * delegation: arguments in MethodCallContext and success values in
- * EventOutcome are replaced (wholesale, or via a custom transform)
- * before the delegate ever sees them — whatever it captures or exports
- * is already scrubbed.
- *
- * Failure outcomes are passed through unchanged so error reporting keeps
- * working; keep secrets out of error messages at the throwing site.
- *
- * @example
- * ```ts
- * const instrumentation = new RedactingInstrumentation(
- *   new OTELInstrumentation({ captureArguments: true, captureResults: true }),
- *   [
- *     redactionRule(SecretClientKey).redactAll().build(), // whole service is sensitive
- *     redactionRule(VaultKey).redact('getSecret').build(), // only this call
- *     redactionRule(HealthKey).redactAll().exclude('ping').build(), // everything but this call
- *   ],
- * );
- * ```
- */
-export class RedactingInstrumentation implements ServiceInstrumentation {
-  constructor(
-    private readonly delegate: ServiceInstrumentation,
-    private readonly rules: readonly RedactionRule<any>[],
-  ) {}
-
-  onInitialize(context: InitializeContext): EventSpan | void {
-    const rule = this.rules.find((r) => r.key === context.key)
-    return redactSpan(this.delegate.onInitialize?.(context), rule)
-  }
-
-  onDispose(context: DisposeContext): EventSpan | void {
-    // Dispose carries no arguments and no result value; nothing to redact.
-    return this.delegate.onDispose?.(context)
-  }
-
-  onMethodCall(context: MethodCallContext): EventSpan | void {
-    const rule = this.rules.find((r) => r.key === context.key)
-    const span = this.delegate.onMethodCall?.(
-      rule
-        ? {
-            ...context,
-            args: rule.maskArgs(context.functionName, context.args),
-          }
-        : context,
-    )
-    return redactSpan(span, rule, context.functionName)
-  }
-}
-
-/**
- * Wraps the delegate's EventSpan so success values are redacted before
- * `end` sees them, by delegating to the rule's `maskResult`. `run` (and
- * any future fields) pass through untouched. `functionName` is omitted
- * for the initialize result (the instance itself).
- */
-function redactSpan(
-  span: EventSpan | void,
-  rule: RedactionRule<any> | undefined,
-  functionName?: string,
-): EventSpan | void {
-  if (!rule || !span) {
-    return span
-  }
-  const end = span.end.bind(span)
-  return {
-    ...span,
-    end: (outcome: EventOutcome) =>
-      end(
-        outcome.type === 'success'
-          ? {
-              type: 'success',
-              value: rule.maskResult(functionName, outcome.value),
-            }
-          : outcome,
-      ),
-  }
 }

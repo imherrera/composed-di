@@ -45,7 +45,9 @@ describe('XrayInstrumentation', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     })
-    const module = ServiceModule.from(instrument([factory], makeListener()))
+    const module = ServiceModule.from(
+      instrument([factory], { instrumentation: makeListener() }),
+    )
 
     const svc = await module.get(Key)
     svc.greet()
@@ -66,7 +68,9 @@ describe('XrayInstrumentation', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     })
-    const module = ServiceModule.from(instrument([factory], makeListener()))
+    const module = ServiceModule.from(
+      instrument([factory], { instrumentation: makeListener() }),
+    )
 
     const svc = await module.get(Key)
     svc.greet()
@@ -84,7 +88,9 @@ describe('XrayInstrumentation', () => {
       initialize: () => ({ x: 1 }),
       dispose: () => {},
     }
-    const module = ServiceModule.from(instrument([factory], makeListener()))
+    const module = ServiceModule.from(
+      instrument([factory], { instrumentation: makeListener() }),
+    )
 
     await module.get(Key)
     module.dispose()
@@ -111,7 +117,9 @@ describe('XrayInstrumentation', () => {
         getUser: (id: number) => database.query(`u${id}`),
       }),
     })
-    const module = ServiceModule.from(instrument([db, users], makeListener()))
+    const module = ServiceModule.from(
+      instrument([db, users], { instrumentation: makeListener() }),
+    )
 
     const svc = await module.get(UserKey)
     await svc.getUser(7)
@@ -138,7 +146,9 @@ describe('XrayInstrumentation', () => {
         },
       }),
     })
-    const module = ServiceModule.from(instrument([factory], makeListener()))
+    const module = ServiceModule.from(
+      instrument([factory], { instrumentation: makeListener() }),
+    )
 
     const svc = await module.get(Key)
     expect(svc.work()).toBe('done')
@@ -157,7 +167,9 @@ describe('XrayInstrumentation', () => {
         },
       }),
     })
-    const module = ServiceModule.from(instrument([factory], makeListener()))
+    const module = ServiceModule.from(
+      instrument([factory], { instrumentation: makeListener() }),
+    )
 
     const svc = await module.get(Key)
     expect(() => svc.boom()).toThrow('kaput')
@@ -177,7 +189,9 @@ describe('XrayInstrumentation', () => {
         },
       }),
     })
-    const module = ServiceModule.from(instrument([factory], makeListener()))
+    const module = ServiceModule.from(
+      instrument([factory], { instrumentation: makeListener() }),
+    )
 
     const svc = await module.get(Key)
     await expect(svc.fail()).rejects.toThrow('async kaput')
@@ -193,7 +207,7 @@ describe('XrayInstrumentation', () => {
     // No segmentSource, and the SDK's ambient getSegment() throws here
     // because no X-Ray context is in flight. Services must still work.
     const module = ServiceModule.from(
-      instrument([factory], new XrayInstrumentation()),
+      instrument([factory], { instrumentation: new XrayInstrumentation() }),
     )
 
     const svc = await module.get(Key)
@@ -207,14 +221,13 @@ describe('XrayInstrumentation', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      instrument(
-        [factory],
-        makeListener({
+      instrument([factory], {
+        instrumentation: makeListener({
           segmentSource: () => {
             throw new Error('no context')
           },
         }),
-      ),
+      }),
     )
 
     const svc = await module.get(Key)
@@ -228,7 +241,9 @@ describe('XrayInstrumentation', () => {
       provides: Key,
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     })
-    const module = ServiceModule.from(instrument([factory], makeListener()))
+    const module = ServiceModule.from(
+      instrument([factory], { instrumentation: makeListener() }),
+    )
 
     const svc = await module.get(Key)
     svc.add(2, 3)
@@ -244,10 +259,11 @@ describe('XrayInstrumentation', () => {
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     })
     const module = ServiceModule.from(
-      instrument(
-        [factory],
-        makeListener({ captureArguments: true, captureResults: true }),
-      ),
+      instrument([factory], {
+        instrumentation: makeListener(),
+        captureArguments: true,
+        captureResults: true,
+      }),
     )
 
     const svc = await module.get(Key)
@@ -264,10 +280,10 @@ describe('XrayInstrumentation', () => {
       initialize: () => ({ echo: (s: string) => s }),
     })
     const module = ServiceModule.from(
-      instrument(
-        [factory],
-        makeListener({ captureArguments: true, maxCaptureLength: 10 }),
-      ),
+      instrument([factory], {
+        instrumentation: makeListener({ maxCaptureLength: 10 }),
+        captureArguments: true,
+      }),
     )
 
     const svc = await module.get(LongKey)

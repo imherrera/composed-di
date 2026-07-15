@@ -70,7 +70,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      instrument([factory], client.instrumentation),
+      instrument([factory], { instrumentation: client.instrumentation }),
     )
 
     const svc = await module.get(Key)
@@ -96,7 +96,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      instrument([factory], client.instrumentation),
+      instrument([factory], { instrumentation: client.instrumentation }),
     )
     client.attach(module)
 
@@ -129,7 +129,7 @@ describe('DashboardClient', () => {
       }),
     })
     const module = ServiceModule.from(
-      instrument([db, users], client.instrumentation),
+      instrument([db, users], { instrumentation: client.instrumentation }),
     )
 
     const svc = await module.get(UserKey)
@@ -153,7 +153,7 @@ describe('DashboardClient', () => {
       }),
     })
     const module = ServiceModule.from(
-      instrument([factory], client.instrumentation),
+      instrument([factory], { instrumentation: client.instrumentation }),
     )
 
     const svc = await module.get(Key)
@@ -167,11 +167,15 @@ describe('DashboardClient', () => {
     expect(end).toMatchObject({ error: 'kaput' })
   })
 
-  it('should capture serialized arguments and results on call spans', async () => {
+  it('should capture serialized arguments and results on call spans when opted in', async () => {
     const client = makeClient()
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      instrument([factory], client.instrumentation),
+      instrument([factory], {
+        instrumentation: client.instrumentation,
+        captureArguments: true,
+        captureResults: true,
+      }),
     )
 
     const svc = await module.get(Key)
@@ -181,21 +185,18 @@ describe('DashboardClient', () => {
     const call = startByName('svc.echo')
     expect(call.args).toBe('["hi"]')
     expect(endOf(call).result).toBe('"got:hi"')
-    // Lifecycle spans carry neither.
+    // Lifecycle spans carry neither: initialize takes no arguments, and
+    // its outcome never carries a value.
     const init = startByName('svc.initialize')
     expect(init.args).toBeUndefined()
     expect(endOf(init).result).toBeUndefined()
   })
 
-  it('should omit arguments and results when capture is disabled', async () => {
-    const client = new DashboardClient({
-      url: 'http://localhost:4321',
-      captureArguments: false,
-      captureResults: false,
-    })
+  it('should omit arguments and results by default', async () => {
+    const client = makeClient()
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      instrument([factory], client.instrumentation),
+      instrument([factory], { instrumentation: client.instrumentation }),
     )
 
     const svc = await module.get(Key)
@@ -214,7 +215,10 @@ describe('DashboardClient', () => {
     })
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      instrument([factory], client.instrumentation),
+      instrument([factory], {
+        instrumentation: client.instrumentation,
+        captureArguments: true,
+      }),
     )
 
     const svc = await module.get(Key)
@@ -234,7 +238,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      instrument([factory], client.instrumentation),
+      instrument([factory], { instrumentation: client.instrumentation }),
     )
 
     const svc = await module.get(Key)

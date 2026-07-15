@@ -15,20 +15,6 @@ interface SpanContext {
 }
 
 export interface DashboardInstrumentationOptions {
-  /**
-   * Serialize method arguments onto call spans, so the dashboard can show
-   * them. On by default — the dashboard is a development tool — but turn
-   * this off when arguments may contain secrets, or when events are
-   * exported to a dashboard server you don't control.
-   */
-  captureArguments?: boolean
-
-  /**
-   * Serialize return / resolved values onto call spans. On by default,
-   * with the same caveats as `captureArguments`.
-   */
-  captureResults?: boolean
-
   /** Longest serialized value kept; longer ones are truncated. Default 200. */
   maxValueLength?: number
 }
@@ -43,22 +29,19 @@ export interface DashboardInstrumentationOptions {
  *   is invoked through the span's `run` wrapper, so the context is scoped
  *   to the operation and its async continuations.
  * - Emits events synchronously to subscribers; it never buffers.
+ *
+ * Arguments and results are serialized onto spans exactly when
+ * `instrument()` delivers them — capture and redaction policy live in the
+ * InstrumentOptions, not here. Pass `captureArguments: true` and
+ * `captureResults: true` there to see values in the dashboard.
  */
 export class DashboardInstrumentation implements ServiceInstrumentation {
   private readonly context = new AsyncLocalStorage<SpanContext>()
   private readonly listeners = new Set<(event: SpanEvent) => void>()
   private nextId = 1
-  private readonly captureArguments: boolean
-  private readonly captureResults: boolean
   private readonly maxValueLength: number
 
-  constructor({
-    captureArguments = true,
-    captureResults = true,
-    maxValueLength = 200,
-  }: DashboardInstrumentationOptions = {}) {
-    this.captureArguments = captureArguments
-    this.captureResults = captureResults
+  constructor({ maxValueLength = 200 }: DashboardInstrumentationOptions = {}) {
     this.maxValueLength = maxValueLength
   }
 
@@ -81,11 +64,13 @@ export class DashboardInstrumentation implements ServiceInstrumentation {
   }
 
   onMethodCall({ key, functionName, args }: MethodCallContext): EventSpan {
+    // Args are present exactly when argument capture is enabled in the
+    // InstrumentOptions; they arrive already redacted.
     return this.startSpan(
       key.name,
       functionName,
       'call',
-      this.captureArguments ? this.serialize(args) : undefined,
+      args ? this.serialize(args) : undefined,
     )
   }
 
@@ -133,8 +118,12 @@ export class DashboardInstrumentation implements ServiceInstrumentation {
         if (outcome.type === 'failure') {
           end(errorMessage(outcome.error))
         } else {
-          const capture = kind === 'call' && this.captureResults
-          end(null, capture ? this.serialize(outcome.value) : undefined)
+          // A value is present exactly when result capture is enabled in
+          // the InstrumentOptions; it arrives already redacted.
+          end(
+            null,
+            'value' in outcome ? this.serialize(outcome.value) : undefined,
+          )
         }
       },
     }

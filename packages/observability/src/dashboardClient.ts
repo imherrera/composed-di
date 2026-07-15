@@ -27,15 +27,23 @@ export interface DashboardClientOptions extends DashboardInstrumentationOptions 
  * an OpenTelemetry SDK exports spans to a collector.
  *
  * The application owns only this client: wrap the factories with
- * `instrument(factories, client.instrumentation)`, then `attach` the module
- * to register its dependency graph with the server. Span events are buffered and shipped in batches;
- * export failures are retried on the next flush and never affect the
- * application.
+ * `instrument()` and this client's `instrumentation`, then `attach` the
+ * module to register its dependency graph with the server. Span events are
+ * buffered and shipped in batches; export failures are retried on the next
+ * flush and never affect the application.
  *
  * @example
  * ```ts
  * const client = new DashboardClient({ url: 'http://localhost:4321' });
- * const module = ServiceModule.from(instrument(factories, client.instrumentation));
+ * const module = ServiceModule.from(
+ *   instrument(factories, {
+ *     instrumentation: client.instrumentation,
+ *     // Show call arguments and results in the dashboard; leave these
+ *     // off when values may contain secrets.
+ *     captureArguments: true,
+ *     captureResults: true,
+ *   }),
+ * );
  * client.attach(module);
  * ```
  */

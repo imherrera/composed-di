@@ -29,33 +29,22 @@ export interface OTELInstrumentationOptions {
    * when the instrumentation is constructed before the SDK starts.
    */
   tracer?: Tracer
-
-  /**
-   * Record method arguments as the `composed_di.service.function.arguments`
-   * span attribute, serialized to JSON. Off by default: arguments may be
-   * large or contain secrets, and they end up wherever spans are exported.
-   */
-  captureArguments?: boolean
-
-  /**
-   * Record return / resolved values as the
-   * `composed_di.service.function.result` span attribute, serialized to
-   * JSON. Off by default, for the same reasons as `captureArguments`.
-   * Applies to method call and initialize spans.
-   */
-  captureResults?: boolean
 }
 
+/**
+ * A ServiceInstrumentation that records service events as OTEL spans.
+ *
+ * Arguments and results are recorded (as the
+ * `composed_di.service.function.arguments` / `.result` attributes,
+ * serialized to JSON) exactly when `instrument()` delivers them — capture
+ * and redaction policy live in the InstrumentOptions, not here.
+ */
 export class OTELInstrumentation implements ServiceInstrumentation {
   private readonly tracer: Tracer
-  private readonly captureArguments: boolean
-  private readonly captureResults: boolean
 
   constructor(options: OTELInstrumentationOptions = {}) {
     this.tracer =
       options.tracer ?? trace.getTracer('@composed-di/instrumentation-otel')
-    this.captureArguments = options.captureArguments ?? false
-    this.captureResults = options.captureResults ?? false
   }
 
   onInitialize(context: InitializeContext): EventSpan {
@@ -66,7 +55,7 @@ export class OTELInstrumentation implements ServiceInstrumentation {
       functionName: 'initialize',
     })
     const spanName = `ServiceFactory[${context.key.name}].initialize`
-    return this.buildSpan(spanName, attributes, this.captureResults)
+    return this.buildSpan(spanName, attributes)
   }
 
   onDispose(context: DisposeContext): EventSpan {
@@ -77,7 +66,7 @@ export class OTELInstrumentation implements ServiceInstrumentation {
       functionName: 'dispose',
     })
     const spanName = `ServiceFactory[${context.key.name}].dispose`
-    return this.buildSpan(spanName, attributes, false)
+    return this.buildSpan(spanName, attributes)
   }
 
   onMethodCall(context: MethodCallContext): EventSpan {
@@ -89,14 +78,10 @@ export class OTELInstrumentation implements ServiceInstrumentation {
       args: context.args,
     })
     const spanName = attributes[ATTR_CODE_FUNCTION_NAME]
-    return this.buildSpan(spanName, attributes, this.captureResults)
+    return this.buildSpan(spanName, attributes)
   }
 
-  private buildSpan(
-    spanName: string,
-    attributes: Attributes,
-    captureResult: boolean,
-  ): EventSpan {
+  private buildSpan(spanName: string, attributes: Attributes): EventSpan {
     const parentContext = otelContext.active()
     const span = this.tracer.startSpan(spanName, { attributes }, parentContext)
     const spanContext = trace.setSpan(parentContext, span)
@@ -117,7 +102,9 @@ export class OTELInstrumentation implements ServiceInstrumentation {
             code: SpanStatusCode.ERROR,
             message: error instanceof Error ? error.message : String(error),
           })
-        } else if (captureResult) {
+        } else if ('value' in outcome) {
+          // Present exactly when result capture is enabled in the
+          // InstrumentOptions; the value arrives already redacted.
           span.setAttribute(
             'composed_di.service.function.result',
             serialize(outcome.value),
@@ -141,7 +128,9 @@ export class OTELInstrumentation implements ServiceInstrumentation {
       'composed_di.service.event': params.event,
     }
 
-    if (params.args && this.captureArguments) {
+    // Present exactly when argument capture is enabled in the
+    // InstrumentOptions; the args arrive already redacted.
+    if (params.args) {
       attributes['composed_di.service.function.arguments'] = serialize(
         params.args,
       )
