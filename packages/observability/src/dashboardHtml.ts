@@ -14,7 +14,7 @@
  * (Arial / Georgia fallbacks), keeping the no-CDN contract.
  */
 export function renderDashboardHtml(): string {
-  return HTML;
+  return HTML
 }
 
 const HTML = `<!doctype html>
@@ -1176,4 +1176,4 @@ const HTML = `<!doctype html>
 </script>
 </body>
 </html>
-`;
+`

@@ -1,9 +1,9 @@
 {
   "name": "composed-di-monorepo",
-  "private": true,
   "version": "0.5.3-alpha",
-  "author": "Juan Herrera juanhr454@gmail.com",
+  "private": true,
   "license": "MIT",
+  "author": "Juan Herrera juanhr454@gmail.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/imherrera/composed-di.git"
@@ -14,12 +14,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "tsc --build",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
     "dev:dashboard": "tsc --build && node packages/observability/dist/cli.js"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.10",
     "@types/node": "24.0.10",
-    "prettier": "^3.3.1",
+    "oxfmt": "^0.59.0",
+    "oxlint": "^1.74.0",
     "typescript": "^5.2.2",
     "vitest": "^4.0.16"
   }

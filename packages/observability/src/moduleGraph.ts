@@ -2,12 +2,12 @@ import {
   ServiceKey,
   ServiceModule,
   ServiceSelectorKey,
-} from '@composed-di/core';
-import { GraphEdge, GraphNode } from './events';
+} from '@composed-di/core'
+import { GraphEdge, GraphNode } from './events'
 
 export interface ModuleGraph {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
+  nodes: GraphNode[]
+  edges: GraphEdge[]
 }
 
 /**
@@ -18,20 +18,20 @@ export interface ModuleGraph {
 export function moduleGraph(module: ServiceModule): ModuleGraph {
   const nodes = module.factories.map((factory) => ({
     name: factory.provides.name,
-  }));
+  }))
 
   const edges = module.factories.flatMap((factory) =>
     factory.dependsOn.flatMap((dependency: ServiceKey<unknown>) => {
       const targets =
         dependency instanceof ServiceSelectorKey
           ? dependency.values
-          : [dependency];
+          : [dependency]
       return targets.map((target) => ({
         from: factory.provides.name,
         to: target.name,
-      }));
+      }))
     }),
-  );
+  )
 
-  return { nodes, edges };
+  return { nodes, edges }
 }

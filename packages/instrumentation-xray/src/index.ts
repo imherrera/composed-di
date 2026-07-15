@@ -1,1 +1,1 @@
-export * from './xrayInstrumentation';
+export * from './xrayInstrumentation'

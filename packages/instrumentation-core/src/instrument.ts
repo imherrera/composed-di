@@ -1,7 +1,10 @@
-import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
-import type { EventSpan, ServiceInstrumentation } from './serviceInstrumentation';
+import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
+import type {
+  EventSpan,
+  ServiceInstrumentation,
+} from './serviceInstrumentation'
 
-type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
+type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
 
 /**
  * Wraps service factories with instrumentation, so the given
@@ -31,7 +34,7 @@ export function instrument(
 ): GenericFactory[] {
   return entries
     .flatMap((e) => (e instanceof ServiceModule ? e.factories : [e]))
-    .map((factory) => makeObservable(instrumentation, factory));
+    .map((factory) => makeObservable(instrumentation, factory))
 }
 
 /**
@@ -51,41 +54,41 @@ function makeObservable<T, D extends readonly ServiceKey<any>[]>(
   instrumentation: ServiceInstrumentation,
   delegate: ServiceFactory<any, D>,
 ): ServiceFactory<T, D> {
-  const key = delegate.provides;
+  const key = delegate.provides
 
   return ServiceFactory.singleton({
     scope: delegate.scope,
     provides: delegate.provides,
     dependsOn: delegate.dependsOn,
     dispose: () => {
-      const dispose = delegate.dispose;
+      const dispose = delegate.dispose
       if (dispose) {
-        const span = instrumentation.onDispose?.({ key });
+        const span = instrumentation.onDispose?.({ key })
         try {
-          invokeWithin(span, dispose);
+          invokeWithin(span, dispose)
         } catch (error) {
-          span?.end({ type: 'failure', error });
-          throw error;
+          span?.end({ type: 'failure', error })
+          throw error
         }
-        span?.end({ type: 'success', value: undefined });
+        span?.end({ type: 'success', value: undefined })
       }
     },
     initialize: async (...args) => {
-      const span = instrumentation.onInitialize?.({ key });
+      const span = instrumentation.onInitialize?.({ key })
       try {
         const instance = observeMethodCalls(
           await invokeWithin(span, () => delegate.initialize(...args)),
           instrumentation,
           key,
-        );
-        span?.end({ type: 'success', value: instance });
-        return instance;
+        )
+        span?.end({ type: 'success', value: instance })
+        return instance
       } catch (error) {
-        span?.end({ type: 'failure', error });
-        throw error;
+        span?.end({ type: 'failure', error })
+        throw error
       }
     },
-  });
+  })
 }
 
 /**
@@ -105,14 +108,14 @@ function observeMethodCalls(
   key: ServiceKey<unknown>,
 ): any {
   if (typeof thing !== 'object' || thing === null) {
-    return thing;
+    return thing
   }
 
-  const className = classNameOf(thing);
+  const className = classNameOf(thing)
 
   return new Proxy(thing, {
     get(target, prop) {
-      const value = Reflect.get(target, prop);
+      const value = Reflect.get(target, prop)
       if (typeof value === 'function' && typeof prop === 'string') {
         return (...args: unknown[]) => {
           const span = instrumentation.onMethodCall?.({
@@ -120,32 +123,32 @@ function observeMethodCalls(
             className,
             functionName: prop,
             args,
-          });
+          })
           try {
-            const result = invokeWithin(span, () => value.apply(target, args));
+            const result = invokeWithin(span, () => value.apply(target, args))
             if (result instanceof Promise) {
               return result.then(
                 (resolved) => {
-                  span?.end({ type: 'success', value: resolved });
-                  return resolved;
+                  span?.end({ type: 'success', value: resolved })
+                  return resolved
                 },
                 (error) => {
-                  span?.end({ type: 'failure', error });
-                  throw error;
+                  span?.end({ type: 'failure', error })
+                  throw error
                 },
-              );
+              )
             }
-            span?.end({ type: 'success', value: result });
-            return result;
+            span?.end({ type: 'success', value: result })
+            return result
           } catch (error) {
-            span?.end({ type: 'failure', error });
-            throw error;
+            span?.end({ type: 'failure', error })
+            throw error
           }
-        };
+        }
       }
-      return value;
+      return value
     },
-  });
+  })
 }
 
 /**
@@ -159,7 +162,7 @@ function observeMethodCalls(
  * @returns The value returned by `fn`.
  */
 function invokeWithin<T>(span: EventSpan | void, fn: () => T): T {
-  return span ? span.run(fn) : fn();
+  return span ? span.run(fn) : fn()
 }
 
 /**
@@ -171,6 +174,6 @@ function invokeWithin<T>(span: EventSpan | void, fn: () => T): T {
  * @returns The constructor name, or undefined when there is none to report.
  */
 function classNameOf(thing: object): string | undefined {
-  const name = thing.constructor?.name;
-  return name && name !== 'Object' ? name : undefined;
+  const name = thing.constructor?.name
+  return name && name !== 'Object' ? name : undefined
 }

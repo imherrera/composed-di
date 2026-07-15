@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "unicorn/filename-case": ["error", { "case": "camelCase" }]
+  },
+  "ignorePatterns": ["**/dist/**", "**/node_modules/**"]
+}

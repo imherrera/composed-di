@@ -1,23 +1,7 @@
 {
   "name": "@composed-di/instrumentation-otel",
-  "private": false,
   "version": "0.5.3-alpha",
-  "author": "Juan Herrera juanhr454@gmail.com",
-  "type": "commonjs",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "sideEffects": false,
+  "private": false,
   "keywords": [
     "dependency injection",
     "di",
@@ -27,10 +11,29 @@
     "tracing"
   ],
   "license": "MIT",
+  "author": "Juan Herrera juanhr454@gmail.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/imherrera/composed-di.git",
     "directory": "packages/instrumentation-otel"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "commonjs",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc --build",
@@ -42,15 +45,12 @@
     "@composed-di/instrumentation-core": "workspace:^",
     "@opentelemetry/semantic-conventions": "^1.30.0"
   },
-  "peerDependencies": {
-    "@opentelemetry/api": "^1.9.0"
-  },
   "devDependencies": {
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/context-async-hooks": "^2.9.0",
     "@opentelemetry/sdk-trace-base": "^2.9.0"
   },
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0"
   }
 }

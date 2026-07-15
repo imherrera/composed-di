@@ -1,5 +1,5 @@
 // @ts-ignore
-import { ServiceSelector } from './serviceSelector';
+import { ServiceSelector } from './serviceSelector'
 
 /**
  * A typed token used to identify and retrieve a service from a ServiceModule.
@@ -31,10 +31,17 @@ import { ServiceSelector } from './serviceSelector';
  */
 export class ServiceKey<T> {
   /**
+   * Phantom field that brands this key with the service type `T`.
+   * Exists only at the type level (`declare` emits no runtime code) and
+   * prevents keys of different service types from being interchangeable.
+   */
+  declare private readonly _type: T
+
+  /**
    * A unique symbol that identifies this service key.
    * Used internally for identity comparison between keys.
    */
-  public readonly symbol: symbol;
+  public readonly symbol: symbol
 
   /**
    * Creates a new ServiceKey with the given name.
@@ -42,7 +49,7 @@ export class ServiceKey<T> {
    * @param name A human-readable name for the service, used in error messages and debugging.
    */
   constructor(public readonly name: string) {
-    this.symbol = Symbol(name);
+    this.symbol = Symbol(name)
   }
 }
 
@@ -90,6 +97,6 @@ export class ServiceSelectorKey<T> extends ServiceKey<ServiceSelector<T>> {
    *               All keys must be registered in the ServiceModule for dependency validation to pass.
    */
   constructor(readonly values: ServiceKey<T>[]) {
-    super(`ServiceSelector[${values}]`);
+    super(`ServiceSelector[${values}]`)
   }
 }

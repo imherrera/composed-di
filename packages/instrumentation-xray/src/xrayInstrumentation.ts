@@ -5,7 +5,7 @@ import {
   Segment,
   setSegment,
   Subsegment,
-} from 'aws-xray-sdk-core';
+} from 'aws-xray-sdk-core'
 import {
   DisposeContext,
   EventOutcome,
@@ -13,11 +13,11 @@ import {
   InitializeContext,
   MethodCallContext,
   ServiceInstrumentation,
-} from '@composed-di/instrumentation-core';
-import { ServiceKey } from '@composed-di/core';
+} from '@composed-di/instrumentation-core'
+import { ServiceKey } from '@composed-di/core'
 
 /** X-Ray rejects subsegment names longer than 200 characters. */
-const MAX_NAME_LENGTH = 200;
+const MAX_NAME_LENGTH = 200
 
 export interface XrayInstrumentationOptions {
   /**
@@ -28,27 +28,27 @@ export interface XrayInstrumentationOptions {
    * Operations observed while neither yields a segment (no sampled trace
    * in flight) are not recorded.
    */
-  segmentSource?: () => Segment | Subsegment | undefined;
+  segmentSource?: () => Segment | Subsegment | undefined
 
   /**
    * Record method arguments as `composed_di.args` subsegment metadata,
    * serialized to JSON. Off by default: arguments may be large or contain
    * secrets, and they end up in the X-Ray console and API.
    */
-  captureArguments?: boolean;
+  captureArguments?: boolean
 
   /**
    * Record return / resolved values as `composed_di.result` subsegment
    * metadata, serialized to JSON. Off by default, for the same reasons as
    * `captureArguments`. Applies to method call and initialize subsegments.
    */
-  captureResults?: boolean;
+  captureResults?: boolean
 
   /**
    * Maximum length of a serialized args / result metadata value; longer
    * values are truncated. Default 1024.
    */
-  maxCaptureLength?: number;
+  maxCaptureLength?: number
 }
 
 /**
@@ -76,16 +76,16 @@ export interface XrayInstrumentationOptions {
  * all subsegments attach flat to the `segmentSource` segment.
  */
 export class XrayInstrumentation implements ServiceInstrumentation {
-  private readonly segmentSource?: () => Segment | Subsegment | undefined;
-  private readonly captureArguments: boolean;
-  private readonly captureResults: boolean;
-  private readonly maxCaptureLength: number;
+  private readonly segmentSource?: () => Segment | Subsegment | undefined
+  private readonly captureArguments: boolean
+  private readonly captureResults: boolean
+  private readonly maxCaptureLength: number
 
   constructor(options: XrayInstrumentationOptions = {}) {
-    this.segmentSource = options.segmentSource;
-    this.captureArguments = options.captureArguments ?? false;
-    this.captureResults = options.captureResults ?? false;
-    this.maxCaptureLength = options.maxCaptureLength ?? 1024;
+    this.segmentSource = options.segmentSource
+    this.captureArguments = options.captureArguments ?? false
+    this.captureResults = options.captureResults ?? false
+    this.maxCaptureLength = options.maxCaptureLength ?? 1024
   }
 
   onInitialize(context: InitializeContext): EventSpan | void {
@@ -93,9 +93,9 @@ export class XrayInstrumentation implements ServiceInstrumentation {
       key: context.key,
       event: 'initialize',
       functionName: 'initialize',
-    });
-    const spanName = `${context.key.name}.initialize`;
-    return this.buildSpan(spanName, annotations, undefined, this.captureResults);
+    })
+    const spanName = `${context.key.name}.initialize`
+    return this.buildSpan(spanName, annotations, undefined, this.captureResults)
   }
 
   onDispose(context: DisposeContext): EventSpan | void {
@@ -103,9 +103,9 @@ export class XrayInstrumentation implements ServiceInstrumentation {
       key: context.key,
       event: 'dispose',
       functionName: 'dispose',
-    });
-    const spanName = `${context.key.name}.dispose`;
-    return this.buildSpan(spanName, annotations, undefined, false);
+    })
+    const spanName = `${context.key.name}.dispose`
+    return this.buildSpan(spanName, annotations, undefined, false)
   }
 
   onMethodCall(context: MethodCallContext): EventSpan | void {
@@ -113,17 +113,17 @@ export class XrayInstrumentation implements ServiceInstrumentation {
       key: context.key,
       event: 'call',
       functionName: context.functionName,
-    });
-    const spanName = `${context.key.name}.${context.functionName}`;
+    })
+    const spanName = `${context.key.name}.${context.functionName}`
     const serializedArgs = this.captureArguments
       ? serialize(context.args, this.maxCaptureLength)
-      : undefined;
+      : undefined
     return this.buildSpan(
       spanName,
       annotations,
       serializedArgs,
       this.captureResults,
-    );
+    )
   }
 
   private buildSpan(
@@ -132,22 +132,22 @@ export class XrayInstrumentation implements ServiceInstrumentation {
     serializedArgs: string | undefined,
     captureResult: boolean,
   ): EventSpan | void {
-    let subsegment: Subsegment;
+    let subsegment: Subsegment
     try {
-      const parent = this.resolveParent();
+      const parent = this.resolveParent()
       if (!parent) {
-        return; // No sampled trace in flight — observe nothing.
+        return // No sampled trace in flight — observe nothing.
       }
 
-      subsegment = parent.addNewSubsegment(spanName.slice(0, MAX_NAME_LENGTH));
+      subsegment = parent.addNewSubsegment(spanName.slice(0, MAX_NAME_LENGTH))
       for (const [name, value] of Object.entries(annotations)) {
-        subsegment.addAnnotation(name, value);
+        subsegment.addAnnotation(name, value)
       }
       if (serializedArgs !== undefined) {
-        subsegment.addMetadata('args', serializedArgs, 'composed_di');
+        subsegment.addMetadata('args', serializedArgs, 'composed_di')
       }
     } catch {
-      return; // Instrumentation failures must never reach the application.
+      return // Instrumentation failures must never reach the application.
     }
 
     return {
@@ -155,37 +155,37 @@ export class XrayInstrumentation implements ServiceInstrumentation {
       end: (outcome: EventOutcome) => {
         try {
           if (outcome.type === 'failure') {
-            const error = outcome.error;
-            subsegment.close(error instanceof Error ? error : String(error));
-            return;
+            const error = outcome.error
+            subsegment.close(error instanceof Error ? error : String(error))
+            return
           }
           if (captureResult) {
             subsegment.addMetadata(
               'result',
               serialize(outcome.value, this.maxCaptureLength),
               'composed_di',
-            );
+            )
           }
-          subsegment.close();
+          subsegment.close()
         } catch {
           // Swallow: see above.
         }
       },
-    };
+    }
   }
 
   private buildAnnotations(params: {
-    key: ServiceKey<unknown>;
-    event: 'initialize' | 'dispose' | 'call';
-    functionName: string;
+    key: ServiceKey<unknown>
+    event: 'initialize' | 'dispose' | 'call'
+    functionName: string
   }) {
     const annotations: { [key: string]: string } = {
       composed_di_service: params.key.name,
       composed_di_method: params.functionName,
       composed_di_operation: params.event,
-    };
+    }
 
-    return annotations;
+    return annotations
   }
 
   private resolveParent(): Segment | Subsegment | undefined {
@@ -193,9 +193,9 @@ export class XrayInstrumentation implements ServiceInstrumentation {
     // subsegment (established by `run`), so nesting needs no bookkeeping.
     if (isAutomaticMode()) {
       try {
-        const ambient = getSegment();
+        const ambient = getSegment()
         if (ambient) {
-          return ambient;
+          return ambient
         }
       } catch {
         // getSegment() throws under the RUNTIME_ERROR context-missing
@@ -203,9 +203,9 @@ export class XrayInstrumentation implements ServiceInstrumentation {
       }
     }
     try {
-      return this.segmentSource?.() ?? undefined;
+      return this.segmentSource?.() ?? undefined
     } catch {
-      return undefined;
+      return undefined
     }
   }
 }
@@ -218,31 +218,31 @@ export class XrayInstrumentation implements ServiceInstrumentation {
  * be invoked exactly once either way.
  */
 function runWithAmbientSegment<T>(subsegment: Subsegment, fn: () => T): T {
-  let namespace: ReturnType<typeof getNamespace> | undefined;
+  let namespace: ReturnType<typeof getNamespace> | undefined
   try {
-    namespace = isAutomaticMode() ? getNamespace() : undefined;
+    namespace = isAutomaticMode() ? getNamespace() : undefined
   } catch {
-    namespace = undefined;
+    namespace = undefined
   }
   if (!namespace) {
-    return fn();
+    return fn()
   }
   return namespace.runAndReturn(() => {
     try {
-      setSegment(subsegment);
+      setSegment(subsegment)
     } catch {
       // Instrumentation failures must never reach the application.
     }
-    return fn();
-  });
+    return fn()
+  })
 }
 
 function serialize(value: unknown, maxLength: number): string {
-  let text: string;
+  let text: string
   try {
-    text = JSON.stringify(value) ?? String(value);
+    text = JSON.stringify(value) ?? String(value)
   } catch {
-    text = '[unserializable]';
+    text = '[unserializable]'
   }
-  return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+  return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text
 }

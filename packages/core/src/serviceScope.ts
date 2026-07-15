@@ -1,7 +1,7 @@
 export class ServiceScope {
-  readonly symbol: symbol;
+  readonly symbol: symbol
 
   constructor(readonly name: string) {
-    this.symbol = Symbol(name);
+    this.symbol = Symbol(name)
   }
 }

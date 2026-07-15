@@ -1,1 +1,1 @@
-export * from './OTELInstrumentation';
+export * from './otelInstrumentation'

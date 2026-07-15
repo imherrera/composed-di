@@ -25,19 +25,19 @@ npm install lazy-di
 Service keys are typed tokens that identify your services. They ensure type safety when injecting and retrieving services.
 
 ```typescript
-import { ServiceKey } from 'lazy-di';
+import { ServiceKey } from 'lazy-di'
 
 interface Database {
-  query: (sql: string) => Promise<any>;
+  query: (sql: string) => Promise<any>
 }
 
-export const DatabaseKey = new ServiceKey<Database>('Database');
+export const DatabaseKey = new ServiceKey<Database>('Database')
 
 interface UserService {
-  getUser: (id: string) => Promise<any>;
+  getUser: (id: string) => Promise<any>
 }
 
-export const UserServiceKey = new ServiceKey<UserService>('UserService');
+export const UserServiceKey = new ServiceKey<UserService>('UserService')
 ```
 
 ### 2. Create Service Factories
@@ -45,18 +45,18 @@ export const UserServiceKey = new ServiceKey<UserService>('UserService');
 Factories define how services are created and what they depend on. `lazy-di` supports both singleton (created once) and one-shot (created every time) services.
 
 ```typescript
-import { ServiceFactory } from 'lazy-di';
-import { DatabaseKey, UserServiceKey } from './keys';
+import { ServiceFactory } from 'lazy-di'
+import { DatabaseKey, UserServiceKey } from './keys'
 
 const databaseFactory = ServiceFactory.singleton({
   provides: DatabaseKey,
   initialize: () => {
-    console.log('Initializing Database...');
+    console.log('Initializing Database...')
     return {
       query: async (sql) => ({ id: '1', name: 'John Doe' }),
-    };
+    }
   },
-});
+})
 
 const userServiceFactory = ServiceFactory.singleton({
   provides: UserServiceKey,
@@ -65,9 +65,9 @@ const userServiceFactory = ServiceFactory.singleton({
     // db is automatically typed as Database
     return {
       getUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`),
-    };
+    }
   },
-});
+})
 ```
 
 ### 3. Create a Service Module and Get Services
@@ -75,18 +75,15 @@ const userServiceFactory = ServiceFactory.singleton({
 A `ServiceModule` aggregates factories and manages their lifecycle.
 
 ```typescript
-import { ServiceModule } from 'lazy-di';
+import { ServiceModule } from 'lazy-di'
 
-const module = ServiceModule.from([
-  databaseFactory,
-  userServiceFactory
-]);
+const module = ServiceModule.from([databaseFactory, userServiceFactory])
 
 // At this point, no services have been initialized.
 
 // This will initialize Database and then UserService lazily.
-const userService = await module.get(UserServiceKey);
-const user = await userService.getUser('1');
+const userService = await module.get(UserServiceKey)
+const user = await userService.getUser('1')
 ```
 
 ## Public API
@@ -96,12 +93,13 @@ const user = await userService.getUser('1');
 A unique identifier for a service of type `T`.
 
 ```typescript
-const MyKey = new ServiceKey<MyInterface>('MyService');
+const MyKey = new ServiceKey<MyInterface>('MyService')
 ```
 
 ### `ServiceFactory`
 
 #### `ServiceFactory.singleton(options)`
+
 Creates a factory for a service that is instantiated only once.
 
 - `provides`: The `ServiceKey` this factory satisfies.
@@ -111,17 +109,21 @@ Creates a factory for a service that is instantiated only once.
 - `scope`: (Optional) A `ServiceScope` for grouping services.
 
 #### `ServiceFactory.oneShot(options)`
+
 Creates a factory for a service that is instantiated every time it is requested.
 
 ### `ServiceModule`
 
 #### `ServiceModule.from(entries)`
+
 Creates a module from an array of factories or other `ServiceModule` instances. It automatically detects circular dependencies and missing dependencies.
 
 #### `module.get(key)`
+
 Retrieves a service instance. Returns a `Promise<T>`.
 
 #### `module.dispose(scope?)`
+
 Disposes of services. If a `scope` is provided, only services in that scope are disposed.
 
 ### `ServiceSelectorKey<T>` and `ServiceSelector<T>`
@@ -132,7 +134,7 @@ Useful for choosing between multiple implementations of the same interface at ru
 const LoggerSelectorKey = new ServiceSelectorKey<Logger>([
   ConsoleLoggerKey,
   FileLoggerKey,
-]);
+])
 
 const AppFactory = ServiceFactory.singleton({
   provides: AppKey,
@@ -141,13 +143,13 @@ const AppFactory = ServiceFactory.singleton({
     return {
       run: async (useFile: boolean) => {
         const logger = await loggerSelector.get(
-          useFile ? FileLoggerKey : ConsoleLoggerKey
-        );
-        logger.log('Running...');
-      }
-    };
-  }
-});
+          useFile ? FileLoggerKey : ConsoleLoggerKey,
+        )
+        logger.log('Running...')
+      },
+    }
+  },
+})
 ```
 
 ### `ServiceScope`
@@ -155,7 +157,7 @@ const AppFactory = ServiceFactory.singleton({
 Used to group services for collective disposal.
 
 ```typescript
-const MyScope = new ServiceScope('MyScope');
+const MyScope = new ServiceScope('MyScope')
 ```
 
 ## Visualization
@@ -163,13 +165,13 @@ const MyScope = new ServiceScope('MyScope');
 Visualize your dependency graph using Mermaid or DOT format.
 
 ```typescript
-import { printMermaidGraph, printDotGraph } from 'lazy-di';
+import { printMermaidGraph, printDotGraph } from 'lazy-di'
 
 // Outputs a Mermaid diagram string
-printMermaidGraph(module);
+printMermaidGraph(module)
 
 // Outputs a DOT diagram string
-printDotGraph(module);
+printDotGraph(module)
 ```
 
 ## Error Handling

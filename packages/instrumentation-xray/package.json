@@ -1,9 +1,29 @@
 {
   "name": "@composed-di/instrumentation-xray",
-  "private": false,
   "version": "0.5.3-alpha",
+  "private": false,
+  "keywords": [
+    "aws",
+    "dependency injection",
+    "di",
+    "observability",
+    "tracing",
+    "x-ray",
+    "xray"
+  ],
+  "license": "MIT",
   "author": "Juan Herrera juanhr454@gmail.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/imherrera/composed-di.git",
+    "directory": "packages/instrumentation-xray"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
   "type": "commonjs",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -13,25 +33,8 @@
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "sideEffects": false,
-  "keywords": [
-    "dependency injection",
-    "di",
-    "observability",
-    "aws",
-    "x-ray",
-    "xray",
-    "tracing"
-  ],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/imherrera/composed-di.git",
-    "directory": "packages/instrumentation-xray"
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc --build",
@@ -42,13 +45,10 @@
     "@composed-di/core": "workspace:^",
     "@composed-di/instrumentation-core": "workspace:^"
   },
-  "peerDependencies": {
-    "aws-xray-sdk-core": "^3.4.0"
-  },
   "devDependencies": {
     "aws-xray-sdk-core": "^3.12.0"
   },
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "aws-xray-sdk-core": "^3.4.0"
   }
 }

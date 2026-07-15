@@ -5,14 +5,14 @@ import type {
   InitializeContext,
   MethodCallContext,
   ServiceInstrumentation,
-} from './serviceInstrumentation';
-import type { ServiceKey } from '@composed-di/core';
+} from './serviceInstrumentation'
+import type { ServiceKey } from '@composed-di/core'
 
 /**
  * The placeholder that replaces a redacted value when no custom
  * transform is given for it.
  */
-export const REDACTED_VALUE = '[REDACTED]';
+export const REDACTED_VALUE = '[REDACTED]'
 
 /**
  * Custom masking for one included property, narrowed to the exact
@@ -26,10 +26,10 @@ export type Mask<T, K extends Extract<keyof T, string>> = T[K] extends (
   ...args: infer A
 ) => infer R
   ? {
-      maskArgs?: (...args: A) => string;
-      maskResult?: (result: R) => string;
+      maskArgs?: (...args: A) => string
+      maskResult?: (result: R) => string
     }
-  : never;
+  : never
 
 /**
  * Per-property override, layered on top of a rule's `redactAll` default.
@@ -39,9 +39,9 @@ export type Mask<T, K extends Extract<keyof T, string>> = T[K] extends (
  * regardless of `redactAll`.
  */
 interface PropertyOverride {
-  redacted: boolean;
-  maskArgs?: (...args: any[]) => string;
-  maskResult?: (result: any) => string;
+  redacted: boolean
+  maskArgs?: (...args: any[]) => string
+  maskResult?: (result: any) => string
 }
 
 /**
@@ -53,13 +53,13 @@ interface PropertyOverride {
  * reached its decision, only what to do with it.
  */
 export interface RedactionRule<T> {
-  readonly key: ServiceKey<T>;
+  readonly key: ServiceKey<T>
 
   /**
    * The args to report for a call to `functionName`: unchanged if not
    * redacted, otherwise blanked or run through a custom `maskArgs`.
    */
-  maskArgs(functionName: string, args: readonly unknown[]): readonly unknown[];
+  maskArgs(functionName: string, args: readonly unknown[]): readonly unknown[]
 
   /**
    * The value to report for a success outcome: unchanged if not
@@ -67,7 +67,7 @@ export interface RedactionRule<T> {
    * Omit `functionName` to ask about the initialize result (the service
    * instance itself), which only the rule's `redactAll` default touches.
    */
-  maskResult(functionName: string | undefined, result: unknown): unknown;
+  maskResult(functionName: string | undefined, result: unknown): unknown
 }
 
 /**
@@ -95,17 +95,17 @@ export interface RedactionRule<T> {
  * ```
  */
 export class RedactionRuleBuilder<T> {
-  private redactAllFlag = false;
-  private hasRedact = false;
-  private readonly overrides: Record<string, PropertyOverride> = {};
+  private redactAllFlag = false
+  private hasRedact = false
+  private readonly overrides: Record<string, PropertyOverride> = {}
 
   constructor(private readonly key: ServiceKey<T>) {}
 
   /** Redacts every property, plus the initialize result, by default. */
   redactAll(): this {
-    this.redactAllFlag = true;
-    this.hasRedact = true;
-    return this;
+    this.redactAllFlag = true
+    this.hasRedact = true
+    return this
   }
 
   /**
@@ -114,9 +114,9 @@ export class RedactionRuleBuilder<T> {
    * `redactAll`/`exclude` for this specific property.
    */
   redact<K extends Extract<keyof T, string>>(name: K, mask?: Mask<T, K>): this {
-    this.overrides[name] = { redacted: true, ...mask };
-    this.hasRedact = true;
-    return this;
+    this.overrides[name] = { redacted: true, ...mask }
+    this.hasRedact = true
+    return this
   }
 
   /**
@@ -125,9 +125,9 @@ export class RedactionRuleBuilder<T> {
    */
   exclude(...names: Extract<keyof T, string>[]): this {
     for (const name of names) {
-      this.overrides[name] = { redacted: false };
+      this.overrides[name] = { redacted: false }
     }
-    return this;
+    return this
   }
 
   build(): RedactionRule<any> {
@@ -137,19 +137,19 @@ export class RedactionRuleBuilder<T> {
       throw new Error(
         `redactionRule(${this.key.name}) has no effect: call .redactAll() and/or .redact(...) ` +
           'before .build() — .exclude() alone never redacts anything.',
-      );
+      )
     }
 
-    const redactAllFlag = this.redactAllFlag;
-    const overrides = this.overrides;
+    const redactAllFlag = this.redactAllFlag
+    const overrides = this.overrides
 
     return {
       key: this.key,
       maskArgs(functionName, args) {
-        const override = overrides[functionName];
-        const redacted = override ? override.redacted : redactAllFlag;
+        const override = overrides[functionName]
+        const redacted = override ? override.redacted : redactAllFlag
         if (!redacted) {
-          return args;
+          return args
         }
         return override?.maskArgs
           ? // A custom mask reports one string for the whole call,
@@ -157,25 +157,25 @@ export class RedactionRuleBuilder<T> {
             [override.maskArgs(...args)]
           : // Replace each argument rather than the whole array, so the
             // delegate still sees the call's arity.
-            args.map(() => REDACTED_VALUE);
+            args.map(() => REDACTED_VALUE)
       },
       maskResult(functionName, result) {
         const override =
-          functionName === undefined ? undefined : overrides[functionName];
-        const redacted = override ? override.redacted : redactAllFlag;
+          functionName === undefined ? undefined : overrides[functionName]
+        const redacted = override ? override.redacted : redactAllFlag
         if (!redacted) {
-          return result;
+          return result
         }
         return override?.maskResult
           ? override.maskResult(result)
-          : REDACTED_VALUE;
+          : REDACTED_VALUE
       },
-    } as RedactionRule<any>;
+    } as RedactionRule<any>
   }
 }
 
 export function redactionRule<T>(key: ServiceKey<T>): RedactionRuleBuilder<T> {
-  return new RedactionRuleBuilder(key);
+  return new RedactionRuleBuilder(key)
 }
 
 /**
@@ -208,17 +208,17 @@ export class RedactingInstrumentation implements ServiceInstrumentation {
   ) {}
 
   onInitialize(context: InitializeContext): EventSpan | void {
-    const rule = this.rules.find((r) => r.key === context.key);
-    return redactSpan(this.delegate.onInitialize?.(context), rule);
+    const rule = this.rules.find((r) => r.key === context.key)
+    return redactSpan(this.delegate.onInitialize?.(context), rule)
   }
 
   onDispose(context: DisposeContext): EventSpan | void {
     // Dispose carries no arguments and no result value; nothing to redact.
-    return this.delegate.onDispose?.(context);
+    return this.delegate.onDispose?.(context)
   }
 
   onMethodCall(context: MethodCallContext): EventSpan | void {
-    const rule = this.rules.find((r) => r.key === context.key);
+    const rule = this.rules.find((r) => r.key === context.key)
     const span = this.delegate.onMethodCall?.(
       rule
         ? {
@@ -226,8 +226,8 @@ export class RedactingInstrumentation implements ServiceInstrumentation {
             args: rule.maskArgs(context.functionName, context.args),
           }
         : context,
-    );
-    return redactSpan(span, rule, context.functionName);
+    )
+    return redactSpan(span, rule, context.functionName)
   }
 }
 
@@ -243,9 +243,9 @@ function redactSpan(
   functionName?: string,
 ): EventSpan | void {
   if (!rule || !span) {
-    return span;
+    return span
   }
-  const end = span.end.bind(span);
+  const end = span.end.bind(span)
   return {
     ...span,
     end: (outcome: EventOutcome) =>
@@ -257,5 +257,5 @@ function redactSpan(
             }
           : outcome,
       ),
-  };
+  }
 }

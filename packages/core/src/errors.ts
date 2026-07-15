@@ -3,11 +3,7 @@
  * This can include circular dependencies or missing dependencies that are detected during module creation.
  */
 export class ServiceModuleInitError extends Error {
-  name = 'ServiceModuleInitError';
-
-  constructor(message: string) {
-    super(message);
-  }
+  name = 'ServiceModuleInitError'
 }
 
 /**
@@ -15,9 +11,5 @@ export class ServiceModuleInitError extends Error {
  * This typically occurs when no factory has been registered for the given ServiceKey.
  */
 export class ServiceFactoryNotFoundError extends Error {
-  name = 'ServiceFactoryNotFoundError';
-
-  constructor(message: string) {
-    super(message);
-  }
+  name = 'ServiceFactoryNotFoundError'
 }

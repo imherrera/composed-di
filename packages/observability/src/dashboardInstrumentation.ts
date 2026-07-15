@@ -1,17 +1,17 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
-import { performance } from 'node:perf_hooks';
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { performance } from 'node:perf_hooks'
 import type {
   DisposeContext,
   EventSpan,
   InitializeContext,
   MethodCallContext,
   ServiceInstrumentation,
-} from '@composed-di/instrumentation-core';
-import { SpanEvent, SpanKind } from './events';
+} from '@composed-di/instrumentation-core'
+import { SpanEvent, SpanKind } from './events'
 
 /** The span context propagated across sync and async call boundaries. */
 interface SpanContext {
-  id: number;
+  id: number
 }
 
 export interface DashboardInstrumentationOptions {
@@ -21,16 +21,16 @@ export interface DashboardInstrumentationOptions {
    * this off when arguments may contain secrets, or when events are
    * exported to a dashboard server you don't control.
    */
-  captureArguments?: boolean;
+  captureArguments?: boolean
 
   /**
    * Serialize return / resolved values onto call spans. On by default,
    * with the same caveats as `captureArguments`.
    */
-  captureResults?: boolean;
+  captureResults?: boolean
 
   /** Longest serialized value kept; longer ones are truncated. Default 200. */
-  maxValueLength?: number;
+  maxValueLength?: number
 }
 
 /**
@@ -45,21 +45,21 @@ export interface DashboardInstrumentationOptions {
  * - Emits events synchronously to subscribers; it never buffers.
  */
 export class DashboardInstrumentation implements ServiceInstrumentation {
-  private readonly context = new AsyncLocalStorage<SpanContext>();
-  private readonly listeners = new Set<(event: SpanEvent) => void>();
-  private nextId = 1;
-  private readonly captureArguments: boolean;
-  private readonly captureResults: boolean;
-  private readonly maxValueLength: number;
+  private readonly context = new AsyncLocalStorage<SpanContext>()
+  private readonly listeners = new Set<(event: SpanEvent) => void>()
+  private nextId = 1
+  private readonly captureArguments: boolean
+  private readonly captureResults: boolean
+  private readonly maxValueLength: number
 
   constructor({
     captureArguments = true,
     captureResults = true,
     maxValueLength = 200,
   }: DashboardInstrumentationOptions = {}) {
-    this.captureArguments = captureArguments;
-    this.captureResults = captureResults;
-    this.maxValueLength = maxValueLength;
+    this.captureArguments = captureArguments
+    this.captureResults = captureResults
+    this.maxValueLength = maxValueLength
   }
 
   /**
@@ -68,16 +68,16 @@ export class DashboardInstrumentation implements ServiceInstrumentation {
    * @returns A function that removes the subscription.
    */
   subscribe(listener: (event: SpanEvent) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
   }
 
   onInitialize({ key }: InitializeContext): EventSpan {
-    return this.startSpan(key.name, 'initialize', 'initialize');
+    return this.startSpan(key.name, 'initialize', 'initialize')
   }
 
   onDispose({ key }: DisposeContext): EventSpan {
-    return this.startSpan(key.name, 'dispose', 'dispose');
+    return this.startSpan(key.name, 'dispose', 'dispose')
   }
 
   onMethodCall({ key, functionName, args }: MethodCallContext): EventSpan {
@@ -86,7 +86,7 @@ export class DashboardInstrumentation implements ServiceInstrumentation {
       functionName,
       'call',
       this.captureArguments ? this.serialize(args) : undefined,
-    );
+    )
   }
 
   private startSpan(
@@ -95,8 +95,8 @@ export class DashboardInstrumentation implements ServiceInstrumentation {
     kind: SpanKind,
     args?: string,
   ): EventSpan {
-    const id = this.nextId++;
-    const parent = this.context.getStore();
+    const id = this.nextId++
+    const parent = this.context.getStore()
 
     this.emit({
       type: 'start',
@@ -108,13 +108,13 @@ export class DashboardInstrumentation implements ServiceInstrumentation {
       kind,
       time: Date.now(),
       args,
-    });
+    })
 
-    const startedAt = performance.now();
-    let ended = false;
+    const startedAt = performance.now()
+    let ended = false
     const end = (error: string | null, result?: string) => {
-      if (ended) return;
-      ended = true;
+      if (ended) return
+      ended = true
       this.emit({
         type: 'end',
         id,
@@ -122,8 +122,8 @@ export class DashboardInstrumentation implements ServiceInstrumentation {
         durationMs: performance.now() - startedAt,
         error,
         result,
-      });
-    };
+      })
+    }
 
     return {
       // Running the operation inside this span's context makes it the
@@ -131,32 +131,32 @@ export class DashboardInstrumentation implements ServiceInstrumentation {
       run: (fn) => this.context.run({ id }, fn),
       end: (outcome) => {
         if (outcome.type === 'failure') {
-          end(errorMessage(outcome.error));
+          end(errorMessage(outcome.error))
         } else {
-          const capture = kind === 'call' && this.captureResults;
-          end(null, capture ? this.serialize(outcome.value) : undefined);
+          const capture = kind === 'call' && this.captureResults
+          end(null, capture ? this.serialize(outcome.value) : undefined)
         }
       },
-    };
+    }
   }
 
   private serialize(value: unknown): string {
-    let text: string;
+    let text: string
     try {
-      text = JSON.stringify(value) ?? String(value);
+      text = JSON.stringify(value) ?? String(value)
     } catch {
-      text = '[unserializable]';
+      text = '[unserializable]'
     }
     return text.length > this.maxValueLength
       ? text.slice(0, this.maxValueLength) + '…'
-      : text;
+      : text
   }
 
   private emit(event: SpanEvent): void {
-    this.listeners.forEach((listener) => listener(event));
+    this.listeners.forEach((listener) => listener(event))
   }
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return error instanceof Error ? error.message : String(error)
 }

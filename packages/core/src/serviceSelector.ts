@@ -1,5 +1,5 @@
-import { ServiceKey, ServiceSelectorKey } from './serviceKey';
-import { ServiceModule } from './serviceModule';
+import { ServiceKey, ServiceSelectorKey } from './serviceKey'
+import { ServiceModule } from './serviceModule'
 
 /**
  * A runtime selector that provides access to multiple service implementations of the same type.
@@ -63,6 +63,6 @@ export class ServiceSelector<T> {
    * ```
    */
   get(key: ServiceKey<T>): Promise<T> {
-    return this.serviceModule.get(key);
+    return this.serviceModule.get(key)
   }
 }

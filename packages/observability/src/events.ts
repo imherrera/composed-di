@@ -4,86 +4,86 @@
  */
 
 /** Classifies what a span represents in the service lifecycle. */
-export type SpanKind = 'initialize' | 'dispose' | 'call';
+export type SpanKind = 'initialize' | 'dispose' | 'call'
 
 /** Emitted when a traced function starts executing. */
 export interface SpanStart {
-  type: 'start';
+  type: 'start'
   /** Monotonically increasing span id, unique per tracer. */
-  id: number;
+  id: number
   /** Id of the span that was active when this one started, if any. */
-  parentId: number | null;
+  parentId: number | null
   /** The qualified span name, e.g. "Database.query". */
-  name: string;
+  name: string
   /** The service the span belongs to, or null if it could not be attributed. */
-  service: string | null;
+  service: string | null
   /** The method or lifecycle step, e.g. "query" or "initialize". */
-  method: string;
-  kind: SpanKind;
+  method: string
+  kind: SpanKind
   /** Epoch milliseconds. */
-  time: number;
+  time: number
   /** Method arguments serialized to JSON, when capture is enabled. */
-  args?: string;
+  args?: string
 }
 
 /** Emitted when a traced function finishes (or throws/rejects). */
 export interface SpanEnd {
-  type: 'end';
+  type: 'end'
   /** Matches the id of the corresponding SpanStart. */
-  id: number;
+  id: number
   /** Epoch milliseconds. */
-  time: number;
-  durationMs: number;
+  time: number
+  durationMs: number
   /** The error message when the traced function threw or rejected. */
-  error: string | null;
+  error: string | null
   /** Return / resolved value serialized to JSON, when capture is enabled. */
-  result?: string;
+  result?: string
 }
 
-export type SpanEvent = SpanStart | SpanEnd;
+export type SpanEvent = SpanStart | SpanEnd
 
 export type ServiceStatus =
   | 'pending'
   | 'initializing'
   | 'ready'
   | 'error'
-  | 'disposed';
+  | 'disposed'
 
 /** Aggregated counters for a single method of a service. */
 export interface MethodStats {
   /** Number of completed call spans for this method. */
-  calls: number;
+  calls: number
   /** Number of those calls that ended with an error. */
-  errors: number;
+  errors: number
   /** Sum of completed call durations, for averaging. */
-  totalMs: number;
+  totalMs: number
   /** Duration of the most recently completed call. */
-  lastMs: number;
+  lastMs: number
 }
 
 /** Aggregated per-service counters maintained by the dashboard. */
 export interface ServiceStats {
-  status: ServiceStatus;
+  status: ServiceStatus
   /** Duration of the last successful initialization, if any. */
-  initMs: number | null;
+  initMs: number | null
   /** Number of completed method-call spans. */
-  calls: number;
+  calls: number
   /** Number of spans (of any kind) that ended with an error. */
-  errors: number;
+  errors: number
   /** Sum of completed method-call durations, for averaging. */
-  totalCallMs: number;
+  totalCallMs: number
   /** Per-method call breakdown, keyed by method name. */
-  methods: Record<string, MethodStats>;
+  methods: Record<string, MethodStats>
 }
 
 export interface GraphNode {
-  name: string;
+  name: string
 }
 
 /** A dependency edge: `from` depends on `to`. */
 export interface GraphEdge {
-  from: string;
-  to: string;
+  from: string
+  to: string
 }
 
 /**
@@ -92,23 +92,23 @@ export interface GraphEdge {
  * updated per-service stats so the client needs no correlation logic.
  */
 export interface WireEvent {
-  span: SpanEvent;
+  span: SpanEvent
   /** Service of the span; on end events resolved from the matching start. */
-  service: string | null;
-  method: string;
-  kind: SpanKind;
+  service: string | null
+  method: string
+  kind: SpanKind
   /** Service of the parent span, when the span was started by another service. */
-  parentService: string | null;
+  parentService: string | null
   /** Serialized arguments; on end events resolved from the matching start. */
-  args: string | null;
+  args: string | null
   /** Updated stats for `service`, present when the event changed them. */
-  stats: ServiceStats | null;
+  stats: ServiceStats | null
 }
 
 /** Full state sent to a client when it connects. */
 export interface DashboardSnapshot {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  services: Record<string, ServiceStats>;
-  recent: WireEvent[];
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  services: Record<string, ServiceStats>
+  recent: WireEvent[]
 }

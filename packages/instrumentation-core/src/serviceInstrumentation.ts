@@ -1,4 +1,4 @@
-import type { ServiceKey } from '@composed-di/core';
+import type { ServiceKey } from '@composed-di/core'
 
 /**
  * A handle representing a single in-flight operation (initialization,
@@ -25,7 +25,7 @@ export interface EventSpan {
    * @param fn - A thunk that performs the operation.
    * @return The value returned by `fn`.
    */
-  run<T>(fn: () => T): T;
+  run<T>(fn: () => T): T
 
   /**
    * Invoked exactly once when the operation finishes, whether it succeeded
@@ -39,7 +39,7 @@ export interface EventSpan {
    * @param outcome - How the operation finished, and its value or error.
    * @return void
    */
-  end(outcome: EventOutcome): void;
+  end(outcome: EventOutcome): void
 }
 
 /**
@@ -49,7 +49,8 @@ export interface EventSpan {
  * dispose); `failure` carries the error that was thrown or rejected.
  */
 export type EventOutcome =
-  { type: 'success'; value: unknown } | { type: 'failure'; error: unknown };
+  | { type: 'success'; value: unknown }
+  | { type: 'failure'; error: unknown }
 
 /**
  * Context of a service initialization, delivered to onInitialize.
@@ -59,7 +60,7 @@ export interface InitializeContext {
   /**
    * The unique identifier of the service that is being initialized.
    */
-  key: ServiceKey<unknown>;
+  key: ServiceKey<unknown>
 }
 
 /**
@@ -70,7 +71,7 @@ export interface DisposeContext {
   /**
    * The unique identifier of the service that is being disposed.
    */
-  key: ServiceKey<unknown>;
+  key: ServiceKey<unknown>
 }
 
 /**
@@ -81,7 +82,7 @@ export interface MethodCallContext {
   /**
    * The unique identifier of the service the method belongs to.
    */
-  key: ServiceKey<unknown>;
+  key: ServiceKey<unknown>
 
   /**
    * The name of the class implementing the service (the instance's
@@ -89,18 +90,18 @@ export interface MethodCallContext {
    * services that are not instances of a named class, such as plain
    * object literals.
    */
-  className?: string;
+  className?: string
 
   /**
    * The name of the method that is being called.
    */
-  functionName: string;
+  functionName: string
 
   /**
    * The arguments the method was invoked with, passed by reference;
    * implementations must not mutate them.
    */
-  args: readonly unknown[];
+  args: readonly unknown[]
 }
 
 /**
@@ -122,7 +123,7 @@ export interface ServiceInstrumentation {
    * @param context - Context of the initialization, including the service key.
    * @return An EventSpan notified when initialization finishes, or void.
    */
-  onInitialize?(context: InitializeContext): EventSpan | void;
+  onInitialize?(context: InitializeContext): EventSpan | void
 
   /**
    * Invoked when the disposal process for a service starts.
@@ -130,7 +131,7 @@ export interface ServiceInstrumentation {
    * @param context - Context of the disposal, including the service key.
    * @return An EventSpan notified when disposal finishes, or void.
    */
-  onDispose?(context: DisposeContext): EventSpan | void;
+  onDispose?(context: DisposeContext): EventSpan | void
 
   /**
    * Invoked when a method call starts on a service instance.
@@ -139,5 +140,5 @@ export interface ServiceInstrumentation {
    * the method name, and its arguments.
    * @return An EventSpan notified when the call finishes, or void.
    */
-  onMethodCall?(context: MethodCallContext): EventSpan | void;
+  onMethodCall?(context: MethodCallContext): EventSpan | void
 }

@@ -1,11 +1,11 @@
-import { ServiceKey, ServiceSelectorKey } from './serviceKey';
-import { ServiceFactory } from './serviceFactory';
-import { ServiceScope } from './serviceScope';
-import { ServiceSelector } from './serviceSelector';
-import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors';
+import { ServiceKey, ServiceSelectorKey } from './serviceKey'
+import { ServiceFactory } from './serviceFactory'
+import { ServiceScope } from './serviceScope'
+import { ServiceSelector } from './serviceSelector'
+import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors'
 
-type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>;
-type GenericKey = ServiceKey<any>;
+type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
+type GenericKey = ServiceKey<any>
 
 /**
  * ServiceModule is a container for service factories and manages dependency resolution.
@@ -22,10 +22,10 @@ export class ServiceModule {
    * @param factories An array of service factories that this module will manage.
    */
   private constructor(readonly factories: GenericFactory[]) {
-    checkCircularDependencies(this.factories);
+    checkCircularDependencies(this.factories)
     factories.forEach((factory) => {
-      checkMissingDependencies(factory, this.factories);
-    });
+      checkMissingDependencies(factory, this.factories)
+    })
   }
 
   /**
@@ -36,15 +36,15 @@ export class ServiceModule {
    * @throws {ServiceFactoryNotFoundError} If no suitable factory is found for the given key.
    */
   public async get<T>(key: ServiceKey<T>): Promise<T> {
-    const factory = this.factories.find((factory: GenericFactory) => {
-      return isSuitable(key, factory);
-    });
+    const factory = this.factories.find((candidate: GenericFactory) => {
+      return isSuitable(key, candidate)
+    })
 
     // Check if a factory to supply the requested key was not found
     if (!factory) {
       throw new ServiceFactoryNotFoundError(
         `Could not find a suitable factory for ${key.name}`,
-      );
+      )
     }
 
     // Resolve all dependencies first
@@ -52,14 +52,14 @@ export class ServiceModule {
       factory.dependsOn.map((dependencyKey: ServiceKey<unknown>) => {
         // If the dependency is a ServiceSelectorKey, create a ServiceSelector instance
         if (dependencyKey instanceof ServiceSelectorKey) {
-          return new ServiceSelector(this, dependencyKey);
+          return new ServiceSelector(this, dependencyKey)
         }
-        return this.get(dependencyKey);
+        return this.get(dependencyKey)
       }),
-    );
+    )
 
     // Call the factory to retrieve the dependency
-    return factory.initialize(...dependencies);
+    return factory.initialize(...dependencies)
   }
 
   /**
@@ -70,12 +70,12 @@ export class ServiceModule {
    */
   public async getOrNull<T>(key: ServiceKey<T>): Promise<T | null> {
     try {
-      return await this.get(key);
+      return await this.get(key)
     } catch (error) {
       if (error instanceof ServiceFactoryNotFoundError) {
-        return null;
+        return null
       }
-      throw error;
+      throw error
     }
   }
 
@@ -92,9 +92,9 @@ export class ServiceModule {
   public dispose(scope?: ServiceScope) {
     const factories = scope
       ? this.factories.filter((f) => f.scope === scope)
-      : this.factories;
+      : this.factories
 
-    factories.forEach((factory) => factory.dispose?.());
+    factories.forEach((factory) => factory.dispose?.())
   }
 
   /**
@@ -112,15 +112,15 @@ export class ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
     const flattened = entries.flatMap((e) =>
       e instanceof ServiceModule ? e.factories : [e],
-    );
+    )
 
-    const byKey = new Map<symbol, GenericFactory>();
+    const byKey = new Map<symbol, GenericFactory>()
     // Later factories overwrite earlier ones (last-wins)
     for (const f of flattened) {
-      byKey.set(f.provides.symbol, f);
+      byKey.set(f.provides.symbol, f)
     }
 
-    return new ServiceModule(Array.from(byKey.values()));
+    return new ServiceModule(Array.from(byKey.values()))
   }
 }
 
@@ -131,48 +131,48 @@ export class ServiceModule {
  * @throws {ServiceModuleInitError} If a circular dependency is detected.
  */
 function checkCircularDependencies(factories: GenericFactory[]) {
-  const factoryMap = new Map<symbol, GenericFactory>();
+  const factoryMap = new Map<symbol, GenericFactory>()
   for (const f of factories) {
-    factoryMap.set(f.provides.symbol, f);
+    factoryMap.set(f.provides.symbol, f)
   }
 
-  const visited = new Set<symbol>();
-  const stack = new Set<symbol>();
+  const visited = new Set<symbol>()
+  const stack = new Set<symbol>()
 
   function walk(factory: GenericFactory, path: string[]) {
-    const symbol = factory.provides.symbol;
+    const symbol = factory.provides.symbol
 
     if (stack.has(symbol)) {
-      const cyclePath = [...path, factory.provides.name].join(' -> ');
+      const cyclePath = [...path, factory.provides.name].join(' -> ')
       throw new ServiceModuleInitError(
         `Circular dependency detected: ${cyclePath}`,
-      );
+      )
     }
 
     if (visited.has(symbol)) {
-      return;
+      return
     }
 
-    visited.add(symbol);
-    stack.add(symbol);
+    visited.add(symbol)
+    stack.add(symbol)
 
     for (const depKey of factory.dependsOn) {
       const keysToCheck =
-        depKey instanceof ServiceSelectorKey ? depKey.values : [depKey];
+        depKey instanceof ServiceSelectorKey ? depKey.values : [depKey]
 
       for (const key of keysToCheck) {
-        const depFactory = factoryMap.get(key.symbol);
+        const depFactory = factoryMap.get(key.symbol)
         if (depFactory) {
-          walk(depFactory, [...path, factory.provides.name]);
+          walk(depFactory, [...path, factory.provides.name])
         }
       }
     }
 
-    stack.delete(symbol);
+    stack.delete(symbol)
   }
 
   for (const factory of factories) {
-    walk(factory, []);
+    walk(factory, [])
   }
 }
 
@@ -187,31 +187,31 @@ function checkMissingDependencies(
   factory: GenericFactory,
   factories: GenericFactory[],
 ) {
-  const missingDependencies: GenericKey[] = [];
+  const missingDependencies: GenericKey[] = []
 
   factory.dependsOn.forEach((dependencyKey: GenericKey) => {
     // For ServiceSelectorKey, check all contained keys are registered
     if (dependencyKey instanceof ServiceSelectorKey) {
       dependencyKey.values.forEach((key) => {
         if (!isRegistered(key, factories)) {
-          missingDependencies.push(key);
+          missingDependencies.push(key)
         }
-      });
+      })
     } else if (!isRegistered(dependencyKey, factories)) {
-      missingDependencies.push(dependencyKey);
+      missingDependencies.push(dependencyKey)
     }
-  });
+  })
 
   if (missingDependencies.length === 0) {
-    return;
+    return
   }
 
   const dependencyList = missingDependencies
     .map((dependencyKey) => ` -> ${dependencyKey.name}`)
-    .join('\n');
+    .join('\n')
   throw new ServiceModuleInitError(
     `${factory.provides.name} will fail because it depends on:\n ${dependencyList}`,
-  );
+  )
 }
 
 /**
@@ -222,7 +222,7 @@ function checkMissingDependencies(
  * @returns True if a factory provides the given key, false otherwise.
  */
 function isRegistered(key: GenericKey, factories: GenericFactory[]) {
-  return factories.some((factory) => factory.provides?.symbol === key?.symbol);
+  return factories.some((factory) => factory.provides?.symbol === key?.symbol)
 }
 
 /**
@@ -236,5 +236,5 @@ function isSuitable<T, D extends readonly ServiceKey<any>[]>(
   key: ServiceKey<T>,
   factory: ServiceFactory<any, D>,
 ): factory is ServiceFactory<T, D> {
-  return factory?.provides?.symbol === key?.symbol;
+  return factory?.provides?.symbol === key?.symbol
 }
