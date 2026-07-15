@@ -1,6 +1,6 @@
 {
   "name": "@composed-di/core",
-  "version": "0.5.3-alpha",
+  "version": "0.6.0-alpha",
   "private": false,
   "keywords": [
     "dependency injection",
