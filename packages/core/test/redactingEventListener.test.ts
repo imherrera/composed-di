@@ -189,22 +189,10 @@ describe('RedactingEventListener', () => {
     });
   });
 
-  it('exclude alone (without redactAll) is a no-op: nothing defaults to redacted', async () => {
-    const recorder = new RecordingListener();
-    const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
-        redactionRule(SecretKey).exclude('listSecretNames').build(),
-      ]),
-    );
-
-    const svc = await module.get(SecretKey);
-    svc.getSecret('db-password');
-
-    expect(recorder.find('call', 'getSecret').outcome).toEqual({
-      type: 'success',
-      value: 'value-of-db-password',
-    });
+  it('exclude alone (without redactAll or redact) throws: it would never redact anything', () => {
+    expect(() =>
+      redactionRule(SecretKey).exclude('listSecretNames').build(),
+    ).toThrow(/has no effect/);
   });
 
   it('redactAll + redact(mask) + exclude all merge into a single rule', async () => {
@@ -315,12 +303,6 @@ describe('RedactingEventListener', () => {
 
   it('build() throws when neither redactAll nor redact was called', () => {
     expect(() => redactionRule(SecretKey).build()).toThrow(/has no effect/);
-  });
-
-  it('build() does not throw when only exclude was called', () => {
-    expect(() =>
-      redactionRule(SecretKey).exclude('listSecretNames').build(),
-    ).not.toThrow();
   });
 
   it('should not redact services outside the rules', async () => {

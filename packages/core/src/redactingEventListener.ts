@@ -96,6 +96,7 @@ export interface RedactionRule<T> {
  */
 export class RedactionRuleBuilder<T> {
   private redactAllFlag = false;
+  private hasRedact = false;
   private readonly overrides: Record<string, PropertyOverride> = {};
 
   constructor(private readonly key: ServiceKey<T>) {}
@@ -103,6 +104,7 @@ export class RedactionRuleBuilder<T> {
   /** Redacts every property, plus the initialize result, by default. */
   redactAll(): this {
     this.redactAllFlag = true;
+    this.hasRedact = true;
     return this;
   }
 
@@ -113,6 +115,7 @@ export class RedactionRuleBuilder<T> {
    */
   redact<K extends Extract<keyof T, string>>(name: K, mask?: Mask<T, K>): this {
     this.overrides[name] = { redacted: true, ...mask };
+    this.hasRedact = true;
     return this;
   }
 
@@ -128,10 +131,12 @@ export class RedactionRuleBuilder<T> {
   }
 
   build(): RedactionRule<any> {
-    if (!this.redactAllFlag && Object.keys(this.overrides).length === 0) {
+    // `exclude` alone never redacts anything — at least one call to
+    // `redactAll`/`redact` is required for this rule to have any effect.
+    if (!this.hasRedact) {
       throw new Error(
         `redactionRule(${this.key.name}) has no effect: call .redactAll() and/or .redact(...) ` +
-          'before .build(), otherwise this rule never redacts anything.',
+          'before .build() — .exclude() alone never redacts anything.',
       );
     }
 
