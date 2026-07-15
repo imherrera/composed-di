@@ -29,13 +29,13 @@ importers:
   packages/observability:
     dependencies:
       '@composed-di/core':
-        specifier: file:../core
+        specifier: workspace:^
         version: link:../core
 
   packages/observability-otel:
     dependencies:
       '@composed-di/core':
-        specifier: file:../core
+        specifier: workspace:^
         version: link:../core
       '@opentelemetry/semantic-conventions':
         specifier: ^1.30.0
@@ -54,7 +54,7 @@ importers:
   packages/observability-xray:
     dependencies:
       '@composed-di/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       aws-xray-sdk-core:

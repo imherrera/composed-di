@@ -40,7 +40,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@composed-di/core": "file:../core"
+    "@composed-di/core": "workspace:^"
   },
   "publishConfig": {
     "access": "public"

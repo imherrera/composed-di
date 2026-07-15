@@ -39,7 +39,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@composed-di/core": "workspace:*"
+    "@composed-di/core": "workspace:^"
   },
   "peerDependencies": {
     "aws-xray-sdk-core": "^3.4.0"
