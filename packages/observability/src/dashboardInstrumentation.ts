@@ -5,8 +5,8 @@ import type {
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceModuleListener,
-} from '@composed-di/core';
+  ServiceInstrumentation,
+} from '@composed-di/instrumentation-core';
 import { SpanEvent, SpanKind } from './events';
 
 /** The span context propagated across sync and async call boundaries. */
@@ -14,7 +14,7 @@ interface SpanContext {
   id: number;
 }
 
-export interface DashboardEventListenerOptions {
+export interface DashboardInstrumentationOptions {
   /**
    * Serialize method arguments onto call spans, so the dashboard can show
    * them. On by default — the dashboard is a development tool — but turn
@@ -34,19 +34,17 @@ export interface DashboardEventListenerOptions {
 }
 
 /**
- * A ServiceEventListener that turns service events into structured
+ * A ServiceInstrumentation that turns service events into structured
  * start/end span events for the realtime dashboard.
  *
  * - Uses AsyncLocalStorage to link spans to the span that was active when
  *   they started, which lets the dashboard draw cross-service call edges
- *   (e.g. UserService.getUser -> Database.query). Because a listener does
- *   not control the invocation of the operation it observes, the context
- *   is entered with `enterWith` and can outlive the span within the same
- *   synchronous frame; the dashboard tolerates this, as parents are only
- *   resolved among still-open spans.
+ *   (e.g. UserService.getUser -> Database.query). The observed operation
+ *   is invoked through the span's `run` wrapper, so the context is scoped
+ *   to the operation and its async continuations.
  * - Emits events synchronously to subscribers; it never buffers.
  */
-export class DashboardEventListener implements ServiceModuleListener {
+export class DashboardInstrumentation implements ServiceInstrumentation {
   private readonly context = new AsyncLocalStorage<SpanContext>();
   private readonly listeners = new Set<(event: SpanEvent) => void>();
   private nextId = 1;
@@ -58,7 +56,7 @@ export class DashboardEventListener implements ServiceModuleListener {
     captureArguments = true,
     captureResults = true,
     maxValueLength = 200,
-  }: DashboardEventListenerOptions = {}) {
+  }: DashboardInstrumentationOptions = {}) {
     this.captureArguments = captureArguments;
     this.captureResults = captureResults;
     this.maxValueLength = maxValueLength;
@@ -127,12 +125,10 @@ export class DashboardEventListener implements ServiceModuleListener {
       });
     };
 
-    // The observed operation runs right after this hook returns, in the
-    // same synchronous frame, so entering the context here makes this span
-    // the parent of any spans started inside the operation.
-    this.context.enterWith({ id });
-
     return {
+      // Running the operation inside this span's context makes it the
+      // parent of any spans started within.
+      run: (fn) => this.context.run({ id }, fn),
       end: (outcome) => {
         if (outcome.type === 'failure') {
           end(errorMessage(outcome.error));

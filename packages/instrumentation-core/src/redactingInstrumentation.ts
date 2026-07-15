@@ -4,9 +4,9 @@ import type {
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceModuleListener,
-} from './serviceModuleListener';
-import type { ServiceKey } from './serviceKey';
+  ServiceInstrumentation,
+} from './serviceInstrumentation';
+import type { ServiceKey } from '@composed-di/core';
 
 /**
  * The placeholder that replaces a redacted value when no custom
@@ -179,8 +179,8 @@ export function redactionRule<T>(key: ServiceKey<T>): RedactionRuleBuilder<T> {
 }
 
 /**
- * A ServiceEventListener decorator that redacts sensitive values before
- * they reach the wrapped listener. Works with any implementation via
+ * A ServiceInstrumentation decorator that redacts sensitive values before
+ * they reach the wrapped instrumentation. Works with any implementation via
  * delegation: arguments in MethodCallContext and success values in
  * EventOutcome are replaced (wholesale, or via a custom transform)
  * before the delegate ever sees them — whatever it captures or exports
@@ -191,8 +191,8 @@ export function redactionRule<T>(key: ServiceKey<T>): RedactionRuleBuilder<T> {
  *
  * @example
  * ```ts
- * const listener = new RedactingEventListener(
- *   new OTELEventListener({ captureArguments: true, captureResults: true }),
+ * const instrumentation = new RedactingInstrumentation(
+ *   new OTELInstrumentation({ captureArguments: true, captureResults: true }),
  *   [
  *     redactionRule(SecretClientKey).redactAll().build(), // whole service is sensitive
  *     redactionRule(VaultKey).redact('getSecret').build(), // only this call
@@ -201,9 +201,9 @@ export function redactionRule<T>(key: ServiceKey<T>): RedactionRuleBuilder<T> {
  * );
  * ```
  */
-export class RedactingEventListener implements ServiceModuleListener {
+export class RedactingInstrumentation implements ServiceInstrumentation {
   constructor(
-    private readonly delegate: ServiceModuleListener,
+    private readonly delegate: ServiceInstrumentation,
     private readonly rules: readonly RedactionRule<any>[],
   ) {}
 
@@ -242,7 +242,7 @@ function redactSpan(
   rule: RedactionRule<any> | undefined,
   functionName?: string,
 ): EventSpan | void {
-  if (!rule || !span?.end) {
+  if (!rule || !span) {
     return span;
   }
   const end = span.end.bind(span);

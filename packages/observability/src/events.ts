@@ -1,5 +1,5 @@
 /**
- * Event and state types shared between the dashboard event listener, the
+ * Event and state types shared between the dashboard instrumentation, the
  * dashboard server, and the browser client (over the SSE wire).
  */
 

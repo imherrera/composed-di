@@ -1,17 +1,21 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, it, expect } from 'vitest';
-import { ServiceModule } from '../src/serviceModule';
-import { ServiceKey } from '../src/serviceKey';
-import { ServiceFactory } from '../src/serviceFactory';
-import { ServiceScope } from '../src/serviceScope';
-import { EventSpan, ServiceModuleListener } from '../src/serviceModuleListener';
+import {
+  ServiceFactory,
+  ServiceKey,
+  ServiceModule,
+  ServiceScope,
+} from '@composed-di/core';
+import { instrument } from '../src/instrument';
+import { EventSpan, ServiceInstrumentation } from '../src/serviceInstrumentation';
 
 // Records every event as `<service>.<operation>:<phase>` so tests can
 // assert on what was observed.
-const makeListener = (events: string[]): ServiceModuleListener => {
+const makeListener = (events: string[]): ServiceInstrumentation => {
   const span = (name: string): EventSpan => {
     events.push(`${name}:start`);
     return {
+      run: (fn) => fn(),
       end: (outcome) =>
         events.push(`${name}:${outcome.type === 'success' ? 'end' : 'error'}`),
     };
@@ -27,7 +31,7 @@ const makeListener = (events: string[]): ServiceModuleListener => {
 // desired behavior and currently fail. When an issue is fixed, vitest
 // reports the test as "expected to fail but passed" — remove the `.fails`
 // modifier to turn it into a regression test.
-describe('ServiceEventListener', () => {
+describe('instrument', () => {
   describe('resolution through an observed module', () => {
     it('should resolve the service instance, not undefined', async () => {
       const Key = new ServiceKey<{ greet(): string }>('svc');
@@ -35,7 +39,7 @@ describe('ServiceEventListener', () => {
         provides: Key,
         initialize: () => ({ greet: () => 'hi' }),
       });
-      const module = ServiceModule.from([factory], makeListener([]));
+      const module = ServiceModule.from(instrument([factory], makeListener([])));
 
       const svc = await module.get(Key);
       expect(svc).toBeDefined();
@@ -49,7 +53,7 @@ describe('ServiceEventListener', () => {
         initialize: () => ({ greet: () => 'hi' }),
       });
       const events: string[] = [];
-      const module = ServiceModule.from([factory], makeListener(events));
+      const module = ServiceModule.from(instrument([factory], makeListener(events)));
 
       await module.get(Key);
       expect(events).toContain('svc.initialize:start');
@@ -63,7 +67,7 @@ describe('ServiceEventListener', () => {
         initialize: () => ({ greet: () => 'hi' }),
       });
       const events: string[] = [];
-      const module = ServiceModule.from([factory], makeListener(events));
+      const module = ServiceModule.from(instrument([factory], makeListener(events)));
 
       const svc = await module.get(Key);
       svc.greet();
@@ -87,7 +91,7 @@ describe('ServiceEventListener', () => {
           later: async () => 'done',
         }),
       });
-      const module = ServiceModule.from([factory], makeListener([]));
+      const module = ServiceModule.from(instrument([factory], makeListener([])));
 
       const svc = await module.get(Key);
       expect(svc.ok()).toBe(42);
@@ -116,14 +120,15 @@ describe('ServiceEventListener', () => {
         initialize: () => ({ greet: () => 'hi' }),
       });
       let constructed: unknown;
-      const listener: ServiceModuleListener = {
+      const listener: ServiceInstrumentation = {
         onInitialize: () => ({
+          run: (fn) => fn(),
           end: (outcome) => {
             constructed = outcome.type === 'success' ? outcome.value : undefined;
           },
         }),
       };
-      const module = ServiceModule.from([factory], listener);
+      const module = ServiceModule.from(instrument([factory], listener));
 
       const svc = await module.get(Key);
       // The outcome is the instance callers receive from get().
@@ -147,14 +152,17 @@ describe('ServiceEventListener', () => {
       });
       const events: string[] = [];
       let seq = 0;
-      const listener: ServiceModuleListener = {
+      const listener: ServiceInstrumentation = {
         onMethodCall: ({ functionName }) => {
           const id = ++seq;
           events.push(`${functionName}#${id}:start`);
-          return { end: () => events.push(`${functionName}#${id}:end`) };
+          return {
+            run: (fn) => fn(),
+            end: () => events.push(`${functionName}#${id}:end`),
+          };
         },
       };
-      const module = ServiceModule.from([factory], listener);
+      const module = ServiceModule.from(instrument([factory], listener));
 
       const svc = await module.get(Key);
       await Promise.all([svc.fetch(30), svc.fetch(5)]);
@@ -184,8 +192,9 @@ describe('ServiceEventListener', () => {
       });
       const observed: { method: string; args: unknown[]; result: unknown }[] =
         [];
-      const listener: ServiceModuleListener = {
+      const listener: ServiceInstrumentation = {
         onMethodCall: (context) => ({
+          run: (fn) => fn(),
           end: (outcome) =>
             observed.push({
               method: context.functionName,
@@ -194,7 +203,7 @@ describe('ServiceEventListener', () => {
             }),
         }),
       };
-      const module = ServiceModule.from([factory], listener);
+      const module = ServiceModule.from(instrument([factory], listener));
 
       const svc = await module.get(Key);
       svc.add(2, 3);
@@ -219,12 +228,12 @@ describe('ServiceEventListener', () => {
         initialize: () => new GreeterImpl(),
       });
       const classNames: (string | undefined)[] = [];
-      const listener: ServiceModuleListener = {
+      const listener: ServiceInstrumentation = {
         onMethodCall: ({ className }) => {
           classNames.push(className);
         },
       };
-      const module = ServiceModule.from([factory], listener);
+      const module = ServiceModule.from(instrument([factory], listener));
 
       const svc = await module.get(Key);
       svc.greet();
@@ -238,12 +247,12 @@ describe('ServiceEventListener', () => {
         initialize: () => ({ greet: () => 'hi' }),
       });
       const classNames: (string | undefined)[] = [];
-      const listener: ServiceModuleListener = {
+      const listener: ServiceInstrumentation = {
         onMethodCall: ({ className }) => {
           classNames.push(className);
         },
       };
-      const module = ServiceModule.from([factory], listener);
+      const module = ServiceModule.from(instrument([factory], listener));
 
       const svc = await module.get(Key);
       svc.greet();
@@ -261,7 +270,7 @@ describe('ServiceEventListener', () => {
         },
       });
       const events: string[] = [];
-      const module = ServiceModule.from([factory], makeListener(events));
+      const module = ServiceModule.from(instrument([factory], makeListener(events)));
 
       await expect(module.get(Key)).rejects.toThrow('init failed');
       expect(events).toContain('svc.initialize:start');
@@ -280,7 +289,7 @@ describe('ServiceEventListener', () => {
         }),
       });
       const events: string[] = [];
-      const module = ServiceModule.from([factory], makeListener(events));
+      const module = ServiceModule.from(instrument([factory], makeListener(events)));
 
       const svc = await module.get(Key);
       expect(() => svc.boom()).toThrow('boom');
@@ -299,7 +308,7 @@ describe('ServiceEventListener', () => {
         }),
       });
       const events: string[] = [];
-      const module = ServiceModule.from([factory], makeListener(events));
+      const module = ServiceModule.from(instrument([factory], makeListener(events)));
 
       const svc = await module.get(Key);
       await expect(svc.fail()).rejects.toThrow('async boom');
@@ -316,7 +325,7 @@ describe('ServiceEventListener', () => {
         provides: Key,
         initialize: () => ({ id: ++counter }),
       });
-      const module = ServiceModule.from([factory], makeListener([]));
+      const module = ServiceModule.from(instrument([factory], makeListener([])));
 
       const a = await module.get(Key);
       const b = await module.get(Key);
@@ -333,7 +342,7 @@ describe('ServiceEventListener', () => {
         provides: Key,
         initialize: () => 'value1',
       });
-      const module = ServiceModule.from([factory], makeListener([]));
+      const module = ServiceModule.from(instrument([factory], makeListener([])));
 
       await expect(module.get(Key)).resolves.toBe('value1');
     });
@@ -354,7 +363,7 @@ describe('ServiceEventListener', () => {
         },
       };
       const events: string[] = [];
-      const module = ServiceModule.from([factory], makeListener(events));
+      const module = ServiceModule.from(instrument([factory], makeListener(events)));
 
       await module.get(Key);
       module.dispose(scope);
@@ -380,7 +389,7 @@ describe('ServiceEventListener', () => {
             disposed = true;
           },
         };
-        const module = ServiceModule.from([factory], makeListener([]));
+        const module = ServiceModule.from(instrument([factory], makeListener([])));
 
         module.dispose();
         expect(disposed).toBe(true);
@@ -399,7 +408,7 @@ describe('ServiceEventListener', () => {
           provides: Key,
           initialize: () => ({ foo: () => 1 }),
         });
-        const module = ServiceModule.from([factory], makeListener([]));
+        const module = ServiceModule.from(instrument([factory], makeListener([])));
 
         const svc = await module.get(Key);
         expect(svc.foo).toBe(svc.foo);
@@ -428,7 +437,7 @@ describe('ServiceEventListener', () => {
           initialize: () => new Builder(),
         });
         const events: string[] = [];
-        const module = ServiceModule.from([factory], makeListener(events));
+        const module = ServiceModule.from(instrument([factory], makeListener(events)));
 
         const svc = await module.get(Key);
         expect(svc.with('a').build()).toBe('a');
@@ -438,7 +447,7 @@ describe('ServiceEventListener', () => {
       },
     );
 
-    // ServiceModule.from re-wraps factories of an already-observed module,
+    // instrument() re-wraps factories of an already-instrumented module,
     // producing two proxy layers and duplicate events per call.
     it.fails(
       'should not report duplicate events when composing an already observed module',
@@ -450,8 +459,8 @@ describe('ServiceEventListener', () => {
         });
         const events: string[] = [];
         const listener = makeListener(events);
-        const inner = ServiceModule.from([factory], listener);
-        const outer = ServiceModule.from([inner], listener);
+        const inner = ServiceModule.from(instrument([factory], listener));
+        const outer = ServiceModule.from(instrument([inner], listener));
 
         const svc = await outer.get(Key);
         svc.foo();
@@ -471,7 +480,7 @@ describe('ServiceEventListener', () => {
           dependsOn: [],
           initialize: () => ({ id: ++counter }),
         });
-        const module = ServiceModule.from([factory], makeListener([]));
+        const module = ServiceModule.from(instrument([factory], makeListener([])));
 
         await module.get(Key);
         await module.get(Key);
@@ -483,7 +492,7 @@ describe('ServiceEventListener', () => {
   describe('run wrapper', () => {
     it('should invoke the operation through run exactly once and pass the result through', async () => {
       const calls: string[] = [];
-      const listener: ServiceModuleListener = {
+      const listener: ServiceInstrumentation = {
         onMethodCall: () => ({
           run: <T,>(fn: () => T): T => {
             calls.push('run');
@@ -497,7 +506,7 @@ describe('ServiceEventListener', () => {
         provides: Key,
         initialize: () => ({ greet: () => 'hi' }),
       });
-      const module = ServiceModule.from([factory], listener);
+      const module = ServiceModule.from(instrument([factory], listener));
 
       const svc = await module.get(Key);
       expect(svc.greet()).toBe('hi');
@@ -507,11 +516,12 @@ describe('ServiceEventListener', () => {
     it('should let run establish ambient state visible to nested calls', async () => {
       const als = new AsyncLocalStorage<string>();
       const ambientAtStart: (string | undefined)[] = [];
-      const listener: ServiceModuleListener = {
+      const listener: ServiceInstrumentation = {
         onMethodCall: ({ functionName }) => {
           ambientAtStart.push(als.getStore());
           return {
             run: <T,>(fn: () => T): T => als.run(functionName, fn),
+            end: () => {},
           };
         },
       };
@@ -526,7 +536,7 @@ describe('ServiceEventListener', () => {
         dependsOn: [DbKey],
         initialize: (database) => ({ getUser: () => database.query() }),
       });
-      const module = ServiceModule.from([db, users], listener);
+      const module = ServiceModule.from(instrument([db, users], listener));
 
       const svc = await module.get(UserKey);
       await svc.getUser();

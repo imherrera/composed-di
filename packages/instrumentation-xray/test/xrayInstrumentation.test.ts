@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getSegment, Segment, Subsegment } from 'aws-xray-sdk-core';
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
+import { instrument } from '@composed-di/instrumentation-core';
 import {
-  XrayEventListener,
-  XrayEventListenerOptions,
-} from '../src/xrayEventListener';
+  XrayInstrumentation,
+  XrayInstrumentationOptions,
+} from '../src/xrayInstrumentation';
 
 let root: Segment;
 
@@ -14,8 +15,8 @@ beforeEach(() => {
   root = new Segment('test');
 });
 
-const makeListener = (options: XrayEventListenerOptions = {}) =>
-  new XrayEventListener({ segmentSource: () => root, ...options });
+const makeListener = (options: XrayInstrumentationOptions = {}) =>
+  new XrayInstrumentation({ segmentSource: () => root, ...options });
 
 const allSubsegments = (parent: Segment | Subsegment): Subsegment[] => {
   const children = parent.subsegments ?? [];
@@ -37,14 +38,14 @@ const annotationsOf = (sub: Subsegment) =>
 const isFault = (sub: Subsegment) =>
   (sub as unknown as { fault?: boolean }).fault === true;
 
-describe('XrayEventListener', () => {
+describe('XrayInstrumentation', () => {
   it('should record initialize and method call subsegments with annotations', async () => {
     const Key = new ServiceKey<{ greet(): string }>('svc');
     const factory = ServiceFactory.singleton({
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     svc.greet();
@@ -65,7 +66,7 @@ describe('XrayEventListener', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     svc.greet();
@@ -83,7 +84,7 @@ describe('XrayEventListener', () => {
       initialize: () => ({ x: 1 }),
       dispose: () => {},
     };
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     await module.get(Key);
     module.dispose();
@@ -110,7 +111,7 @@ describe('XrayEventListener', () => {
         getUser: (id: number) => database.query(`u${id}`),
       }),
     });
-    const module = ServiceModule.from([db, users], makeListener());
+    const module = ServiceModule.from(instrument([db, users], makeListener()));
 
     const svc = await module.get(UserKey);
     await svc.getUser(7);
@@ -137,7 +138,7 @@ describe('XrayEventListener', () => {
         },
       }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     expect(svc.work()).toBe('done');
@@ -156,7 +157,7 @@ describe('XrayEventListener', () => {
         },
       }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     expect(() => svc.boom()).toThrow('kaput');
@@ -176,7 +177,7 @@ describe('XrayEventListener', () => {
         },
       }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     await expect(svc.fail()).rejects.toThrow('async kaput');
@@ -191,7 +192,7 @@ describe('XrayEventListener', () => {
     });
     // No segmentSource, and the SDK's ambient getSegment() throws here
     // because no X-Ray context is in flight. Services must still work.
-    const module = ServiceModule.from([factory], new XrayEventListener());
+    const module = ServiceModule.from(instrument([factory], new XrayInstrumentation()));
 
     const svc = await module.get(Key);
     expect(svc.greet()).toBe('hi');
@@ -204,12 +205,11 @@ describe('XrayEventListener', () => {
       initialize: () => ({ greet: () => 'hi' }),
     });
     const module = ServiceModule.from(
-      [factory],
-      makeListener({
+      instrument([factory], makeListener({
         segmentSource: () => {
           throw new Error('no context');
         },
-      }),
+      })),
     );
 
     const svc = await module.get(Key);
@@ -223,7 +223,7 @@ describe('XrayEventListener', () => {
       provides: Key,
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     svc.add(2, 3);
@@ -239,8 +239,7 @@ describe('XrayEventListener', () => {
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     });
     const module = ServiceModule.from(
-      [factory],
-      makeListener({ captureArguments: true, captureResults: true }),
+      instrument([factory], makeListener({ captureArguments: true, captureResults: true })),
     );
 
     const svc = await module.get(Key);
@@ -259,8 +258,7 @@ describe('XrayEventListener', () => {
       initialize: () => ({ echo: (s: string) => s }),
     });
     const module = ServiceModule.from(
-      [factory],
-      makeListener({ captureArguments: true, maxCaptureLength: 10 }),
+      instrument([factory], makeListener({ captureArguments: true, maxCaptureLength: 10 })),
     );
 
     const svc = await module.get(LongKey);

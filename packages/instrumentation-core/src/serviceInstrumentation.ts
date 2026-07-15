@@ -1,8 +1,8 @@
-import type { ServiceKey } from './serviceKey';
+import type { ServiceKey } from '@composed-di/core';
 
 /**
  * A handle representing a single in-flight operation (initialization,
- * disposal, or method call), returned by a ServiceEventListener when the
+ * disposal, or method call), returned by a ServiceInstrumentation when the
  * operation starts.
  *
  * `end` is invoked exactly once when the operation finishes, so
@@ -12,8 +12,8 @@ import type { ServiceKey } from './serviceKey';
  */
 export interface EventSpan {
   /**
-   * Optional wrapper around the operation itself. When present, the module
-   * invokes the operation as `run(() => operation())`, so the listener can
+   * Wrapper around the operation itself. The instrumented factory invokes
+   * the operation as `run(() => operation())`, so the instrumentation can
    * establish ambient state that the operation body and its async
    * continuations inherit — this is what lets spans of nested service
    * calls form a parent-child hierarchy.
@@ -25,7 +25,7 @@ export interface EventSpan {
    * @param fn - A thunk that performs the operation.
    * @return The value returned by `fn`.
    */
-  run?<T>(fn: () => T): T;
+  run<T>(fn: () => T): T;
 
   /**
    * Invoked exactly once when the operation finishes, whether it succeeded
@@ -39,7 +39,7 @@ export interface EventSpan {
    * @param outcome - How the operation finished, and its value or error.
    * @return void
    */
-  end?(outcome: EventOutcome): void;
+  end(outcome: EventOutcome): void;
 }
 
 /**
@@ -104,14 +104,18 @@ export interface MethodCallContext {
 }
 
 /**
- * Interface for listening to service events. Implement this interface to
- * observe lifecycle events and method calls of services in a module.
+ * Interface for instrumenting services wrapped by {@link instrument}.
+ * Implement this interface to observe lifecycle events and method calls
+ * of the instrumented services.
+ *
+ * Instrumentation is strictly observational: implementations see every
+ * operation but must never alter it — see the EventSpan contract.
  *
  * Each method is invoked when the corresponding operation starts and may
  * return an EventSpan that is notified when that operation finishes.
  * Returning nothing opts out of completion tracking for that call.
  */
-export interface ServiceModuleListener {
+export interface ServiceInstrumentation {
   /**
    * Invoked at the start of the initialization process for a specific service.
    *

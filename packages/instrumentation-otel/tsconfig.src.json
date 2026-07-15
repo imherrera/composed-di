@@ -6,5 +6,8 @@
     "tsBuildInfoFile": "build/tsconfig.src.tsbuildinfo"
   },
   "include": ["src"],
-  "references": [{ "path": "../core/tsconfig.src.json" }]
+  "references": [
+    { "path": "../core/tsconfig.src.json" },
+    { "path": "../instrumentation-core/tsconfig.src.json" }
+  ]
 }

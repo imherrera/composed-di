@@ -3,7 +3,5 @@ export * from './serviceModule';
 export * from './serviceFactory';
 export * from './serviceScope';
 export * from './serviceSelector';
-export * from './serviceModuleListener';
-export * from './redactingEventListener';
 export * from './errors';
 export * from './utils';

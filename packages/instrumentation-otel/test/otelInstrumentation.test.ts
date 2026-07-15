@@ -12,10 +12,11 @@ import {
 } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
+import { instrument } from '@composed-di/instrumentation-core';
 import {
-  OTELEventListener,
-  OTELEventListenerOptions,
-} from '../src/OTELEventListener';
+  OTELInstrumentation,
+  OTELInstrumentationOptions,
+} from '../src/OTELInstrumentation';
 
 let exporter: InMemorySpanExporter;
 let provider: BasicTracerProvider;
@@ -32,8 +33,8 @@ beforeEach(() => {
   );
 });
 
-const makeListener = (options: Partial<OTELEventListenerOptions> = {}) =>
-  new OTELEventListener({ tracer: provider.getTracer('test'), ...options });
+const makeListener = (options: Partial<OTELInstrumentationOptions> = {}) =>
+  new OTELInstrumentation({ tracer: provider.getTracer('test'), ...options });
 
 const spans = () => exporter.getFinishedSpans();
 const byName = (name: string) => {
@@ -46,14 +47,14 @@ const parentIdOf = (span: ReadableSpan) =>
   span.parentSpanContext?.spanId ??
   (span as unknown as { parentSpanId?: string }).parentSpanId;
 
-describe('OtelEventListener', () => {
+describe('OTELInstrumentation', () => {
   it('should record initialize and method call spans with attributes', async () => {
     const Key = new ServiceKey<{ greet(): string }>('svc');
     const factory = ServiceFactory.singleton({
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     svc.greet();
@@ -84,7 +85,7 @@ describe('OtelEventListener', () => {
       provides: Key,
       initialize: () => new GreeterImpl(),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     svc.greet();
@@ -108,7 +109,7 @@ describe('OtelEventListener', () => {
       initialize: () => ({ x: 1 }),
       dispose: () => {},
     };
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     await module.get(Key);
     module.dispose();
@@ -127,7 +128,7 @@ describe('OtelEventListener', () => {
         provides: Key,
         initialize: () => ({ greet: () => 'hi' }),
       });
-      const module = ServiceModule.from([factory], new OTELEventListener());
+      const module = ServiceModule.from(instrument([factory], new OTELInstrumentation()));
 
       const svc = await module.get(Key);
       svc.greet();
@@ -157,7 +158,7 @@ describe('OtelEventListener', () => {
         getUser: (id: number) => database.query(`u${id}`),
       }),
     });
-    const module = ServiceModule.from([db, users], makeListener());
+    const module = ServiceModule.from(instrument([db, users], makeListener()));
 
     const svc = await module.get(UserKey);
     await svc.getUser(7);
@@ -178,7 +179,7 @@ describe('OtelEventListener', () => {
         },
       }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     expect(() => svc.boom()).toThrow('kaput');
@@ -200,7 +201,7 @@ describe('OtelEventListener', () => {
         },
       }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     expect(() => svc.boom()).toThrow('string kaput');
@@ -220,7 +221,7 @@ describe('OtelEventListener', () => {
         },
       }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     await expect(svc.fail()).rejects.toThrow('async kaput');
@@ -233,7 +234,7 @@ describe('OtelEventListener', () => {
       provides: Key,
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     });
-    const module = ServiceModule.from([factory], makeListener());
+    const module = ServiceModule.from(instrument([factory], makeListener()));
 
     const svc = await module.get(Key);
     svc.add(2, 3);
@@ -253,8 +254,7 @@ describe('OtelEventListener', () => {
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     });
     const module = ServiceModule.from(
-      [factory],
-      makeListener({ captureArguments: true, captureResults: true }),
+      instrument([factory], makeListener({ captureArguments: true, captureResults: true })),
     );
 
     const svc = await module.get(Key);

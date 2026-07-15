@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
+import { instrument } from '@composed-di/instrumentation-core';
 import { DashboardClient } from '../src/dashboardClient';
 import { SpanEnd, SpanEvent, SpanStart } from '../src/events';
 
@@ -68,7 +69,7 @@ describe('DashboardClient', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     });
-    const module = ServiceModule.from([factory], client.listener);
+    const module = ServiceModule.from(instrument([factory], client.instrumentation));
 
     const svc = await module.get(Key);
     svc.greet();
@@ -90,7 +91,7 @@ describe('DashboardClient', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     });
-    const module = ServiceModule.from([factory], client.listener);
+    const module = ServiceModule.from(instrument([factory], client.instrumentation));
     client.attach(module);
 
     const svc = await module.get(Key);
@@ -121,7 +122,7 @@ describe('DashboardClient', () => {
         getUser: (id: number) => database.query(`u${id}`),
       }),
     });
-    const module = ServiceModule.from([db, users], client.listener);
+    const module = ServiceModule.from(instrument([db, users], client.instrumentation));
 
     const svc = await module.get(UserKey);
     await svc.getUser(7);
@@ -143,7 +144,7 @@ describe('DashboardClient', () => {
         },
       }),
     });
-    const module = ServiceModule.from([factory], client.listener);
+    const module = ServiceModule.from(instrument([factory], client.instrumentation));
 
     const svc = await module.get(Key);
     expect(() => svc.boom()).toThrow('kaput');
@@ -159,7 +160,7 @@ describe('DashboardClient', () => {
   it('should capture serialized arguments and results on call spans', async () => {
     const client = makeClient();
     const { Key, factory } = echoFactory();
-    const module = ServiceModule.from([factory], client.listener);
+    const module = ServiceModule.from(instrument([factory], client.instrumentation));
 
     const svc = await module.get(Key);
     svc.echo('hi');
@@ -181,7 +182,7 @@ describe('DashboardClient', () => {
       captureResults: false,
     });
     const { Key, factory } = echoFactory();
-    const module = ServiceModule.from([factory], client.listener);
+    const module = ServiceModule.from(instrument([factory], client.instrumentation));
 
     const svc = await module.get(Key);
     svc.echo('hi');
@@ -198,7 +199,7 @@ describe('DashboardClient', () => {
       maxValueLength: 10,
     });
     const { Key, factory } = echoFactory();
-    const module = ServiceModule.from([factory], client.listener);
+    const module = ServiceModule.from(instrument([factory], client.instrumentation));
 
     const svc = await module.get(Key);
     svc.echo('x'.repeat(50));
@@ -216,7 +217,7 @@ describe('DashboardClient', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     });
-    const module = ServiceModule.from([factory], client.listener);
+    const module = ServiceModule.from(instrument([factory], client.instrumentation));
 
     const svc = await module.get(Key);
     await client.close();

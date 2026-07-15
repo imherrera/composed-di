@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core';
 import {
+  instrument,
   redactionRule,
   EventOutcome,
   MethodCallContext,
-  RedactingEventListener,
-  ServiceModuleListener,
-  ServiceFactory,
-  ServiceKey,
-  ServiceModule,
+  RedactingInstrumentation,
+  ServiceInstrumentation,
 } from '../src';
 
 interface RecordedEvent {
@@ -23,7 +22,7 @@ interface RecordedEvent {
  * A delegate that records every context and outcome it is handed, so
  * tests can assert on exactly what crossed the redaction boundary.
  */
-class RecordingListener implements ServiceModuleListener {
+class RecordingListener implements ServiceInstrumentation {
   readonly events: RecordedEvent[] = [];
 
   onInitialize(context: { key: ServiceKey<unknown> }) {
@@ -81,14 +80,13 @@ const secretFactory = () =>
     }),
   });
 
-describe('RedactingEventListener', () => {
+describe('RedactingInstrumentation', () => {
   it('redact: should redact arguments and results of the named property only', async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey).redact('getSecret').build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);
@@ -113,10 +111,9 @@ describe('RedactingEventListener', () => {
   it('redact: should not redact the initialize result', async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey).redact('getSecret').build(),
-      ]),
+      ])),
     );
 
     await module.get(SecretKey);
@@ -131,13 +128,12 @@ describe('RedactingEventListener', () => {
   it('redact: multiple calls accumulate properties', async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey)
           .redact('getSecret')
           .redact('listSecretNames')
           .build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);
@@ -157,8 +153,7 @@ describe('RedactingEventListener', () => {
   it('redactAll + exclude: should redact every property except the excluded ones', async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey)
           .redactAll()
           .exclude('listSecretNames')
@@ -167,7 +162,7 @@ describe('RedactingEventListener', () => {
           .redactAll()
           .exclude('listSecretNames')
           .build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);
@@ -198,14 +193,13 @@ describe('RedactingEventListener', () => {
   it('redactAll + redact(mask) + exclude all merge into a single rule', async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey)
           .redactAll()
           .redact('getSecret', { maskArgs: (name) => `masked:${name.length}` })
           .exclude('listSecretNames')
           .build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);
@@ -234,10 +228,9 @@ describe('RedactingEventListener', () => {
   it('redactAll: should redact every property and the initialize result', async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey).redactAll().build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);
@@ -256,15 +249,14 @@ describe('RedactingEventListener', () => {
   it('should apply a custom mask instead of blanking the value', async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey)
           .redact('getSecret', {
             maskArgs: (name) => `masked:${name.length}`,
             maskResult: (value) => `masked:${value.length}`,
           })
           .build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);
@@ -281,10 +273,9 @@ describe('RedactingEventListener', () => {
   it('a redacted property without a mask is fully blanked', async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey).redact('getSecret').build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);
@@ -315,10 +306,9 @@ describe('RedactingEventListener', () => {
     });
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory(), plain],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory(), plain], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey).redact('listSecretNames').build(),
-      ]),
+      ])),
     );
 
     const calc = await module.get(PlainKey);
@@ -341,10 +331,9 @@ describe('RedactingEventListener', () => {
     });
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [factory],
-      new RedactingEventListener(recorder, [
+      instrument([factory], new RedactingInstrumentation(recorder, [
         redactionRule(BoomKey).redactAll().build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(BoomKey);
@@ -361,10 +350,9 @@ describe('RedactingEventListener', () => {
   it("should preserve the delegate's run wrapper on redacted spans", async () => {
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener(recorder, [
+      instrument([secretFactory()], new RedactingInstrumentation(recorder, [
         redactionRule(SecretKey).redactAll().build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);
@@ -383,10 +371,9 @@ describe('RedactingEventListener', () => {
     };
     const recorder = new RecordingListener();
     const module = ServiceModule.from(
-      [factory],
-      new RedactingEventListener(recorder, [
+      instrument([factory], new RedactingInstrumentation(recorder, [
         redactionRule(factory.provides).redactAll().build(),
-      ]),
+      ])),
     );
 
     await module.get(factory.provides);
@@ -400,10 +387,9 @@ describe('RedactingEventListener', () => {
 
   it('should tolerate delegates that implement no hooks', async () => {
     const module = ServiceModule.from(
-      [secretFactory()],
-      new RedactingEventListener({}, [
+      instrument([secretFactory()], new RedactingInstrumentation({}, [
         redactionRule(SecretKey).redactAll().build(),
-      ]),
+      ])),
     );
 
     const svc = await module.get(SecretKey);

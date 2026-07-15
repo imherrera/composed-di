@@ -2,8 +2,9 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
+    { "path": "packages/instrumentation-core" },
     { "path": "packages/observability" },
-    { "path": "packages/observability-otel" },
-    { "path": "packages/observability-xray" }
+    { "path": "packages/instrumentation-otel" },
+    { "path": "packages/instrumentation-xray" }
   ]
 }

@@ -31,12 +31,24 @@ importers:
       '@composed-di/core':
         specifier: workspace:^
         version: link:../core
+      '@composed-di/instrumentation-core':
+        specifier: workspace:^
+        version: link:../instrumentation-core
 
-  packages/observability-otel:
+  packages/instrumentation-core:
     dependencies:
       '@composed-di/core':
         specifier: workspace:^
         version: link:../core
+
+  packages/instrumentation-otel:
+    dependencies:
+      '@composed-di/core':
+        specifier: workspace:^
+        version: link:../core
+      '@composed-di/instrumentation-core':
+        specifier: workspace:^
+        version: link:../instrumentation-core
       '@opentelemetry/semantic-conventions':
         specifier: ^1.30.0
         version: 1.42.0
@@ -51,11 +63,14 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0(@opentelemetry/api@1.9.1)
 
-  packages/observability-xray:
+  packages/instrumentation-xray:
     dependencies:
       '@composed-di/core':
         specifier: workspace:^
         version: link:../core
+      '@composed-di/instrumentation-core':
+        specifier: workspace:^
+        version: link:../instrumentation-core
     devDependencies:
       aws-xray-sdk-core:
         specifier: ^3.12.0

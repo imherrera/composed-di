@@ -11,6 +11,10 @@ export default defineConfig({
     // on build output.
     alias: {
       '@composed-di/core': resolve(__dirname, 'packages/core/src/index.ts'),
+      '@composed-di/instrumentation-core': resolve(
+        __dirname,
+        'packages/instrumentation-core/src/index.ts',
+      ),
     },
   },
 });

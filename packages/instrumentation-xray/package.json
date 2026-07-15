@@ -1,5 +1,5 @@
 {
-  "name": "@composed-di/observability-xray",
+  "name": "@composed-di/instrumentation-xray",
   "private": false,
   "version": "0.5.3-alpha",
   "author": "Juan Herrera juanhr454@gmail.com",
@@ -31,7 +31,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/imherrera/composed-di.git",
-    "directory": "packages/observability-xray"
+    "directory": "packages/instrumentation-xray"
   },
   "scripts": {
     "build": "tsc --build",
@@ -39,7 +39,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@composed-di/core": "workspace:^"
+    "@composed-di/core": "workspace:^",
+    "@composed-di/instrumentation-core": "workspace:^"
   },
   "peerDependencies": {
     "aws-xray-sdk-core": "^3.4.0"

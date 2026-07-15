@@ -1,12 +1,12 @@
 import { ServiceModule } from '@composed-di/core';
 import {
-  DashboardEventListener,
-  DashboardEventListenerOptions,
-} from './dashboardEventListener';
+  DashboardInstrumentation,
+  DashboardInstrumentationOptions,
+} from './dashboardInstrumentation';
 import { SpanEvent } from './events';
 import { ModuleGraph, moduleGraph } from './moduleGraph';
 
-export interface DashboardClientOptions extends DashboardEventListenerOptions {
+export interface DashboardClientOptions extends DashboardInstrumentationOptions {
   /** Base URL of the standalone dashboard server, e.g. "http://localhost:4321". */
   url: string;
   /** How long to buffer events before exporting a batch. Default 250ms. */
@@ -26,22 +26,22 @@ export interface DashboardClientOptions extends DashboardEventListenerOptions {
  * Exports service observability to a standalone dashboard server, the way
  * an OpenTelemetry SDK exports spans to a collector.
  *
- * The application owns only this client: pass `client.listener` to
- * `ServiceModule.from`, then `attach` the module to register its dependency
- * graph with the server. Span events are buffered and shipped in batches;
+ * The application owns only this client: wrap the factories with
+ * `instrument(factories, client.instrumentation)`, then `attach` the module
+ * to register its dependency graph with the server. Span events are buffered and shipped in batches;
  * export failures are retried on the next flush and never affect the
  * application.
  *
  * @example
  * ```ts
  * const client = new DashboardClient({ url: 'http://localhost:4321' });
- * const module = ServiceModule.from(factories, client.listener);
+ * const module = ServiceModule.from(instrument(factories, client.instrumentation));
  * client.attach(module);
  * ```
  */
 export class DashboardClient {
-  /** Pass this as the second argument to ServiceModule.from. */
-  readonly listener: DashboardEventListener;
+  /** Pass this to `instrument()` when composing the module. */
+  readonly instrumentation: DashboardInstrumentation;
 
   private readonly url: string;
   private readonly flushIntervalMs: number;
@@ -64,9 +64,9 @@ export class DashboardClient {
     maxBatchSize = 64,
     maxQueueSize = 5000,
     onError,
-    ...listenerOptions
+    ...instrumentationOptions
   }: DashboardClientOptions) {
-    this.listener = new DashboardEventListener(listenerOptions);
+    this.instrumentation = new DashboardInstrumentation(instrumentationOptions);
     this.url = url.replace(/\/$/, '');
     this.flushIntervalMs = flushIntervalMs;
     this.maxBatchSize = maxBatchSize;
@@ -80,7 +80,7 @@ export class DashboardClient {
           `[composed-di] dashboard export to ${this.url} failed (will keep retrying): ${error.message}`,
         );
       });
-    this.listener.subscribe((event) => this.enqueue(event));
+    this.instrumentation.subscribe((event) => this.enqueue(event));
   }
 
   /**

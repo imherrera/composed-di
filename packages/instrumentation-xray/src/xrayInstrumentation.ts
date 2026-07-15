@@ -12,14 +12,14 @@ import {
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceModuleListener,
-  ServiceKey,
-} from '@composed-di/core';
+  ServiceInstrumentation,
+} from '@composed-di/instrumentation-core';
+import { ServiceKey } from '@composed-di/core';
 
 /** X-Ray rejects subsegment names longer than 200 characters. */
 const MAX_NAME_LENGTH = 200;
 
-export interface XrayEventListenerOptions {
+export interface XrayInstrumentationOptions {
   /**
    * Fallback that resolves the segment or subsegment new subsegments
    * should attach to when the SDK has no ambient segment — e.g. in manual
@@ -52,7 +52,7 @@ export interface XrayEventListenerOptions {
 }
 
 /**
- * A ServiceEventListener that records service initialization, disposal, and
+ * A ServiceInstrumentation that records service initialization, disposal, and
  * method calls as AWS X-Ray subsegments.
  *
  * Subsegments are named `<service>.<operation>` (e.g. "Database.query") and
@@ -62,7 +62,7 @@ export interface XrayEventListenerOptions {
  * `annotation.composed_di_service = "Database"`. Failed operations record
  * the exception and are marked as faults.
  *
- * This listener creates no segments of its own: it attaches subsegments to
+ * This instrumentation creates no segments of its own: it attaches subsegments to
  * the trace the application already has in flight (via the X-Ray middleware
  * or a custom `segmentSource`). Operations that run outside any sampled
  * trace are silently not recorded — an observer must never break or slow
@@ -75,13 +75,13 @@ export interface XrayEventListenerOptions {
  * `captureAsyncFunc`, ...). In manual mode there is no ambient context, so
  * all subsegments attach flat to the `segmentSource` segment.
  */
-export class XrayEventListener implements ServiceModuleListener {
+export class XrayInstrumentation implements ServiceInstrumentation {
   private readonly segmentSource?: () => Segment | Subsegment | undefined;
   private readonly captureArguments: boolean;
   private readonly captureResults: boolean;
   private readonly maxCaptureLength: number;
 
-  constructor(options: XrayEventListenerOptions = {}) {
+  constructor(options: XrayInstrumentationOptions = {}) {
     this.segmentSource = options.segmentSource;
     this.captureArguments = options.captureArguments ?? false;
     this.captureResults = options.captureResults ?? false;

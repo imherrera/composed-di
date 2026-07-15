@@ -16,17 +16,17 @@ import {
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceModuleListener,
-  ServiceKey,
-} from '@composed-di/core';
+  ServiceInstrumentation,
+} from '@composed-di/instrumentation-core';
+import { ServiceKey } from '@composed-di/core';
 
-export interface OTELEventListenerOptions {
+export interface OTELInstrumentationOptions {
   /**
    * The tracer used to create spans. Defaults to a tracer obtained from
    * the global tracer provider — the one `NodeSDK` (and therefore
    * `@opentelemetry/auto-instrumentations-node`) registers on startup —
    * so most setups can omit it. The global lookup is lazy: it also works
-   * when the listener is constructed before the SDK starts.
+   * when the instrumentation is constructed before the SDK starts.
    */
   tracer?: Tracer;
 
@@ -46,14 +46,14 @@ export interface OTELEventListenerOptions {
   captureResults?: boolean;
 }
 
-export class OTELEventListener implements ServiceModuleListener {
+export class OTELInstrumentation implements ServiceInstrumentation {
   private readonly tracer: Tracer;
   private readonly captureArguments: boolean;
   private readonly captureResults: boolean;
 
-  constructor(options: OTELEventListenerOptions = {}) {
+  constructor(options: OTELInstrumentationOptions = {}) {
     this.tracer =
-      options.tracer ?? trace.getTracer('@composed-di/observability-otel');
+      options.tracer ?? trace.getTracer('@composed-di/instrumentation-otel');
     this.captureArguments = options.captureArguments ?? false;
     this.captureResults = options.captureResults ?? false;
   }

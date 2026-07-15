@@ -7,9 +7,9 @@ import {
 import { AddressInfo } from 'node:net';
 import { ServiceModule } from '@composed-di/core';
 import {
-  DashboardEventListener,
-  DashboardEventListenerOptions,
-} from './dashboardEventListener';
+  DashboardInstrumentation,
+  DashboardInstrumentationOptions,
+} from './dashboardInstrumentation';
 import { ModuleGraph, moduleGraph } from './moduleGraph';
 import { renderDashboardHtml } from './dashboardHtml';
 import {
@@ -23,7 +23,7 @@ import {
   WireEvent,
 } from './events';
 
-export interface ServiceDashboardOptions extends DashboardEventListenerOptions {
+export interface ServiceDashboardOptions extends DashboardInstrumentationOptions {
   /** How many recent events to keep for late-joining clients. Default 200. */
   recentEventLimit?: number;
 }
@@ -46,7 +46,7 @@ const HEARTBEAT_INTERVAL_MS = 15_000;
  * accepts `POST /v1/graph` (the dependency graph) and `POST /v1/events`
  * (batched span events).
  *
- * **In-process:** create the module with `dashboard.listener`, call
+ * **In-process:** create the module with `dashboard.instrumentation`, call
  * `dashboard.attach(module)`, and `listen` from the same process.
  *
  * @example
@@ -57,13 +57,13 @@ const HEARTBEAT_INTERVAL_MS = 15_000;
  *
  * // application process
  * const client = new DashboardClient({ url: 'http://localhost:4321' });
- * const module = ServiceModule.from(factories, client.listener);
+ * const module = ServiceModule.from(instrument(factories, client.instrumentation));
  * client.attach(module);
  * ```
  */
 export class ServiceDashboard {
-  /** Pass this as the second argument to ServiceModule.from. */
-  readonly listener: DashboardEventListener;
+  /** Pass this to `instrument()` when composing the module. */
+  readonly instrumentation: DashboardInstrumentation;
 
   private nodes: GraphNode[] = [];
   private edges: GraphEdge[] = [];
@@ -81,16 +81,16 @@ export class ServiceDashboard {
 
   constructor({
     recentEventLimit = 200,
-    ...listenerOptions
+    ...instrumentationOptions
   }: ServiceDashboardOptions = {}) {
-    this.listener = new DashboardEventListener(listenerOptions);
+    this.instrumentation = new DashboardInstrumentation(instrumentationOptions);
     this.recentEventLimit = recentEventLimit;
-    this.listener.subscribe((event) => this.onSpanEvent(event));
+    this.instrumentation.subscribe((event) => this.onSpanEvent(event));
   }
 
   /**
    * In-process mode: reads the dependency graph out of the module. Call
-   * this with the module that was created with this dashboard's listener.
+   * this with the module that was created with this dashboard's instrumentation.
    */
   attach(module: ServiceModule): this {
     this.registerGraph(moduleGraph(module));
