@@ -136,7 +136,7 @@ describe('instrument', () => {
         }),
       } satisfies Partial<ServiceInstrumentation>)
       const module = ServiceModule.from(
-        listener.instrument([factory], { captureResults: true }),
+        listener.instrument([factory], { capture: { results: true } }),
       )
 
       await module.get(Key)
@@ -215,8 +215,7 @@ describe('instrument', () => {
       } satisfies Partial<ServiceInstrumentation>)
       const module = ServiceModule.from(
         listener.instrument([factory], {
-          captureArguments: true,
-          captureResults: true,
+          capture: { arguments: true, results: true },
         }),
       )
 

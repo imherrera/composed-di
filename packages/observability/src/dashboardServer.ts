@@ -59,8 +59,7 @@ const HEARTBEAT_INTERVAL_MS = 15_000
  * const client = new DashboardClient({ url: 'http://localhost:4321' });
  * const module = ServiceModule.from(
  *   client.instrumentation.instrument(factories, {
- *     captureArguments: true,
- *     captureResults: true,
+ *     capture: { arguments: true, results: true },
  *   }),
  * );
  * client.attach(module);

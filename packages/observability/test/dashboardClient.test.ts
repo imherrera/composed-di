@@ -171,8 +171,7 @@ describe('DashboardClient', () => {
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
       client.instrumentation.instrument([factory], {
-        captureArguments: true,
-        captureResults: true,
+        capture: { arguments: true, results: true },
       }),
     )
 
@@ -214,7 +213,7 @@ describe('DashboardClient', () => {
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
       client.instrumentation.instrument([factory], {
-        captureArguments: true,
+        capture: { arguments: true },
       }),
     )
 

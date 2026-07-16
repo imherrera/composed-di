@@ -39,7 +39,7 @@ interface PropertyOverride {
 /**
  * Marks a service — or specific properties of it — as sensitive, so the
  * values flowing through its events are redacted. Passed to
- * {@link ServiceInstrumentation.instrument} via InstrumentOptions.redactionRules and applied
+ * {@link ServiceInstrumentation.instrument} via the capture options' `redact` list and applied
  * centrally, after the capture flags: values a rule matches are scrubbed
  * before the instrumentation ever sees them, and when capture is off
  * there is nothing to redact. Returned by

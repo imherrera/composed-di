@@ -122,28 +122,27 @@ export interface MethodCallContext {
 }
 
 /**
- * Configuration for {@link ServiceInstrumentation.instrument}. Capture
- * policy lives here, not in the ServiceInstrumentation subclasses: what a
- * subclass receives is exactly what it is allowed to record, so no
- * subclass carries its own capture flags or redaction logic.
+ * What runtime values are delivered to the instrumentation, and how they
+ * are scrubbed first. Nothing is captured by default: values may be large
+ * or contain secrets, and they end up wherever the instrumentation
+ * exports them.
  */
-export interface InstrumentOptions {
+export interface CaptureOptions {
   /**
    * Deliver method arguments to the instrumentation (as
-   * MethodCallContext.args). Off by default: arguments may be large or
-   * contain secrets, and they end up wherever the instrumentation exports
-   * them. When off, the instrumentation never sees the arguments at all.
+   * MethodCallContext.args). When off, the instrumentation never sees the
+   * arguments at all.
    */
-  captureArguments?: boolean
+  arguments?: boolean
 
   /**
    * Deliver method call return / resolved values to the instrumentation
-   * (as the success outcome's `value`). Off by default, for the same
-   * reasons as `captureArguments`. When off, the instrumentation never
-   * sees the values at all. Initialize and dispose outcomes never carry a
-   * value: the service instance is not useful information to report.
+   * (as the success outcome's `value`). When off, the instrumentation
+   * never sees the values at all. Initialize and dispose outcomes never
+   * carry a value: the service instance is not useful information to
+   * report.
    */
-  captureResults?: boolean
+  results?: boolean
 
   /**
    * Per-service redaction applied to whatever the capture flags let
@@ -152,7 +151,22 @@ export interface InstrumentOptions {
    * The capture flags are the primary gate — when capture is off there is
    * nothing to redact, and rules cannot re-enable delivery.
    */
-  redactionRules?: readonly RedactionRule<any>[]
+  redact?: readonly RedactionRule<any>[]
+}
+
+/**
+ * Configuration for {@link ServiceInstrumentation.instrument}. Capture
+ * policy lives here, not in the ServiceInstrumentation subclasses: what a
+ * subclass receives is exactly what it is allowed to record, so no
+ * subclass carries its own capture flags or redaction logic.
+ */
+export interface InstrumentOptions {
+  /**
+   * What runtime values (arguments, results) reach the instrumentation,
+   * and the redaction applied to them first. Nothing is captured when
+   * omitted.
+   */
+  capture?: CaptureOptions
 }
 
 /**
@@ -208,9 +222,11 @@ export class ServiceInstrumentation {
    * ```ts
    * const module = ServiceModule.from(
    *   otel.instrument([db, cache, api], {
-   *     captureArguments: true,
-   *     captureResults: true,
-   *     redactionRules: [redactionRule(VaultKey).redact('getSecret').build()],
+   *     capture: {
+   *       arguments: true,
+   *       results: true,
+   *       redact: [redactionRule(VaultKey).redact('getSecret').build()],
+   *     },
    *   }),
    * );
    * ```
@@ -226,7 +242,7 @@ export class ServiceInstrumentation {
   ): GenericFactory[] {
     return entries
       .flatMap((e) => (e instanceof ServiceModule ? e.factories : [e]))
-      .map((factory) => makeObservable(this, options, factory))
+      .map((factory) => instrumentedServiceFactory(this, options, factory))
   }
 }
 
@@ -237,7 +253,7 @@ export class ServiceInstrumentation {
  * place that decides visibility — instrumentations record what they
  * receive and nothing else.
  */
-interface Capture {
+interface CapturePolicy {
   /**
    * The arguments to deliver in MethodCallContext, or undefined when
    * argument capture is off.
@@ -255,13 +271,14 @@ interface Capture {
   success(functionName: string, value: unknown): EventOutcome
 }
 
-function makeCapture(
+function buildCapturePolicy(
   options: InstrumentOptions,
   key: ServiceKey<unknown>,
-): Capture {
-  const rule = options.redactionRules?.find((r) => r.key === key)
-  const captureArguments = options.captureArguments ?? false
-  const captureResults = options.captureResults ?? false
+): CapturePolicy {
+  const capture = options.capture
+  const rule = capture?.redact?.find((r) => r.key === key)
+  const captureArguments = capture?.arguments ?? false
+  const captureResults = capture?.results ?? false
 
   return {
     args: (functionName, args) =>
@@ -294,13 +311,13 @@ function makeCapture(
  * @param delegate The original service factory to be instrumented.
  * @return A new service factory that provides the same dependencies but includes event notification logic.
  */
-function makeObservable<T, D extends readonly ServiceKey<any>[]>(
+function instrumentedServiceFactory<T, D extends readonly ServiceKey<any>[]>(
   instrumentation: ServiceInstrumentation,
   options: InstrumentOptions,
   delegate: ServiceFactory<any, D>,
 ): ServiceFactory<T, D> {
   const key = delegate.provides
-  const capture = makeCapture(options, key)
+  const capturePolicy = buildCapturePolicy(options, key)
 
   return ServiceFactory.singleton({
     scope: delegate.scope,
@@ -315,7 +332,7 @@ function makeObservable<T, D extends readonly ServiceKey<any>[]>(
       try {
         const instance = await span.run(() => delegate.initialize(...args))
         span.end({ type: 'success' })
-        return observeMethodCalls(instance, instrumentation, key, capture)
+        return observeMethodCalls(instance, instrumentation, key, capturePolicy)
       } catch (error) {
         span.end({ type: 'failure', error })
         throw error
@@ -350,7 +367,7 @@ function makeObservable<T, D extends readonly ServiceKey<any>[]>(
  * @param thing The object whose method calls need to be observed.
  * @param instrumentation The instrumentation notified of method call events.
  * @param key The service key used to identify the service in events.
- * @param capture The capture policy deciding what argument and result
+ * @param capturePolicy The capture policy deciding what argument and result
  * values (if any) are delivered with each event.
  * @return A Proxy wrapping the input object, with all method calls being reported.
  */
@@ -358,7 +375,7 @@ function observeMethodCalls(
   thing: any,
   instrumentation: ServiceInstrumentation,
   key: ServiceKey<unknown>,
-  capture: Capture,
+  capturePolicy: CapturePolicy,
 ): any {
   if (typeof thing !== 'object' || thing === null) {
     return thing
@@ -375,14 +392,14 @@ function observeMethodCalls(
             key,
             className,
             functionName: prop,
-            args: capture.args(prop, args),
+            args: capturePolicy.args(prop, args),
           })
           try {
             const result = invokeWithin(span, () => value.apply(target, args))
             if (result instanceof Promise) {
               return result.then(
                 (resolved) => {
-                  span?.end(capture.success(prop, resolved))
+                  span?.end(capturePolicy.success(prop, resolved))
                   return resolved
                 },
                 (error) => {
@@ -391,7 +408,7 @@ function observeMethodCalls(
                 },
               )
             }
-            span?.end(capture.success(prop, result))
+            span?.end(capturePolicy.success(prop, result))
             return result
           } catch (error) {
             span?.end({ type: 'failure', error })

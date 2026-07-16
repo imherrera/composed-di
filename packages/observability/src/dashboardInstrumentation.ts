@@ -33,8 +33,8 @@ export interface DashboardInstrumentationOptions {
  * Arguments and results are serialized onto spans exactly when
  * `instrument()` (inherited from ServiceInstrumentation) delivers them —
  * capture and redaction policy live in the InstrumentOptions, not here.
- * Pass `captureArguments: true` and `captureResults: true` there to see
- * values in the dashboard.
+ * Pass `capture: { arguments: true, results: true }` there to see values
+ * in the dashboard.
  */
 export class DashboardInstrumentation extends ServiceInstrumentation {
   private readonly context = new AsyncLocalStorage<SpanContext>()

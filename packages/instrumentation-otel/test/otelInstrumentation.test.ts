@@ -256,8 +256,7 @@ describe('OTELInstrumentation', () => {
     })
     const module = ServiceModule.from(
       makeListener().instrument([factory], {
-        captureArguments: true,
-        captureResults: true,
+        capture: { arguments: true, results: true },
       }),
     )
 

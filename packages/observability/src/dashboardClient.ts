@@ -39,8 +39,7 @@ export interface DashboardClientOptions extends DashboardInstrumentationOptions 
  *   client.instrumentation.instrument(factories, {
  *     // Show call arguments and results in the dashboard; leave these
  *     // off when values may contain secrets.
- *     captureArguments: true,
- *     captureResults: true,
+ *     capture: { arguments: true, results: true },
  *   }),
  * );
  * client.attach(module);
