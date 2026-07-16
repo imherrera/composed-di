@@ -51,7 +51,7 @@ export interface OperationSpan {
  * dispose outcomes never carry one); `failure` carries the error that was
  * thrown or rejected.
  *
- * Whether `value` is present is decided by {@link ServiceInstrumentation.instrument},
+ * Whether `value` is present is decided by {@link ServiceInstrumentation.install},
  * not by the implementation: it is absent unless result capture is enabled
  * in the InstrumentOptions, and holds the redacted value when a redaction
  * rule matches. Implementations must record the value exactly when it is
@@ -112,7 +112,7 @@ export interface MethodCallContext {
    * The arguments to report for this call, passed by reference;
    * implementations must not mutate them.
    *
-   * Whether they are present is decided by {@link ServiceInstrumentation.instrument},
+   * Whether they are present is decided by {@link ServiceInstrumentation.install},
    * not by the implementation: absent unless argument capture is enabled in
    * the InstrumentOptions, and already redacted when a redaction rule
    * matches. Implementations must record the arguments exactly when present
@@ -155,7 +155,7 @@ export interface CaptureOptions {
 }
 
 /**
- * Configuration for {@link ServiceInstrumentation.instrument}. Capture
+ * Configuration for {@link ServiceInstrumentation.install}. Capture
  * policy lives here, not in the ServiceInstrumentation subclasses: what a
  * subclass receives is exactly what it is allowed to record, so no
  * subclass carries its own capture flags or redaction logic.
@@ -172,7 +172,7 @@ export interface InstrumentOptions {
 /**
  * Base class for instrumenting services. Extend it and override the hooks
  * to observe lifecycle events and method calls of the services wrapped by
- * {@link ServiceInstrumentation.instrument}.
+ * {@link ServiceInstrumentation.install}.
  *
  * Instrumentation is strictly observational: subclasses see every
  * operation but must never alter it — see the OperationSpan contract.
@@ -236,7 +236,7 @@ export class ServiceInstrumentation {
    * anything reaches this instrumentation.
    * @return The wrapped factories, ready to be passed to ServiceModule.from.
    */
-  instrument(
+  install(
     entries: (ServiceModule | GenericFactory)[],
     options: InstrumentOptions = {},
   ): GenericFactory[] {

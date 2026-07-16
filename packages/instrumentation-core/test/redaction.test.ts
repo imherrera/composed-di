@@ -8,7 +8,7 @@ import {
   ServiceInstrumentation,
 } from '../src'
 
-type Entries = Parameters<ServiceInstrumentation['instrument']>[0]
+type Entries = Parameters<ServiceInstrumentation['install']>[0]
 
 interface RecordedEvent {
   type: 'initialize' | 'dispose' | 'call'
@@ -88,7 +88,7 @@ const observe = (
   entries: Entries,
   options: Omit<CaptureOptions, 'arguments' | 'results'> = {},
 ) =>
-  instrumentation.instrument(entries, {
+  instrumentation.install(entries, {
     capture: { arguments: true, results: true, ...options },
   })
 
@@ -403,7 +403,7 @@ describe('redaction through instrument()', () => {
     it('should deliver neither args nor values when capture is off, rules or not', async () => {
       const recorder = new RecordingListener()
       const module = ServiceModule.from(
-        recorder.instrument([secretFactory()], {
+        recorder.install([secretFactory()], {
           capture: {
             // Rules cannot re-enable delivery: there is nothing to redact.
             redact: [
@@ -432,7 +432,7 @@ describe('redaction through instrument()', () => {
     it('should gate arguments and results independently', async () => {
       const recorder = new RecordingListener()
       const module = ServiceModule.from(
-        recorder.instrument([secretFactory()], {
+        recorder.install([secretFactory()], {
           capture: { arguments: true },
         }),
       )
@@ -453,7 +453,7 @@ describe('redaction through instrument()', () => {
       })
       const recorder = new RecordingListener()
       const module = ServiceModule.from(
-        recorder.instrument([factory], {
+        recorder.install([factory], {
           capture: { results: true },
         }),
       )

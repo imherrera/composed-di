@@ -41,7 +41,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => ({ greet: () => 'hi' }),
       })
-      const module = ServiceModule.from(makeListener([]).instrument([factory]))
+      const module = ServiceModule.from(makeListener([]).install([factory]))
 
       const svc = await module.get(Key)
       expect(svc).toBeDefined()
@@ -56,7 +56,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        makeListener(events).instrument([factory]),
+        makeListener(events).install([factory]),
       )
 
       await module.get(Key)
@@ -72,7 +72,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        makeListener(events).instrument([factory]),
+        makeListener(events).install([factory]),
       )
 
       const svc = await module.get(Key)
@@ -97,7 +97,7 @@ describe('instrument', () => {
           later: async () => 'done',
         }),
       })
-      const module = ServiceModule.from(makeListener([]).instrument([factory]))
+      const module = ServiceModule.from(makeListener([]).install([factory]))
 
       const svc = await module.get(Key)
       expect(svc.ok()).toBe(42)
@@ -135,7 +135,7 @@ describe('instrument', () => {
         }),
       } satisfies Partial<ServiceInstrumentation>)
       const module = ServiceModule.from(
-        listener.instrument([factory], { capture: { results: true } }),
+        listener.install([factory], { capture: { results: true } }),
       )
 
       await module.get(Key)
@@ -171,7 +171,7 @@ describe('instrument', () => {
           }
         },
       } satisfies Partial<ServiceInstrumentation>)
-      const module = ServiceModule.from(listener.instrument([factory]))
+      const module = ServiceModule.from(listener.install([factory]))
 
       const svc = await module.get(Key)
       await Promise.all([svc.fetch(30), svc.fetch(5)])
@@ -213,7 +213,7 @@ describe('instrument', () => {
         }),
       } satisfies Partial<ServiceInstrumentation>)
       const module = ServiceModule.from(
-        listener.instrument([factory], {
+        listener.install([factory], {
           capture: { arguments: true, results: true },
         }),
       )
@@ -246,7 +246,7 @@ describe('instrument', () => {
           classNames.push(className)
         },
       } satisfies Partial<ServiceInstrumentation>)
-      const module = ServiceModule.from(listener.instrument([factory]))
+      const module = ServiceModule.from(listener.install([factory]))
 
       const svc = await module.get(Key)
       svc.greet()
@@ -265,7 +265,7 @@ describe('instrument', () => {
           classNames.push(className)
         },
       } satisfies Partial<ServiceInstrumentation>)
-      const module = ServiceModule.from(listener.instrument([factory]))
+      const module = ServiceModule.from(listener.install([factory]))
 
       const svc = await module.get(Key)
       svc.greet()
@@ -284,7 +284,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        makeListener(events).instrument([factory]),
+        makeListener(events).install([factory]),
       )
 
       await expect(module.get(Key)).rejects.toThrow('init failed')
@@ -305,7 +305,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        makeListener(events).instrument([factory]),
+        makeListener(events).install([factory]),
       )
 
       const svc = await module.get(Key)
@@ -326,7 +326,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        makeListener(events).instrument([factory]),
+        makeListener(events).install([factory]),
       )
 
       const svc = await module.get(Key)
@@ -344,7 +344,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => ({ id: ++counter }),
       })
-      const module = ServiceModule.from(makeListener([]).instrument([factory]))
+      const module = ServiceModule.from(makeListener([]).install([factory]))
 
       const a = await module.get(Key)
       const b = await module.get(Key)
@@ -361,7 +361,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => 'value1',
       })
-      const module = ServiceModule.from(makeListener([]).instrument([factory]))
+      const module = ServiceModule.from(makeListener([]).install([factory]))
 
       await expect(module.get(Key)).resolves.toBe('value1')
     })
@@ -383,7 +383,7 @@ describe('instrument', () => {
       }
       const events: string[] = []
       const module = ServiceModule.from(
-        makeListener(events).instrument([factory]),
+        makeListener(events).install([factory]),
       )
 
       await module.get(Key)
@@ -408,7 +408,7 @@ describe('instrument', () => {
           disposed = true
         },
       }
-      const module = ServiceModule.from(makeListener([]).instrument([factory]))
+      const module = ServiceModule.from(makeListener([]).install([factory]))
 
       module.dispose()
       expect(disposed).toBe(true)
@@ -424,7 +424,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => ({ foo: () => 1 }),
       })
-      const module = ServiceModule.from(makeListener([]).instrument([factory]))
+      const module = ServiceModule.from(makeListener([]).install([factory]))
 
       const svc = await module.get(Key)
       expect(svc.foo).toBe(svc.foo)
@@ -451,7 +451,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        makeListener(events).instrument([factory]),
+        makeListener(events).install([factory]),
       )
 
       const svc = await module.get(Key)
@@ -469,8 +469,8 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const listener = makeListener(events)
-      const inner = ServiceModule.from(listener.instrument([factory]))
-      const outer = ServiceModule.from(listener.instrument([inner]))
+      const inner = ServiceModule.from(listener.install([factory]))
+      const outer = ServiceModule.from(listener.install([inner]))
 
       const svc = await outer.get(Key)
       svc.foo()
@@ -487,7 +487,7 @@ describe('instrument', () => {
         dependsOn: [],
         initialize: () => ({ id: ++counter }),
       })
-      const module = ServiceModule.from(makeListener([]).instrument([factory]))
+      const module = ServiceModule.from(makeListener([]).install([factory]))
 
       await module.get(Key)
       await module.get(Key)
@@ -512,7 +512,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => ({ greet: () => 'hi' }),
       })
-      const module = ServiceModule.from(listener.instrument([factory]))
+      const module = ServiceModule.from(listener.install([factory]))
 
       const svc = await module.get(Key)
       expect(svc.greet()).toBe('hi')
@@ -542,7 +542,7 @@ describe('instrument', () => {
         dependsOn: [DbKey],
         initialize: (database) => ({ getUser: () => database.query() }),
       })
-      const module = ServiceModule.from(listener.instrument([db, users]))
+      const module = ServiceModule.from(listener.install([db, users]))
 
       const svc = await module.get(UserKey)
       await svc.getUser()

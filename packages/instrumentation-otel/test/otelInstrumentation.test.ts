@@ -13,9 +13,9 @@ import {
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
 import {
-  OTELInstrumentation,
+  OTELServiceInstrumentation,
   OTELInstrumentationOptions,
-} from '../src/otelInstrumentation'
+} from '../src/otelServiceInstrumentation'
 
 let exporter: InMemorySpanExporter
 let provider: BasicTracerProvider
@@ -33,7 +33,7 @@ beforeEach(() => {
 })
 
 const makeListener = (options: Partial<OTELInstrumentationOptions> = {}) =>
-  new OTELInstrumentation({ tracer: provider.getTracer('test'), ...options })
+  new OTELServiceInstrumentation({ tracer: provider.getTracer('test'), ...options })
 
 const spans = () => exporter.getFinishedSpans()
 const byName = (name: string) => {
@@ -53,7 +53,7 @@ describe('OTELInstrumentation', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     })
-    const module = ServiceModule.from(makeListener().instrument([factory]))
+    const module = ServiceModule.from(makeListener().install([factory]))
 
     const svc = await module.get(Key)
     svc.greet()
@@ -84,7 +84,7 @@ describe('OTELInstrumentation', () => {
       provides: Key,
       initialize: () => new GreeterImpl(),
     })
-    const module = ServiceModule.from(makeListener().instrument([factory]))
+    const module = ServiceModule.from(makeListener().install([factory]))
 
     const svc = await module.get(Key)
     svc.greet()
@@ -108,7 +108,7 @@ describe('OTELInstrumentation', () => {
       initialize: () => ({ x: 1 }),
       dispose: () => {},
     }
-    const module = ServiceModule.from(makeListener().instrument([factory]))
+    const module = ServiceModule.from(makeListener().install([factory]))
 
     await module.get(Key)
     module.dispose()
@@ -128,7 +128,7 @@ describe('OTELInstrumentation', () => {
         initialize: () => ({ greet: () => 'hi' }),
       })
       const module = ServiceModule.from(
-        new OTELInstrumentation().instrument([factory]),
+        new OTELServiceInstrumentation().install([factory]),
       )
 
       const svc = await module.get(Key)
@@ -159,7 +159,7 @@ describe('OTELInstrumentation', () => {
         getUser: (id: number) => database.query(`u${id}`),
       }),
     })
-    const module = ServiceModule.from(makeListener().instrument([db, users]))
+    const module = ServiceModule.from(makeListener().install([db, users]))
 
     const svc = await module.get(UserKey)
     await svc.getUser(7)
@@ -180,7 +180,7 @@ describe('OTELInstrumentation', () => {
         },
       }),
     })
-    const module = ServiceModule.from(makeListener().instrument([factory]))
+    const module = ServiceModule.from(makeListener().install([factory]))
 
     const svc = await module.get(Key)
     expect(() => svc.boom()).toThrow('kaput')
@@ -202,7 +202,7 @@ describe('OTELInstrumentation', () => {
         },
       }),
     })
-    const module = ServiceModule.from(makeListener().instrument([factory]))
+    const module = ServiceModule.from(makeListener().install([factory]))
 
     const svc = await module.get(Key)
     expect(() => svc.boom()).toThrow('string kaput')
@@ -222,7 +222,7 @@ describe('OTELInstrumentation', () => {
         },
       }),
     })
-    const module = ServiceModule.from(makeListener().instrument([factory]))
+    const module = ServiceModule.from(makeListener().install([factory]))
 
     const svc = await module.get(Key)
     await expect(svc.fail()).rejects.toThrow('async kaput')
@@ -235,7 +235,7 @@ describe('OTELInstrumentation', () => {
       provides: Key,
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     })
-    const module = ServiceModule.from(makeListener().instrument([factory]))
+    const module = ServiceModule.from(makeListener().install([factory]))
 
     const svc = await module.get(Key)
     svc.add(2, 3)
@@ -255,7 +255,7 @@ describe('OTELInstrumentation', () => {
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     })
     const module = ServiceModule.from(
-      makeListener().instrument([factory], {
+      makeListener().install([factory], {
         capture: { arguments: true, results: true },
       }),
     )

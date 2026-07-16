@@ -40,7 +40,7 @@ export interface OTELInstrumentationOptions {
  * ServiceInstrumentation) delivers them — capture and redaction policy
  * live in the InstrumentOptions, not here.
  */
-export class OTELInstrumentation extends ServiceInstrumentation {
+export class OTELServiceInstrumentation extends ServiceInstrumentation {
   private readonly tracer: Tracer
 
   constructor(options: OTELInstrumentationOptions = {}) {

@@ -69,7 +69,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      client.instrumentation.instrument([factory]),
+      client.instrumentation.install([factory]),
     )
 
     const svc = await module.get(Key)
@@ -95,7 +95,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      client.instrumentation.instrument([factory]),
+      client.instrumentation.install([factory]),
     )
     client.attach(module)
 
@@ -128,7 +128,7 @@ describe('DashboardClient', () => {
       }),
     })
     const module = ServiceModule.from(
-      client.instrumentation.instrument([db, users]),
+      client.instrumentation.install([db, users]),
     )
 
     const svc = await module.get(UserKey)
@@ -152,7 +152,7 @@ describe('DashboardClient', () => {
       }),
     })
     const module = ServiceModule.from(
-      client.instrumentation.instrument([factory]),
+      client.instrumentation.install([factory]),
     )
 
     const svc = await module.get(Key)
@@ -170,7 +170,7 @@ describe('DashboardClient', () => {
     const client = makeClient()
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      client.instrumentation.instrument([factory], {
+      client.instrumentation.install([factory], {
         capture: { arguments: true, results: true },
       }),
     )
@@ -193,7 +193,7 @@ describe('DashboardClient', () => {
     const client = makeClient()
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      client.instrumentation.instrument([factory]),
+      client.instrumentation.install([factory]),
     )
 
     const svc = await module.get(Key)
@@ -212,7 +212,7 @@ describe('DashboardClient', () => {
     })
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      client.instrumentation.instrument([factory], {
+      client.instrumentation.install([factory], {
         capture: { arguments: true },
       }),
     )
@@ -234,7 +234,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      client.instrumentation.instrument([factory]),
+      client.instrumentation.install([factory]),
     )
 
     const svc = await module.get(Key)
