@@ -151,7 +151,7 @@ export interface CaptureOptions {
    * The capture flags are the primary gate — when capture is off there is
    * nothing to redact, and rules cannot re-enable delivery.
    */
-  redact?: readonly RedactionRule<any>[]
+  redactionRules?: readonly RedactionRule<any>[]
 }
 
 /**
@@ -278,7 +278,7 @@ function buildCapturePolicy(
   key: ServiceKey<unknown>,
 ): CapturePolicy {
   const capture = options.capture
-  const rule = capture?.redact?.find((r) => r.key === key)
+  const rule = capture?.redactionRules?.find((r) => r.key === key)
   const captureArguments = capture?.arguments ?? false
   const captureResults = capture?.results ?? false
 

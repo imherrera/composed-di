@@ -97,7 +97,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [redactionRule(SecretKey).redact('getSecret').build()],
+        redactionRules: [redactionRule(SecretKey).redact('getSecret').build()],
       }),
     )
 
@@ -124,7 +124,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [redactionRule(SecretKey).redactAll().build()],
+        redactionRules: [redactionRule(SecretKey).redactAll().build()],
       }),
     )
 
@@ -137,7 +137,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [
+        redactionRules: [
           redactionRule(SecretKey)
             .redact('getSecret')
             .redact('listSecretNames')
@@ -164,7 +164,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [
+        redactionRules: [
           redactionRule(SecretKey)
             .redactAll()
             .exclude('listSecretNames')
@@ -202,7 +202,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [
+        redactionRules: [
           redactionRule(SecretKey)
             .redactAll()
             .redact('getSecret', {
@@ -236,7 +236,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [redactionRule(SecretKey).redactAll().build()],
+        redactionRules: [redactionRule(SecretKey).redactAll().build()],
       }),
     )
 
@@ -253,7 +253,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [
+        redactionRules: [
           redactionRule(SecretKey)
             .redact('getSecret', {
               maskArgs: (name) => `masked:${name.length}`,
@@ -279,7 +279,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [redactionRule(SecretKey).redact('getSecret').build()],
+        redactionRules: [redactionRule(SecretKey).redact('getSecret').build()],
       }),
     )
 
@@ -312,7 +312,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory(), plain], {
-        redact: [redactionRule(SecretKey).redact('listSecretNames').build()],
+        redactionRules: [redactionRule(SecretKey).redact('listSecretNames').build()],
       }),
     )
 
@@ -337,7 +337,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [factory], {
-        redact: [redactionRule(BoomKey).redactAll().build()],
+        redactionRules: [redactionRule(BoomKey).redactAll().build()],
       }),
     )
 
@@ -356,7 +356,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redact: [redactionRule(SecretKey).redactAll().build()],
+        redactionRules: [redactionRule(SecretKey).redactAll().build()],
       }),
     )
 
@@ -377,7 +377,7 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [factory], {
-        redact: [redactionRule(factory.provides).redactAll().build()],
+        redactionRules: [redactionRule(factory.provides).redactAll().build()],
       }),
     )
 
@@ -391,7 +391,7 @@ describe('redaction through instrument()', () => {
   it('should tolerate instrumentations that implement no hooks', async () => {
     const module = ServiceModule.from(
       observe(new ServiceInstrumentation(), [secretFactory()], {
-        redact: [redactionRule(SecretKey).redactAll().build()],
+        redactionRules: [redactionRule(SecretKey).redactAll().build()],
       }),
     )
 
@@ -406,7 +406,7 @@ describe('redaction through instrument()', () => {
         recorder.install([secretFactory()], {
           capture: {
             // Rules cannot re-enable delivery: there is nothing to redact.
-            redact: [
+            redactionRules: [
               redactionRule(SecretKey)
                 .redactAll()
                 .exclude('listSecretNames')
