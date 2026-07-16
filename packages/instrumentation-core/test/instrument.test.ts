@@ -6,7 +6,6 @@ import {
   ServiceModule,
   ServiceScope,
 } from '@composed-di/core'
-import { instrument } from '../src/instrument'
 import {
   EventSpan,
   ServiceInstrumentation,
@@ -23,12 +22,12 @@ const makeListener = (events: string[]): ServiceInstrumentation => {
         events.push(`${name}:${outcome.type === 'success' ? 'end' : 'error'}`),
     }
   }
-  return {
+  return Object.assign(new ServiceInstrumentation(), {
     onInitialize: ({ key }) => span(`${key.name}.initialize`),
     onDispose: ({ key }) => span(`${key.name}.dispose`),
     onMethodCall: ({ key, functionName }) =>
       span(`${key.name}.${functionName}`),
-  }
+  } satisfies Partial<ServiceInstrumentation>)
 }
 
 // Tests marked `it.fails` document known open issues: they assert the
@@ -43,9 +42,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => ({ greet: () => 'hi' }),
       })
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener([]) }),
-      )
+      const module = ServiceModule.from(makeListener([]).instrument([factory]))
 
       const svc = await module.get(Key)
       expect(svc).toBeDefined()
@@ -60,7 +57,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener(events) }),
+        makeListener(events).instrument([factory]),
       )
 
       await module.get(Key)
@@ -76,7 +73,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener(events) }),
+        makeListener(events).instrument([factory]),
       )
 
       const svc = await module.get(Key)
@@ -101,9 +98,7 @@ describe('instrument', () => {
           later: async () => 'done',
         }),
       })
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener([]) }),
-      )
+      const module = ServiceModule.from(makeListener([]).instrument([factory]))
 
       const svc = await module.get(Key)
       expect(svc.ok()).toBe(42)
@@ -132,19 +127,16 @@ describe('instrument', () => {
         initialize: () => ({ greet: () => 'hi' }),
       })
       let outcome: unknown
-      const listener: ServiceInstrumentation = {
+      const listener = Object.assign(new ServiceInstrumentation(), {
         onInitialize: () => ({
           run: (fn) => fn(),
           end: (o) => {
             outcome = o
           },
         }),
-      }
+      } satisfies Partial<ServiceInstrumentation>)
       const module = ServiceModule.from(
-        instrument([factory], {
-          instrumentation: listener,
-          captureResults: true,
-        }),
+        listener.instrument([factory], { captureResults: true }),
       )
 
       await module.get(Key)
@@ -170,7 +162,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       let seq = 0
-      const listener: ServiceInstrumentation = {
+      const listener = Object.assign(new ServiceInstrumentation(), {
         onMethodCall: ({ functionName }) => {
           const id = ++seq
           events.push(`${functionName}#${id}:start`)
@@ -179,10 +171,8 @@ describe('instrument', () => {
             end: () => events.push(`${functionName}#${id}:end`),
           }
         },
-      }
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: listener }),
-      )
+      } satisfies Partial<ServiceInstrumentation>)
+      const module = ServiceModule.from(listener.instrument([factory]))
 
       const svc = await module.get(Key)
       await Promise.all([svc.fetch(30), svc.fetch(5)])
@@ -212,7 +202,7 @@ describe('instrument', () => {
       })
       const observed: { method: string; args: unknown[]; result: unknown }[] =
         []
-      const listener: ServiceInstrumentation = {
+      const listener = Object.assign(new ServiceInstrumentation(), {
         onMethodCall: (context) => ({
           run: (fn) => fn(),
           end: (outcome) =>
@@ -222,10 +212,9 @@ describe('instrument', () => {
               result: outcome.type === 'success' ? outcome.value : undefined,
             }),
         }),
-      }
+      } satisfies Partial<ServiceInstrumentation>)
       const module = ServiceModule.from(
-        instrument([factory], {
-          instrumentation: listener,
+        listener.instrument([factory], {
           captureArguments: true,
           captureResults: true,
         }),
@@ -254,14 +243,12 @@ describe('instrument', () => {
         initialize: () => new GreeterImpl(),
       })
       const classNames: (string | undefined)[] = []
-      const listener: ServiceInstrumentation = {
+      const listener = Object.assign(new ServiceInstrumentation(), {
         onMethodCall: ({ className }) => {
           classNames.push(className)
         },
-      }
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: listener }),
-      )
+      } satisfies Partial<ServiceInstrumentation>)
+      const module = ServiceModule.from(listener.instrument([factory]))
 
       const svc = await module.get(Key)
       svc.greet()
@@ -275,14 +262,12 @@ describe('instrument', () => {
         initialize: () => ({ greet: () => 'hi' }),
       })
       const classNames: (string | undefined)[] = []
-      const listener: ServiceInstrumentation = {
+      const listener = Object.assign(new ServiceInstrumentation(), {
         onMethodCall: ({ className }) => {
           classNames.push(className)
         },
-      }
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: listener }),
-      )
+      } satisfies Partial<ServiceInstrumentation>)
+      const module = ServiceModule.from(listener.instrument([factory]))
 
       const svc = await module.get(Key)
       svc.greet()
@@ -301,7 +286,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener(events) }),
+        makeListener(events).instrument([factory]),
       )
 
       await expect(module.get(Key)).rejects.toThrow('init failed')
@@ -322,7 +307,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener(events) }),
+        makeListener(events).instrument([factory]),
       )
 
       const svc = await module.get(Key)
@@ -343,7 +328,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener(events) }),
+        makeListener(events).instrument([factory]),
       )
 
       const svc = await module.get(Key)
@@ -361,9 +346,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => ({ id: ++counter }),
       })
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener([]) }),
-      )
+      const module = ServiceModule.from(makeListener([]).instrument([factory]))
 
       const a = await module.get(Key)
       const b = await module.get(Key)
@@ -380,9 +363,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => 'value1',
       })
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener([]) }),
-      )
+      const module = ServiceModule.from(makeListener([]).instrument([factory]))
 
       await expect(module.get(Key)).resolves.toBe('value1')
     })
@@ -404,7 +385,7 @@ describe('instrument', () => {
       }
       const events: string[] = []
       const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener(events) }),
+        makeListener(events).instrument([factory]),
       )
 
       await module.get(Key)
@@ -429,9 +410,7 @@ describe('instrument', () => {
           disposed = true
         },
       }
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener([]) }),
-      )
+      const module = ServiceModule.from(makeListener([]).instrument([factory]))
 
       module.dispose()
       expect(disposed).toBe(true)
@@ -447,9 +426,7 @@ describe('instrument', () => {
         provides: Key,
         initialize: () => ({ foo: () => 1 }),
       })
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener([]) }),
-      )
+      const module = ServiceModule.from(makeListener([]).instrument([factory]))
 
       const svc = await module.get(Key)
       expect(svc.foo).toBe(svc.foo)
@@ -476,7 +453,7 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener(events) }),
+        makeListener(events).instrument([factory]),
       )
 
       const svc = await module.get(Key)
@@ -494,12 +471,8 @@ describe('instrument', () => {
       })
       const events: string[] = []
       const listener = makeListener(events)
-      const inner = ServiceModule.from(
-        instrument([factory], { instrumentation: listener }),
-      )
-      const outer = ServiceModule.from(
-        instrument([inner], { instrumentation: listener }),
-      )
+      const inner = ServiceModule.from(listener.instrument([factory]))
+      const outer = ServiceModule.from(listener.instrument([inner]))
 
       const svc = await outer.get(Key)
       svc.foo()
@@ -516,9 +489,7 @@ describe('instrument', () => {
         dependsOn: [],
         initialize: () => ({ id: ++counter }),
       })
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: makeListener([]) }),
-      )
+      const module = ServiceModule.from(makeListener([]).instrument([factory]))
 
       await module.get(Key)
       await module.get(Key)
@@ -529,7 +500,7 @@ describe('instrument', () => {
   describe('run wrapper', () => {
     it('should invoke the operation through run exactly once and pass the result through', async () => {
       const calls: string[] = []
-      const listener: ServiceInstrumentation = {
+      const listener = Object.assign(new ServiceInstrumentation(), {
         onMethodCall: () => ({
           run: <T>(fn: () => T): T => {
             calls.push('run')
@@ -537,15 +508,13 @@ describe('instrument', () => {
           },
           end: () => calls.push('end'),
         }),
-      }
+      } satisfies Partial<ServiceInstrumentation>)
       const Key = new ServiceKey<{ greet(): string }>('svc')
       const factory = ServiceFactory.singleton({
         provides: Key,
         initialize: () => ({ greet: () => 'hi' }),
       })
-      const module = ServiceModule.from(
-        instrument([factory], { instrumentation: listener }),
-      )
+      const module = ServiceModule.from(listener.instrument([factory]))
 
       const svc = await module.get(Key)
       expect(svc.greet()).toBe('hi')
@@ -555,7 +524,7 @@ describe('instrument', () => {
     it('should let run establish ambient state visible to nested calls', async () => {
       const als = new AsyncLocalStorage<string>()
       const ambientAtStart: (string | undefined)[] = []
-      const listener: ServiceInstrumentation = {
+      const listener = Object.assign(new ServiceInstrumentation(), {
         onMethodCall: ({ functionName }) => {
           ambientAtStart.push(als.getStore())
           return {
@@ -563,7 +532,7 @@ describe('instrument', () => {
             end: () => {},
           }
         },
-      }
+      } satisfies Partial<ServiceInstrumentation>)
       const DbKey = new ServiceKey<{ query(): Promise<string> }>('db')
       const UserKey = new ServiceKey<{ getUser(): Promise<string> }>('users')
       const db = ServiceFactory.singleton({
@@ -575,9 +544,7 @@ describe('instrument', () => {
         dependsOn: [DbKey],
         initialize: (database) => ({ getUser: () => database.query() }),
       })
-      const module = ServiceModule.from(
-        instrument([db, users], { instrumentation: listener }),
-      )
+      const module = ServiceModule.from(listener.instrument([db, users]))
 
       const svc = await module.get(UserKey)
       await svc.getUser()

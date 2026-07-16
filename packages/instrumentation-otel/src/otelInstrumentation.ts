@@ -36,13 +36,15 @@ export interface OTELInstrumentationOptions {
  *
  * Arguments and results are recorded (as the
  * `composed_di.service.function.arguments` / `.result` attributes,
- * serialized to JSON) exactly when `instrument()` delivers them — capture
- * and redaction policy live in the InstrumentOptions, not here.
+ * serialized to JSON) exactly when `instrument()` (inherited from
+ * ServiceInstrumentation) delivers them — capture and redaction policy
+ * live in the InstrumentOptions, not here.
  */
-export class OTELInstrumentation implements ServiceInstrumentation {
+export class OTELInstrumentation extends ServiceInstrumentation {
   private readonly tracer: Tracer
 
   constructor(options: OTELInstrumentationOptions = {}) {
+    super()
     this.tracer =
       options.tracer ?? trace.getTracer('@composed-di/instrumentation-otel')
   }

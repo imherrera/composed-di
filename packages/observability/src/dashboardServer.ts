@@ -58,8 +58,7 @@ const HEARTBEAT_INTERVAL_MS = 15_000
  * // application process
  * const client = new DashboardClient({ url: 'http://localhost:4321' });
  * const module = ServiceModule.from(
- *   instrument(factories, {
- *     instrumentation: client.instrumentation,
+ *   client.instrumentation.instrument(factories, {
  *     captureArguments: true,
  *     captureResults: true,
  *   }),
@@ -68,7 +67,7 @@ const HEARTBEAT_INTERVAL_MS = 15_000
  * ```
  */
 export class ServiceDashboard {
-  /** Pass this to `instrument()` when composing the module. */
+  /** Call `.instrument()` on this to wrap the factories composing the module. */
   readonly instrumentation: DashboardInstrumentation
 
   private nodes: GraphNode[] = []

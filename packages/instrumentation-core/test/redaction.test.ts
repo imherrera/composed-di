@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
 import {
-  instrument,
   InstrumentOptions,
   redactionRule,
   EventOutcome,
   MethodCallContext,
   ServiceInstrumentation,
 } from '../src'
+
+type Entries = Parameters<ServiceInstrumentation['instrument']>[0]
 
 interface RecordedEvent {
   type: 'initialize' | 'dispose' | 'call'
@@ -23,7 +24,7 @@ interface RecordedEvent {
  * so tests can assert on exactly what crossed the capture and redaction
  * boundary in instrument().
  */
-class RecordingListener implements ServiceInstrumentation {
+class RecordingListener extends ServiceInstrumentation {
   readonly events: RecordedEvent[] = []
 
   onInitialize(context: { key: ServiceKey<unknown> }) {
@@ -81,12 +82,13 @@ const secretFactory = () =>
     }),
   })
 
-/** instrument() with capture fully on, so redaction has values to work on. */
+/** instrumentation.instrument() with capture fully on, so redaction has values to work on. */
 const observe = (
-  entries: Parameters<typeof instrument>[0],
-  options: Omit<InstrumentOptions, 'captureArguments' | 'captureResults'>,
+  instrumentation: ServiceInstrumentation,
+  entries: Entries,
+  options: Omit<InstrumentOptions, 'captureArguments' | 'captureResults'> = {},
 ) =>
-  instrument(entries, {
+  instrumentation.instrument(entries, {
     captureArguments: true,
     captureResults: true,
     ...options,
@@ -96,8 +98,7 @@ describe('redaction through instrument()', () => {
   it('redact: should redact arguments and results of the named property only', async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [redactionRule(SecretKey).redact('getSecret').build()],
       }),
     )
@@ -124,8 +125,7 @@ describe('redaction through instrument()', () => {
   it('initialize outcomes never carry a value, so there is nothing to redact', async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [redactionRule(SecretKey).redactAll().build()],
       }),
     )
@@ -138,8 +138,7 @@ describe('redaction through instrument()', () => {
   it('redact: multiple calls accumulate properties', async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [
           redactionRule(SecretKey)
             .redact('getSecret')
@@ -166,8 +165,7 @@ describe('redaction through instrument()', () => {
   it('redactAll + exclude: should redact every property except the excluded ones', async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [
           redactionRule(SecretKey)
             .redactAll()
@@ -205,8 +203,7 @@ describe('redaction through instrument()', () => {
   it('redactAll + redact(mask) + exclude all merge into a single rule', async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [
           redactionRule(SecretKey)
             .redactAll()
@@ -240,8 +237,7 @@ describe('redaction through instrument()', () => {
   it('redactAll: should redact every property', async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [redactionRule(SecretKey).redactAll().build()],
       }),
     )
@@ -258,8 +254,7 @@ describe('redaction through instrument()', () => {
   it('should apply a custom mask instead of blanking the value', async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [
           redactionRule(SecretKey)
             .redact('getSecret', {
@@ -285,8 +280,7 @@ describe('redaction through instrument()', () => {
   it('a redacted property without a mask is fully blanked', async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [redactionRule(SecretKey).redact('getSecret').build()],
       }),
     )
@@ -319,8 +313,7 @@ describe('redaction through instrument()', () => {
     })
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory(), plain], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory(), plain], {
         redactionRules: [
           redactionRule(SecretKey).redact('listSecretNames').build(),
         ],
@@ -347,8 +340,7 @@ describe('redaction through instrument()', () => {
     })
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([factory], {
-        instrumentation: recorder,
+      observe(recorder, [factory], {
         redactionRules: [redactionRule(BoomKey).redactAll().build()],
       }),
     )
@@ -367,8 +359,7 @@ describe('redaction through instrument()', () => {
   it("should preserve the instrumentation's run wrapper on redacted spans", async () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: recorder,
+      observe(recorder, [secretFactory()], {
         redactionRules: [redactionRule(SecretKey).redactAll().build()],
       }),
     )
@@ -389,8 +380,7 @@ describe('redaction through instrument()', () => {
     }
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
-      observe([factory], {
-        instrumentation: recorder,
+      observe(recorder, [factory], {
         redactionRules: [redactionRule(factory.provides).redactAll().build()],
       }),
     )
@@ -404,8 +394,7 @@ describe('redaction through instrument()', () => {
 
   it('should tolerate instrumentations that implement no hooks', async () => {
     const module = ServiceModule.from(
-      observe([secretFactory()], {
-        instrumentation: {},
+      observe(new ServiceInstrumentation(), [secretFactory()], {
         redactionRules: [redactionRule(SecretKey).redactAll().build()],
       }),
     )
@@ -418,8 +407,7 @@ describe('redaction through instrument()', () => {
     it('should deliver neither args nor values when capture is off, rules or not', async () => {
       const recorder = new RecordingListener()
       const module = ServiceModule.from(
-        instrument([secretFactory()], {
-          instrumentation: recorder,
+        recorder.instrument([secretFactory()], {
           // Rules cannot re-enable delivery: there is nothing to redact.
           redactionRules: [
             redactionRule(SecretKey)
@@ -446,8 +434,7 @@ describe('redaction through instrument()', () => {
     it('should gate arguments and results independently', async () => {
       const recorder = new RecordingListener()
       const module = ServiceModule.from(
-        instrument([secretFactory()], {
-          instrumentation: recorder,
+        recorder.instrument([secretFactory()], {
           captureArguments: true,
         }),
       )
@@ -468,8 +455,7 @@ describe('redaction through instrument()', () => {
       })
       const recorder = new RecordingListener()
       const module = ServiceModule.from(
-        instrument([factory], {
-          instrumentation: recorder,
+        recorder.instrument([factory], {
           captureResults: true,
         }),
       )

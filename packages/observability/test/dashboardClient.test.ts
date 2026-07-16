@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
-import { instrument } from '@composed-di/instrumentation-core'
 import { DashboardClient } from '../src/dashboardClient'
 import { SpanEnd, SpanEvent, SpanStart } from '../src/events'
 
@@ -70,7 +69,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      instrument([factory], { instrumentation: client.instrumentation }),
+      client.instrumentation.instrument([factory]),
     )
 
     const svc = await module.get(Key)
@@ -96,7 +95,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      instrument([factory], { instrumentation: client.instrumentation }),
+      client.instrumentation.instrument([factory]),
     )
     client.attach(module)
 
@@ -129,7 +128,7 @@ describe('DashboardClient', () => {
       }),
     })
     const module = ServiceModule.from(
-      instrument([db, users], { instrumentation: client.instrumentation }),
+      client.instrumentation.instrument([db, users]),
     )
 
     const svc = await module.get(UserKey)
@@ -153,7 +152,7 @@ describe('DashboardClient', () => {
       }),
     })
     const module = ServiceModule.from(
-      instrument([factory], { instrumentation: client.instrumentation }),
+      client.instrumentation.instrument([factory]),
     )
 
     const svc = await module.get(Key)
@@ -171,8 +170,7 @@ describe('DashboardClient', () => {
     const client = makeClient()
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      instrument([factory], {
-        instrumentation: client.instrumentation,
+      client.instrumentation.instrument([factory], {
         captureArguments: true,
         captureResults: true,
       }),
@@ -196,7 +194,7 @@ describe('DashboardClient', () => {
     const client = makeClient()
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      instrument([factory], { instrumentation: client.instrumentation }),
+      client.instrumentation.instrument([factory]),
     )
 
     const svc = await module.get(Key)
@@ -215,8 +213,7 @@ describe('DashboardClient', () => {
     })
     const { Key, factory } = echoFactory()
     const module = ServiceModule.from(
-      instrument([factory], {
-        instrumentation: client.instrumentation,
+      client.instrumentation.instrument([factory], {
         captureArguments: true,
       }),
     )
@@ -238,7 +235,7 @@ describe('DashboardClient', () => {
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(
-      instrument([factory], { instrumentation: client.instrumentation }),
+      client.instrumentation.instrument([factory]),
     )
 
     const svc = await module.get(Key)

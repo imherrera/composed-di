@@ -1,11 +1,11 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { performance } from 'node:perf_hooks'
+import { ServiceInstrumentation } from '@composed-di/instrumentation-core'
 import type {
   DisposeContext,
   EventSpan,
   InitializeContext,
   MethodCallContext,
-  ServiceInstrumentation,
 } from '@composed-di/instrumentation-core'
 import { SpanEvent, SpanKind } from './events'
 
@@ -31,17 +31,19 @@ export interface DashboardInstrumentationOptions {
  * - Emits events synchronously to subscribers; it never buffers.
  *
  * Arguments and results are serialized onto spans exactly when
- * `instrument()` delivers them — capture and redaction policy live in the
- * InstrumentOptions, not here. Pass `captureArguments: true` and
- * `captureResults: true` there to see values in the dashboard.
+ * `instrument()` (inherited from ServiceInstrumentation) delivers them —
+ * capture and redaction policy live in the InstrumentOptions, not here.
+ * Pass `captureArguments: true` and `captureResults: true` there to see
+ * values in the dashboard.
  */
-export class DashboardInstrumentation implements ServiceInstrumentation {
+export class DashboardInstrumentation extends ServiceInstrumentation {
   private readonly context = new AsyncLocalStorage<SpanContext>()
   private readonly listeners = new Set<(event: SpanEvent) => void>()
   private nextId = 1
   private readonly maxValueLength: number
 
   constructor({ maxValueLength = 200 }: DashboardInstrumentationOptions = {}) {
+    super()
     this.maxValueLength = maxValueLength
   }
 
