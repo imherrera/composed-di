@@ -3,7 +3,7 @@ import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
 import {
   CaptureOptions,
   redactionRule,
-  EventOutcome,
+  OperationOutcome,
   MethodCallContext,
   ServiceInstrumentation,
 } from '../src'
@@ -13,9 +13,9 @@ type Entries = Parameters<ServiceInstrumentation['instrument']>[0]
 interface RecordedEvent {
   type: 'initialize' | 'dispose' | 'call'
   key: ServiceKey<unknown>
-  functionName?: string
+  methodName?: string
   args?: readonly unknown[]
-  outcome?: EventOutcome
+  outcome?: OperationOutcome
   ranWithin?: boolean
 }
 
@@ -39,7 +39,7 @@ class RecordingListener extends ServiceInstrumentation {
     return this.record({
       type: 'call',
       key: context.key,
-      functionName: context.functionName,
+      methodName: context.methodName,
       args: context.args,
     })
   }
@@ -51,17 +51,17 @@ class RecordingListener extends ServiceInstrumentation {
         event.ranWithin = true
         return fn()
       },
-      end: (outcome: EventOutcome) => {
+      end: (outcome: OperationOutcome) => {
         event.outcome = outcome
       },
     }
   }
 
-  find(type: RecordedEvent['type'], functionName?: string): RecordedEvent {
+  find(type: RecordedEvent['type'], methodName?: string): RecordedEvent {
     const event = this.events.find(
       (e) =>
         e.type === type &&
-        (functionName === undefined || e.functionName === functionName),
+        (methodName === undefined || e.methodName === methodName),
     )
     expect(event, `expected a recorded ${type} event`).toBeDefined()
     return event!

@@ -7,14 +7,14 @@ import {
   ServiceScope,
 } from '@composed-di/core'
 import {
-  EventSpan,
+  OperationSpan,
   ServiceInstrumentation,
 } from '../src/serviceInstrumentation'
 
 // Records every event as `<service>.<operation>:<phase>` so tests can
 // assert on what was observed.
 const makeListener = (events: string[]): ServiceInstrumentation => {
-  const span = (name: string): EventSpan => {
+  const span = (name: string): OperationSpan => {
     events.push(`${name}:start`)
     return {
       run: (fn) => fn(),
@@ -25,8 +25,7 @@ const makeListener = (events: string[]): ServiceInstrumentation => {
   return Object.assign(new ServiceInstrumentation(), {
     onInitialize: ({ key }) => span(`${key.name}.initialize`),
     onDispose: ({ key }) => span(`${key.name}.dispose`),
-    onMethodCall: ({ key, functionName }) =>
-      span(`${key.name}.${functionName}`),
+    onMethodCall: ({ key, methodName }) => span(`${key.name}.${methodName}`),
   } satisfies Partial<ServiceInstrumentation>)
 }
 
@@ -163,12 +162,12 @@ describe('instrument', () => {
       const events: string[] = []
       let seq = 0
       const listener = Object.assign(new ServiceInstrumentation(), {
-        onMethodCall: ({ functionName }) => {
+        onMethodCall: ({ methodName }) => {
           const id = ++seq
-          events.push(`${functionName}#${id}:start`)
+          events.push(`${methodName}#${id}:start`)
           return {
             run: (fn) => fn(),
-            end: () => events.push(`${functionName}#${id}:end`),
+            end: () => events.push(`${methodName}#${id}:end`),
           }
         },
       } satisfies Partial<ServiceInstrumentation>)
@@ -207,7 +206,7 @@ describe('instrument', () => {
           run: (fn) => fn(),
           end: (outcome) =>
             observed.push({
-              method: context.functionName,
+              method: context.methodName,
               args: [...(context.args ?? [])],
               result: outcome.type === 'success' ? outcome.value : undefined,
             }),
@@ -524,10 +523,10 @@ describe('instrument', () => {
       const als = new AsyncLocalStorage<string>()
       const ambientAtStart: (string | undefined)[] = []
       const listener = Object.assign(new ServiceInstrumentation(), {
-        onMethodCall: ({ functionName }) => {
+        onMethodCall: ({ methodName }) => {
           ambientAtStart.push(als.getStore())
           return {
-            run: <T>(fn: () => T): T => als.run(functionName, fn),
+            run: <T>(fn: () => T): T => als.run(methodName, fn),
             end: () => {},
           }
         },

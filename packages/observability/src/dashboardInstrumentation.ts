@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks'
 import { ServiceInstrumentation } from '@composed-di/instrumentation-core'
 import type {
   DisposeContext,
-  EventSpan,
+  OperationSpan,
   InitializeContext,
   MethodCallContext,
 } from '@composed-di/instrumentation-core'
@@ -57,20 +57,20 @@ export class DashboardInstrumentation extends ServiceInstrumentation {
     return () => this.listeners.delete(listener)
   }
 
-  onInitialize({ key }: InitializeContext): EventSpan {
+  onInitialize({ key }: InitializeContext): OperationSpan {
     return this.startSpan(key.name, 'initialize', 'initialize')
   }
 
-  onDispose({ key }: DisposeContext): EventSpan {
+  onDispose({ key }: DisposeContext): OperationSpan {
     return this.startSpan(key.name, 'dispose', 'dispose')
   }
 
-  onMethodCall({ key, functionName, args }: MethodCallContext): EventSpan {
+  onMethodCall({ key, methodName, args }: MethodCallContext): OperationSpan {
     // Args are present exactly when argument capture is enabled in the
     // InstrumentOptions; they arrive already redacted.
     return this.startSpan(
       key.name,
-      functionName,
+      methodName,
       'call',
       args ? this.serialize(args) : undefined,
     )
@@ -81,7 +81,7 @@ export class DashboardInstrumentation extends ServiceInstrumentation {
     method: string,
     kind: SpanKind,
     args?: string,
-  ): EventSpan {
+  ): OperationSpan {
     const id = this.nextId++
     const parent = this.context.getStore()
 

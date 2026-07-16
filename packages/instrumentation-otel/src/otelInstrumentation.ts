@@ -12,8 +12,8 @@ import {
 } from '@opentelemetry/semantic-conventions'
 import {
   DisposeContext,
-  EventOutcome,
-  EventSpan,
+  OperationOutcome,
+  OperationSpan,
   InitializeContext,
   MethodCallContext,
   ServiceInstrumentation,
@@ -49,48 +49,48 @@ export class OTELInstrumentation extends ServiceInstrumentation {
       options.tracer ?? trace.getTracer('@composed-di/instrumentation-otel')
   }
 
-  onInitialize(context: InitializeContext): EventSpan {
+  onInitialize(context: InitializeContext): OperationSpan {
     const attributes = this.buildAttributes({
       key: context.key,
       event: 'initialize',
       className: 'ServiceFactory',
-      functionName: 'initialize',
+      methodName: 'initialize',
     })
     const spanName = `ServiceFactory[${context.key.name}].initialize`
     return this.buildSpan(spanName, attributes)
   }
 
-  onDispose(context: DisposeContext): EventSpan {
+  onDispose(context: DisposeContext): OperationSpan {
     const attributes = this.buildAttributes({
       key: context.key,
       event: 'dispose',
       className: 'ServiceFactory',
-      functionName: 'dispose',
+      methodName: 'dispose',
     })
     const spanName = `ServiceFactory[${context.key.name}].dispose`
     return this.buildSpan(spanName, attributes)
   }
 
-  onMethodCall(context: MethodCallContext): EventSpan {
+  onMethodCall(context: MethodCallContext): OperationSpan {
     const attributes = this.buildAttributes({
       key: context.key,
       event: 'call',
       className: context.className,
-      functionName: context.functionName,
+      methodName: context.methodName,
       args: context.args,
     })
     const spanName = attributes[ATTR_CODE_FUNCTION_NAME]
     return this.buildSpan(spanName, attributes)
   }
 
-  private buildSpan(spanName: string, attributes: Attributes): EventSpan {
+  private buildSpan(spanName: string, attributes: Attributes): OperationSpan {
     const parentContext = otelContext.active()
     const span = this.tracer.startSpan(spanName, { attributes }, parentContext)
     const spanContext = trace.setSpan(parentContext, span)
 
     return {
       run: (fn) => otelContext.with(spanContext, fn),
-      end: (outcome: EventOutcome) => {
+      end: (outcome: OperationOutcome) => {
         if (outcome.type === 'failure') {
           const error = outcome.error
           span.recordException(error instanceof Error ? error : String(error))
@@ -121,11 +121,11 @@ export class OTELInstrumentation extends ServiceInstrumentation {
     key: ServiceKey<unknown>
     event: 'initialize' | 'dispose' | 'call'
     className?: string
-    functionName: string
+    methodName: string
     args?: readonly unknown[]
   }) {
     const attributes: { [key: string]: string } = {
-      [ATTR_CODE_FUNCTION_NAME]: `${params.className ?? params.key.name}.${params.functionName}`,
+      [ATTR_CODE_FUNCTION_NAME]: `${params.className ?? params.key.name}.${params.methodName}`,
       'composed_di.service.key': params.key.name,
       'composed_di.service.event': params.event,
     }

@@ -52,17 +52,17 @@ export interface RedactionRule<T> {
   readonly key: ServiceKey<T>
 
   /**
-   * The args to report for a call to `functionName`: unchanged if not
+   * The args to report for a call to `methodName`: unchanged if not
    * redacted, otherwise blanked or run through a custom `maskArgs`.
    */
-  maskArgs(functionName: string, args: readonly unknown[]): readonly unknown[]
+  maskArgs(methodName: string, args: readonly unknown[]): readonly unknown[]
 
   /**
    * The value to report for a method call's success outcome: unchanged
    * if not redacted, otherwise blanked or run through a custom
    * `maskResult`.
    */
-  maskResult(functionName: string, result: unknown): unknown
+  maskResult(methodName: string, result: unknown): unknown
 }
 
 /**
@@ -140,8 +140,8 @@ export class RedactionRuleBuilder<T> {
 
     return {
       key: this.key,
-      maskArgs(functionName, args) {
-        const override = overrides[functionName]
+      maskArgs(methodName, args) {
+        const override = overrides[methodName]
         const redacted = override ? override.redacted : redactAllFlag
         if (!redacted) {
           return args
@@ -154,8 +154,8 @@ export class RedactionRuleBuilder<T> {
             // delegate still sees the call's arity.
             args.map(() => REDACTED_VALUE)
       },
-      maskResult(functionName, result) {
-        const override = overrides[functionName]
+      maskResult(methodName, result) {
+        const override = overrides[methodName]
         const redacted = override ? override.redacted : redactAllFlag
         if (!redacted) {
           return result

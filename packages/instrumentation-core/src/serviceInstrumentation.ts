@@ -13,7 +13,7 @@ type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
  * handle, a correlation id) without any bookkeeping to pair concurrent
  * start/finish events.
  */
-export interface EventSpan {
+export interface OperationSpan {
   /**
    * Wrapper around the operation itself. The instrumented factory invokes
    * the operation as `run(() => operation())`, so the instrumentation can
@@ -42,11 +42,11 @@ export interface EventSpan {
    * @param outcome - How the operation finished, and its value or error.
    * @return void
    */
-  end(outcome: EventOutcome): void
+  end(outcome: OperationOutcome): void
 }
 
 /**
- * How an operation finished, delivered to EventSpan.end: `success` may
+ * How an operation finished, delivered to OperationSpan.end: `success` may
  * carry the return or resolved value of a method call (initialize and
  * dispose outcomes never carry one); `failure` carries the error that was
  * thrown or rejected.
@@ -59,7 +59,7 @@ export interface EventSpan {
  * delivered as a present `value: undefined`) and must not record any
  * result when it is absent.
  */
-export type EventOutcome =
+export type OperationOutcome =
   | { type: 'success'; value?: unknown }
   | { type: 'failure'; error: unknown }
 
@@ -106,7 +106,7 @@ export interface MethodCallContext {
   /**
    * The name of the method that is being called.
    */
-  functionName: string
+  methodName: string
 
   /**
    * The arguments to report for this call, passed by reference;
@@ -175,10 +175,10 @@ export interface InstrumentOptions {
  * {@link ServiceInstrumentation.instrument}.
  *
  * Instrumentation is strictly observational: subclasses see every
- * operation but must never alter it — see the EventSpan contract.
+ * operation but must never alter it — see the OperationSpan contract.
  *
  * Each hook is invoked when the corresponding operation starts and may
- * return an EventSpan that is notified when that operation finishes.
+ * return an OperationSpan that is notified when that operation finishes.
  * Returning nothing opts out of completion tracking for that call.
  */
 export class ServiceInstrumentation {
@@ -186,26 +186,26 @@ export class ServiceInstrumentation {
    * Invoked at the start of the initialization process for a specific service.
    *
    * @param context - Context of the initialization, including the service key.
-   * @return An EventSpan notified when initialization finishes, or void.
+   * @return An OperationSpan notified when initialization finishes, or void.
    */
-  onInitialize?(context: InitializeContext): EventSpan | void
+  onInitialize?(context: InitializeContext): OperationSpan | void
 
   /**
    * Invoked when the disposal process for a service starts.
    *
    * @param context - Context of the disposal, including the service key.
-   * @return An EventSpan notified when disposal finishes, or void.
+   * @return An OperationSpan notified when disposal finishes, or void.
    */
-  onDispose?(context: DisposeContext): EventSpan | void
+  onDispose?(context: DisposeContext): OperationSpan | void
 
   /**
    * Invoked when a method call starts on a service instance.
    *
    * @param context - Context of the invocation, including the service key,
    * the method name, and its arguments.
-   * @return An EventSpan notified when the call finishes, or void.
+   * @return An OperationSpan notified when the call finishes, or void.
    */
-  onMethodCall?(context: MethodCallContext): EventSpan | void
+  onMethodCall?(context: MethodCallContext): OperationSpan | void
 
   /**
    * Wraps service factories so this instrumentation is notified when a
@@ -248,10 +248,10 @@ export class ServiceInstrumentation {
 
 /**
  * The capture policy of one instrumented factory: resolves what to report
- * for a call's arguments and a success outcome, combining the capture
- * flags with the factory's redaction rule (if any). This is the single
- * place that decides visibility — instrumentations record what they
- * receive and nothing else.
+ * for a call's arguments and result, combining the capture flags with the
+ * factory's redaction rule (if any). This is the single place that
+ * decides visibility — instrumentations record what they receive and
+ * nothing else.
  */
 interface CapturePolicy {
   /**
@@ -259,16 +259,18 @@ interface CapturePolicy {
    * argument capture is off.
    */
   args(
-    functionName: string,
+    methodName: string,
     args: readonly unknown[],
   ): readonly unknown[] | undefined
 
   /**
-   * The success outcome to deliver to EventSpan.end for a method call:
-   * carries the (possibly redacted) value when result capture is on, no
-   * value otherwise.
+   * The result to deliver with a method call's success outcome: the
+   * (possibly redacted) value, wrapped so spreading it into the outcome
+   * preserves the value-presence contract — a captured `undefined` return
+   * yields `{ value: undefined }` (key present), while capture off yields
+   * undefined (no key at all).
    */
-  success(functionName: string, value: unknown): EventOutcome
+  result(methodName: string, value: unknown): { value: unknown } | undefined
 }
 
 function buildCapturePolicy(
@@ -281,19 +283,16 @@ function buildCapturePolicy(
   const captureResults = capture?.results ?? false
 
   return {
-    args: (functionName, args) =>
+    args: (methodName, args) =>
       captureArguments
         ? rule
-          ? rule.maskArgs(functionName, args)
+          ? rule.maskArgs(methodName, args)
           : args
         : undefined,
-    success: (functionName, value) =>
+    result: (methodName, value) =>
       captureResults
-        ? {
-            type: 'success',
-            value: rule ? rule.maskResult(functionName, value) : value,
-          }
-        : { type: 'success' },
+        ? { value: rule ? rule.maskResult(methodName, value) : value }
+        : undefined,
   }
 }
 
@@ -302,7 +301,7 @@ function buildCapturePolicy(
  * ServiceInstrumentation of lifecycle events and method calls.
  *
  * For each of initialize, dispose, and method calls, the instrumentation
- * is invoked at the start of the operation and may return an EventSpan
+ * is invoked at the start of the operation and may return an OperationSpan
  * whose `end` is called with the outcome when the operation finishes.
  * Errors are rethrown after being reported.
  *
@@ -391,7 +390,7 @@ function observeMethodCalls(
           const span = instrumentation.onMethodCall?.({
             key,
             className,
-            functionName: prop,
+            methodName: prop,
             args: capturePolicy.args(prop, args),
           })
           try {
@@ -399,7 +398,10 @@ function observeMethodCalls(
             if (result instanceof Promise) {
               return result.then(
                 (resolved) => {
-                  span?.end(capturePolicy.success(prop, resolved))
+                  span?.end({
+                    type: 'success',
+                    ...capturePolicy.result(prop, resolved),
+                  })
                   return resolved
                 },
                 (error) => {
@@ -408,7 +410,10 @@ function observeMethodCalls(
                 },
               )
             }
-            span?.end(capturePolicy.success(prop, result))
+            span?.end({
+              type: 'success',
+              ...capturePolicy.result(prop, result),
+            })
             return result
           } catch (error) {
             span?.end({ type: 'failure', error })
@@ -422,16 +427,16 @@ function observeMethodCalls(
 }
 
 /**
- * Invokes an operation through the EventSpan's `run` wrapper when the
+ * Invokes an operation through the OperationSpan's `run` wrapper when the
  * instrumentation returned a span, so it can establish ambient state
  * (tracing context) around the operation; invokes the operation directly
  * otherwise.
  *
- * @param span The EventSpan returned by the instrumentation, if any.
+ * @param span The OperationSpan returned by the instrumentation, if any.
  * @param fn The thunk performing the operation.
  * @returns The value returned by `fn`.
  */
-function invokeWithin<T>(span: EventSpan | void, fn: () => T): T {
+function invokeWithin<T>(span: OperationSpan | void, fn: () => T): T {
   return span ? span.run(fn) : fn()
 }
 
