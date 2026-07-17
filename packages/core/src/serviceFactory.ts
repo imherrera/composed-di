@@ -1,29 +1,73 @@
 import { ServiceKey } from './serviceKey'
 import { ServiceScope } from './serviceScope'
 import { DependencyTypes } from './types'
-import { SingletonServiceFactory } from './singletonServiceFactory'
+import {
+  ServiceDisposedDuringInitError,
+  ServiceFactoryIllegalUsageError,
+} from './errors'
 
 /**
- * Abstract class representing a service factory, which defines the structure for instantiating and managing
- * the lifecycle of a service within a given scope. Subclasses are responsible for providing specific implementations
- * of service initialization and disposal.
+ * The component responsible for creating services. Install it into a `ServiceModule`
+ * to be used.
  *
  * @template T The type of the service created by the factory.
- * @template D A tuple type of `ServiceKey<unknown>` representing the dependencies required by the service.
+ * @template D A tuple of `ServiceKey`s describing the dependencies required by the
+ * service, in the order {@link initialize} expects them.
  */
 export abstract class ServiceFactory<
   const T,
   const D extends readonly ServiceKey<unknown>[] = [],
 > {
+  /**
+   * The key under which this factory's service is registered and requested.
+   * */
   abstract provides: ServiceKey<T>
+
+  /**
+   * The complete list of services this factory needs, resolved by the module and passed
+   * to {@link initialize} in declaration order.
+   */
   abstract dependsOn: D
+
+  /**
+   * Optional scope tag for targeted teardown: `module.dispose(scope)` disposes only the
+   * factories whose scope matches. Factories without a scope are torn down only by a
+   * full `module.dispose()`.
+   */
   abstract scope?: ServiceScope
+
+  /**
+   * Creates the service instance.
+   *
+   * Called by the `ServiceModule` with dependencies resolved per {@link dependsOn};
+   */
   abstract initialize(...dependencies: DependencyTypes<D>): T | Promise<T>
+
+  /**
+   * Tears down whatever {@link initialize} retained (if anything at all). A subsequent {@link initialize}
+   * produces a fresh instance.
+   *
+   * Synchronous by design: the container does not await teardown, so asynchronous
+   * cleanup must be scheduled fire-and-forget from here.
+   */
   abstract dispose(): void
 
   /**
-   * Creates a singleton service factory that ensures a single instance of the provided service is initialized
-   * and used throughout the scope lifecycle.
+   * Creates a lazily initialized singleton: `initialize` runs on the first request and
+   * the instance is shared by every request thereafter; a failed `initialize` is never
+   * cached, and after `dispose()` the next request initializes a fresh instance.
+   *
+   * @example
+   * ```typescript
+   * const Database = new ServiceKey<DbClient>('Database')
+   *
+   * const database = ServiceFactory.singleton({
+   *   provides: Database,
+   *   dependsOn: [Config],
+   *   initialize: (config) => DbClient.connect(config.dbUrl),
+   *   dispose: (client) => client.close(),
+   * })
+   * ```
    */
   static singleton<
     const T,
@@ -33,13 +77,10 @@ export abstract class ServiceFactory<
     provides,
     dependsOn = [] as unknown as D,
     initialize,
-    dispose = undefined,
-  }: {
-    scope?: ServiceScope
-    provides: ServiceKey<T>
-    dependsOn?: D
-    initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>
+    dispose = () => {},
+  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn'> & {
     dispose?: (instance: T) => void
+    dependsOn?: D
   }): ServiceFactory<T, D> {
     return new SingletonServiceFactory(
       scope,
@@ -51,23 +92,153 @@ export abstract class ServiceFactory<
   }
 
   /**
-   * Creates a one-shot service factory that initializes a new instance of the provided service
-   * every time it is requested.
+   * Creates a factory that builds a **fresh instance on every request** — no caching
+   * and no deduplication.
+   *
+   * One-shot services have no framework-managed lifecycle: `dispose` is a no-op, so
+   * instances are untouched by `module.dispose(...)` — cleanup belongs entirely to
+   * whoever requested the instance.
+   *
+   * @example
+   * ```typescript
+   * const RequestId = new ServiceKey<string>('RequestId')
+   *
+   * const requestId = ServiceFactory.oneShot({
+   *   provides: RequestId,
+   *   initialize: () => crypto.randomUUID(), // fresh value per request
+   * })
+   * ```
    */
   static oneShot<const T, const D extends readonly ServiceKey<unknown>[] = []>({
     provides,
-    dependsOn,
+    dependsOn = [] as unknown as D,
     initialize,
-  }: {
-    provides: ServiceKey<T>
-    dependsOn: D
-    initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>
+  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn'> & {
+    dependsOn?: D
   }): ServiceFactory<T, D> {
     return {
       provides,
       dependsOn,
       initialize,
       dispose: () => {},
+    }
+  }
+}
+
+/**
+ * A `SingletonServiceFactory` manages the lifecycle of a singleton service instance. It ensures
+ * that only one instance of the service is created and reuses that same instance across requests.
+ *
+ * It extends the `ServiceFactory` class to include additional behavior for managing singleton services.
+ *
+ * @template T - The type of the service instance managed by this factory.
+ * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
+ */
+export class SingletonServiceFactory<
+  const T,
+  const D extends readonly ServiceKey<unknown>[] = [],
+> extends ServiceFactory<T, D> {
+  private promisedInstance: Promise<T> | undefined
+  private retainedInstance: { value: T } | undefined
+  private generation = 0
+  // True for the synchronous duration of the onInitialize/onDispose call, so that
+  // a hook calling back into initialize()/dispose() on itself is rejected instead
+  // of corrupting the generation/instance bookkeeping. Only catches same-tick
+  // reentrancy — a hook calling back in after an `await` isn't caught, since that
+  // would require tracking the hook's async continuation (e.g. AsyncLocalStorage),
+  // which would tie `core` to Node and break runtimes like React Native.
+  private isRunningHook = false
+
+  constructor(
+    readonly scope: ServiceScope | undefined,
+    readonly provides: ServiceKey<T>,
+    readonly dependsOn: D,
+    readonly onInitialize: ServiceFactory<T, D>['initialize'],
+    readonly onDispose: ((instance: T) => void) | undefined,
+  ) {
+    super()
+  }
+
+  initialize(...dependencies: DependencyTypes<D>): Promise<T> | T {
+    if (this.retainedInstance !== undefined) {
+      return this.retainedInstance.value
+    }
+    if (this.promisedInstance !== undefined) {
+      return this.promisedInstance
+    }
+
+    if (this.isRunningHook) {
+      throw new ServiceFactoryIllegalUsageError(
+        `SingletonServiceFactory(provides=${this.provides.name}): initialize() cannot be called re-entrantly from onInitialize or onDispose`,
+      )
+    }
+
+    const generation = this.generation
+
+    // Invoke synchronously: if onInitialize throws right away, the error
+    // escapes before anything is cached, and the next call retries.
+    this.isRunningHook = true
+    let pending: Promise<T> | T
+    try {
+      pending = this.onInitialize(...dependencies)
+    } finally {
+      this.isRunningHook = false
+    }
+
+    this.promisedInstance = (async () => {
+      try {
+        const newInstance = await pending
+
+        if (this.generation !== generation) {
+          // Scope was disposed (and possibly revived) while we were in flight:
+          // this instance belongs to a dead generation. Tear it down and reject.
+          try {
+            this.isRunningHook = true
+            this.onDispose?.(newInstance)
+          } catch {
+            // teardown failure must not mask the disposal rejection
+          } finally {
+            this.isRunningHook = false
+          }
+          throw new ServiceDisposedDuringInitError(
+            `SingletonServiceFactory[provides=${this.provides.name}]: disposed during initialization`,
+          )
+        }
+
+        this.retainedInstance = { value: newInstance }
+        return newInstance
+      } finally {
+        // Only clear the slot if we still belong to the current generation —
+        // a dispose/revive may have installed a newer init's promise here.
+        if (this.generation === generation) {
+          this.promisedInstance = undefined
+        }
+      }
+    })()
+
+    return this.promisedInstance
+  }
+
+  dispose(): void {
+    if (this.isRunningHook) {
+      throw new ServiceFactoryIllegalUsageError(
+        `SingletonServiceFactory(provides=${this.provides.name}): dispose() cannot be called re-entrantly from onInitialize or onDispose`,
+      )
+    }
+
+    // Capture the current instance
+    const instance = this.retainedInstance
+    this.generation += 1
+    this.promisedInstance = undefined
+    this.retainedInstance = undefined
+
+    if (instance) {
+      this.isRunningHook = true
+      try {
+        this.onDispose?.(instance.value)
+      } finally {
+        this.isRunningHook = false
+      }
     }
   }
 }

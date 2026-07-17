@@ -51,6 +51,26 @@ export class ServiceKey<T> {
   constructor(public readonly name: string) {
     this.symbol = Symbol(name)
   }
+
+  /**
+   * Creates a new instance of `ServiceKey` with the specified name.
+   *
+   * @param name - The name associated with the `ServiceKey` instance.
+   * @return A new `ServiceKey` instance of the specified type.
+   */
+  static for<T>(name: string): ServiceKey<T> {
+    return new ServiceKey<T>(name)
+  }
+
+  /**
+   * Creates a new instance of ServiceSelectorKey using the provided keys.
+   *
+   * @param keys - An array of ServiceKey objects to be used for creating the ServiceSelectorKey.
+   * @return A new instance of ServiceSelectorKey constructed with the specified keys.
+   */
+  static from<T>(...keys: ServiceKey<T>[]): ServiceSelectorKey<T> {
+    return new ServiceSelectorKey<T>(keys)
+  }
 }
 
 /**
@@ -97,6 +117,6 @@ export class ServiceSelectorKey<T> extends ServiceKey<ServiceSelector<T>> {
    *               All keys must be registered in the ServiceModule for dependency validation to pass.
    */
   constructor(readonly values: ServiceKey<T>[]) {
-    super(`ServiceSelector[${values}]`)
+    super(`[${values.map((key) => key.name).join(',')}]`)
   }
 }

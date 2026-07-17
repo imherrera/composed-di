@@ -39,12 +39,12 @@ export class ServiceSelector<T> {
    * Note: ServiceSelector instances are created automatically by ServiceModule
    * when resolving dependencies. You typically don't need to create them manually.
    *
-   * @param serviceModule The ServiceModule used to resolve the selected service.
    * @param selectorKey The ServiceSelectorKey that defines which services can be selected.
+   * @param module The ServiceModule used to resolve the selected service.
    */
   constructor(
-    readonly serviceModule: ServiceModule,
-    readonly selectorKey: ServiceSelectorKey<T>,
+    private readonly module: ServiceModule,
+    private readonly selectorKey: ServiceSelectorKey<T>,
   ) {}
 
   /**
@@ -63,6 +63,12 @@ export class ServiceSelector<T> {
    * ```
    */
   get(key: ServiceKey<T>): Promise<T> {
-    return this.serviceModule.get(key)
+    if (this.selectorKey.values.some((k) => k === key)) {
+      return this.module.get(key)
+    } else {
+      throw new Error(
+        `ServiceKey(name=${key.name}) is not listed on ServiceSelectorKey(name=${this.selectorKey.name})`,
+      )
+    }
   }
 }

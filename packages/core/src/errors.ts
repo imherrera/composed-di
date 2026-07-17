@@ -23,3 +23,14 @@ export class ServiceFactoryNotFoundError extends Error {
 export class ServiceDisposedDuringInitError extends Error {
   name = 'ServiceDisposedDuringInitError'
 }
+
+/**
+ * Error thrown when a service factory lifecycle hook (`onInitialize` or `onDispose`) attempts to
+ * re-enter the factory by calling `initialize` or `dispose` on itself.
+ *
+ * Re-entrant calls of this kind would corrupt the factory's internal bookkeeping (e.g. the cached
+ * instance or generation counter), so they are rejected outright.
+ */
+export class ServiceFactoryIllegalUsageError extends Error {
+  name = 'ServiceFactoryIllegalUsageError'
+}
