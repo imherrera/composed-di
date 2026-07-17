@@ -8,8 +8,18 @@ export class ServiceModuleInitError extends Error {
 
 /**
  * Error thrown when a requested service cannot be found within the ServiceModule.
- * This typically occurs when no factory has been registered for the given ServiceKey.
  */
 export class ServiceFactoryNotFoundError extends Error {
   name = 'ServiceFactoryNotFoundError'
+}
+
+/**
+ * Represents an error thrown when a service is disposed of during its initialization process.
+ *
+ * This error typically indicates a logic or lifecycle issue where a service is destroyed or cleaned up
+ * before it has fully completed its initialization. It is useful for catching cases where resource management
+ * conflicts arise during the service setup phase.
+ */
+export class ServiceDisposedDuringInitError extends Error {
+  name = 'ServiceDisposedDuringInitError'
 }

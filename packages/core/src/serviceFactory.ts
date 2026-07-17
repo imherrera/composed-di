@@ -1,20 +1,16 @@
-import { ServiceKey, ServiceSelectorKey } from './serviceKey'
+import { ServiceKey } from './serviceKey'
 import { ServiceScope } from './serviceScope'
-import { ServiceSelector } from './serviceSelector'
+import { DependencyTypes } from './types'
+import { SingletonServiceFactory } from './singletonServiceFactory'
 
-// Helper types to extract the type from ServiceKey or ServiceSelectorKey
-type ServiceType<T> =
-  T extends ServiceSelectorKey<infer U>
-    ? ServiceSelector<U>
-    : T extends ServiceKey<infer U>
-      ? U
-      : never
-
-// Helper types to convert an array/tuple of ServiceKey to tuple of their types
-type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
-  [K in keyof T]: ServiceType<T[K]>
-}
-
+/**
+ * Abstract class representing a service factory, which defines the structure for instantiating and managing
+ * the lifecycle of a service within a given scope. Subclasses are responsible for providing specific implementations
+ * of service initialization and disposal.
+ *
+ * @template T The type of the service created by the factory.
+ * @template D A tuple type of `ServiceKey<unknown>` representing the dependencies required by the service.
+ */
 export abstract class ServiceFactory<
   const T,
   const D extends readonly ServiceKey<unknown>[] = [],
@@ -22,8 +18,8 @@ export abstract class ServiceFactory<
   abstract provides: ServiceKey<T>
   abstract dependsOn: D
   abstract scope?: ServiceScope
-  abstract initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>
-  abstract dispose?: () => void
+  abstract initialize(...dependencies: DependencyTypes<D>): T | Promise<T>
+  abstract dispose(): void
 
   /**
    * Creates a singleton service factory that ensures a single instance of the provided service is initialized
@@ -37,7 +33,7 @@ export abstract class ServiceFactory<
     provides,
     dependsOn = [] as unknown as D,
     initialize,
-    dispose = () => {},
+    dispose = undefined,
   }: {
     scope?: ServiceScope
     provides: ServiceKey<T>
@@ -45,41 +41,13 @@ export abstract class ServiceFactory<
     initialize: (...dependencies: DependencyTypes<D>) => T | Promise<T>
     dispose?: (instance: T) => void
   }): ServiceFactory<T, D> {
-    let promisedInstance: Promise<T> | undefined
-    let resolvedInstance: T | undefined
-
-    return {
+    return new SingletonServiceFactory(
       scope,
       provides,
       dependsOn,
-      async initialize(...dependencies: DependencyTypes<D>): Promise<T> {
-        if (resolvedInstance !== undefined) {
-          return resolvedInstance
-        }
-
-        if (promisedInstance !== undefined) {
-          return promisedInstance
-        }
-
-        // Store the reference to the promise so that concurrent requests can wait for it
-        promisedInstance = (async () => {
-          try {
-            resolvedInstance = await initialize(...dependencies)
-            return resolvedInstance
-          } finally {
-            promisedInstance = undefined
-          }
-        })()
-        return promisedInstance
-      },
-      dispose(): void {
-        if (resolvedInstance !== undefined) {
-          dispose(resolvedInstance)
-          resolvedInstance = undefined
-        }
-        promisedInstance = undefined
-      },
-    }
+      initialize,
+      dispose,
+    )
   }
 
   /**
@@ -99,6 +67,7 @@ export abstract class ServiceFactory<
       provides,
       dependsOn,
       initialize,
+      dispose: () => {},
     }
   }
 }
