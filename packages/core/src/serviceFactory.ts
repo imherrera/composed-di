@@ -141,12 +141,6 @@ export class SingletonServiceFactory<
   private promisedInstance: Promise<T> | undefined
   private retainedInstance: { value: T } | undefined
   private generation = 0
-  // True for the synchronous duration of the onInitialize/onDispose call, so that
-  // a hook calling back into initialize()/dispose() on itself is rejected instead
-  // of corrupting the generation/instance bookkeeping. Only catches same-tick
-  // reentrancy — a hook calling back in after an `await` isn't caught, since that
-  // would require tracking the hook's async continuation (e.g. AsyncLocalStorage),
-  // which would tie `core` to Node and break runtimes like React Native.
   private isRunningHook = false
 
   constructor(
