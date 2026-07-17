@@ -1,6 +1,6 @@
 // Helper types to extract the type from ServiceKey or ServiceSelectorKey
-import { ServiceKey, ServiceSelectorKey } from './serviceKey';
-import { ServiceSelector } from './serviceSelector';
+import { ServiceKey, ServiceSelectorKey } from './serviceKey'
+import { ServiceSelector } from './serviceSelector'
 
 export type ServiceType<T> =
   T extends ServiceSelectorKey<infer U>

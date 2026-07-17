@@ -4,10 +4,11 @@ import { ServiceKey, ServiceSelectorKey } from '../src/serviceKey'
 import { ServiceFactory, SingletonServiceFactory } from '../src/serviceFactory'
 import { ServiceScope } from '../src/serviceScope'
 import {
-  ServiceDisposedDuringInitError, ServiceFactoryIllegalUsageError,
+  ServiceDisposedDuringInitError,
+  ServiceFactoryIllegalUsageError,
   ServiceFactoryNotFoundError,
-  ServiceModuleInitError
-} from '../src/errors';
+  ServiceModuleInitError,
+} from '../src/errors'
 
 describe('ServiceModule', () => {
   describe('from', () => {

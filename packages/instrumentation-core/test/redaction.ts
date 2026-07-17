@@ -312,7 +312,9 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory(), plain], {
-        redactionRules: [redactionRule(SecretKey).redact('listSecretNames').build()],
+        redactionRules: [
+          redactionRule(SecretKey).redact('listSecretNames').build(),
+        ],
       }),
     )
 

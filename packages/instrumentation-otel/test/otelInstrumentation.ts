@@ -33,7 +33,10 @@ beforeEach(() => {
 })
 
 const makeListener = (options: Partial<OTELInstrumentationOptions> = {}) =>
-  new OTELServiceInstrumentation({ tracer: provider.getTracer('test'), ...options })
+  new OTELServiceInstrumentation({
+    tracer: provider.getTracer('test'),
+    ...options,
+  })
 
 const spans = () => exporter.getFinishedSpans()
 const byName = (name: string) => {

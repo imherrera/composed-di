@@ -68,9 +68,7 @@ describe('DashboardClient', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     })
-    const module = ServiceModule.from(
-      client.instrumentation.install([factory]),
-    )
+    const module = ServiceModule.from(client.instrumentation.install([factory]))
 
     const svc = await module.get(Key)
     svc.greet()
@@ -94,9 +92,7 @@ describe('DashboardClient', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     })
-    const module = ServiceModule.from(
-      client.instrumentation.install([factory]),
-    )
+    const module = ServiceModule.from(client.instrumentation.install([factory]))
     client.attach(module)
 
     const svc = await module.get(Key)
@@ -151,9 +147,7 @@ describe('DashboardClient', () => {
         },
       }),
     })
-    const module = ServiceModule.from(
-      client.instrumentation.install([factory]),
-    )
+    const module = ServiceModule.from(client.instrumentation.install([factory]))
 
     const svc = await module.get(Key)
     expect(() => svc.boom()).toThrow('kaput')
@@ -192,9 +186,7 @@ describe('DashboardClient', () => {
   it('should omit arguments and results by default', async () => {
     const client = makeClient()
     const { Key, factory } = echoFactory()
-    const module = ServiceModule.from(
-      client.instrumentation.install([factory]),
-    )
+    const module = ServiceModule.from(client.instrumentation.install([factory]))
 
     const svc = await module.get(Key)
     svc.echo('hi')
@@ -233,9 +225,7 @@ describe('DashboardClient', () => {
       provides: Key,
       initialize: () => ({ greet: () => 'hi' }),
     })
-    const module = ServiceModule.from(
-      client.instrumentation.install([factory]),
-    )
+    const module = ServiceModule.from(client.instrumentation.install([factory]))
 
     const svc = await module.get(Key)
     await client.close()
