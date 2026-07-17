@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ServiceKey } from '../src/serviceKey'
-import { ServiceFactory, SingletonServiceFactory } from '../src/serviceFactory'
+import { ServiceFactory } from '../src/serviceFactory'
 import {
   ServiceDisposedDuringInitError,
   ServiceFactoryIllegalUsageError,
@@ -23,7 +23,7 @@ function deferred<T>() {
 }
 
 describe('SingletonServiceFactory', () => {
-  describe('construction', () => {
+  describe('singleton', () => {
     it('Should be an instance of ServiceFactory', () => {
       expect(
         ServiceFactory.singleton({
@@ -34,21 +34,18 @@ describe('SingletonServiceFactory', () => {
     })
   })
 
-  describe('initialization: dedup and caching', () => {
+  describe('initialize', () => {
     it('deduplicates concurrent initialization: one onInitialize call, same promise reference', async () => {
       const Key = new ServiceKey<{ id: number }>('Key')
       const d = deferred<{ id: number }>()
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
           calls++
           return d.promise
         },
-        undefined,
-      )
+      })
 
       const p1 = factory.initialize()
       const p2 = factory.initialize()
@@ -69,16 +66,13 @@ describe('SingletonServiceFactory', () => {
     it('dedups within the same tick even for a synchronous initializer', async () => {
       const Key = new ServiceKey<string>('Key')
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
           calls++
           return 'value'
         },
-        undefined,
-      )
+      })
 
       const p1 = factory.initialize()
       const p2 = factory.initialize()
@@ -95,16 +89,14 @@ describe('SingletonServiceFactory', () => {
       const Key = new ServiceKey<string>('Key')
       const d = deferred<string>()
       const received: number[] = []
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [DepKey] as const,
-        (dep) => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        dependsOn: [DepKey] as const,
+        initialize: (dep) => {
           received.push(dep)
           return d.promise
         },
-        undefined,
-      )
+      })
 
       const p1 = factory.initialize(1)
       const p2 = factory.initialize(2)
@@ -119,16 +111,13 @@ describe('SingletonServiceFactory', () => {
     it('returns the retained instance synchronously once initialization has settled', async () => {
       const Key = new ServiceKey<{ id: number }>('Key')
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
           calls++
           return { id: calls }
         },
-        undefined,
-      )
+      })
 
       const first = await factory.initialize()
 
@@ -150,16 +139,14 @@ describe('SingletonServiceFactory', () => {
         const Key = new ServiceKey<unknown>('Key')
         const disposed: unknown[] = []
         let calls = 0
-        const factory = new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => {
+        const factory = ServiceFactory.singleton({
+          provides: Key,
+          initialize: () => {
             calls++
             return falsy
           },
-          (instance) => disposed.push(instance),
-        )
+          dispose: (instance) => disposed.push(instance),
+        })
 
         expect(await factory.initialize()).toBe(falsy)
         expect(await factory.initialize()).toBe(falsy)
@@ -174,9 +161,7 @@ describe('SingletonServiceFactory', () => {
         expect(calls).toBe(2)
       },
     )
-  })
 
-  describe('initialization failure: the retry contract', () => {
     // Regression: a synchronous onInitialize throw once sequenced an internal
     // `finally` BEFORE the slot assignment, permanently caching the rejected
     // promise — every later call served it without re-running the
@@ -185,17 +170,14 @@ describe('SingletonServiceFactory', () => {
     it('a synchronous onInitialize throw escapes synchronously and does not poison the slot', async () => {
       const Key = new ServiceKey<string>('Key')
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
           calls++
           if (calls === 1) throw new Error('sync boom')
           return 'recovered'
         },
-        undefined,
-      )
+      })
 
       expect(() => factory.initialize()).toThrow('sync boom')
       expect(calls).toBe(1)
@@ -209,17 +191,14 @@ describe('SingletonServiceFactory', () => {
     it('concurrent waiters share a failed initialization, and the next call retries', async () => {
       const Key = new ServiceKey<string>('Key')
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        async () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: async () => {
           calls++
           if (calls === 1) throw new Error('async boom')
           return 'recovered'
         },
-        undefined,
-      )
+      })
 
       const p1 = factory.initialize()
       const p2 = factory.initialize()
@@ -231,20 +210,123 @@ describe('SingletonServiceFactory', () => {
       expect(await factory.initialize()).toBe('recovered')
       expect(calls).toBe(2)
     })
+
+    it('recovers after onInitialize illegally calls dispose()', async () => {
+      const Key = new ServiceKey<string>('Key')
+      let attempts = 0
+      let misbehave = true
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
+          attempts++
+          if (misbehave) {
+            misbehave = false
+            factory.dispose() // throws here, at the culprit
+          }
+          return 'value'
+        },
+      })
+
+      expect(() => factory.initialize()).toThrow(
+        ServiceFactoryIllegalUsageError,
+      )
+      expect(attempts).toBe(1)
+
+      // Nothing cached, guard disengaged: the retry contract holds.
+      expect(await factory.initialize()).toBe('value')
+      expect(attempts).toBe(2)
+    })
+
+    it('throws ServiceFactoryIllegalUsageError when onInitialize calls initialize()', () => {
+      const Key = new ServiceKey<string>('Key')
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
+          factory.initialize()
+          return 'value'
+        },
+      })
+
+      expect(() => factory.initialize()).toThrow(
+        ServiceFactoryIllegalUsageError,
+      )
+    })
+
+    it('throws ServiceFactoryIllegalUsageError when onInitialize calls dispose()', () => {
+      const Key = new ServiceKey<string>('Key')
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
+          factory.dispose()
+          return 'value'
+        },
+      })
+
+      expect(() => factory.initialize()).toThrow(
+        ServiceFactoryIllegalUsageError,
+      )
+    })
+
+    it('does not leave the guard engaged after a re-entrant call is rejected', async () => {
+      const Key = new ServiceKey<string>('Key')
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
+          expect(() => factory.initialize()).toThrow(
+            ServiceFactoryIllegalUsageError,
+          )
+          return 'value'
+        },
+      })
+
+      expect(await factory.initialize()).toBe('value')
+      expect(() => factory.dispose()).not.toThrow()
+    })
+
+    // Skipped — and the gap is narrower than it looks. Post-await reentry
+    // cannot corrupt state: by the time the initializer's continuation runs,
+    // the in-flight slot is already claimed, so an inner initialize() simply
+    // joins that promise via dedup (one instance either way). The residual
+    // risk is an initializer that AWAITS its own promise — a silent
+    // self-deadlock, annoying but not corrupting. Catching it means tracking
+    // the hook's async continuation (AsyncLocalStorage), which ties core to
+    // Node and breaks bundling on runtimes like React Native. If the deadlock
+    // ever bites, the path is a pluggable tracker: no-op default in core, ALS
+    // implementation behind a Node-only subpath export — and this test
+    // un-skips in the Node suite. The assertion below is the correct tier-2
+    // semantics: the reentry happens BEFORE the init promise settles, so a
+    // settled-marker ALS guard would still flag it as inside-the-hook.
+    it.skip('throws ServiceFactoryIllegalUsageError when onInitialize calls initialize() after an await', async () => {
+      const Key = new ServiceKey<string>('Key')
+      let caught: unknown
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: async () => {
+          await Promise.resolve()
+          try {
+            factory.initialize()
+          } catch (e) {
+            caught = e
+          }
+          return 'value'
+        },
+      })
+
+      expect(await factory.initialize()).toBe('value')
+      expect(caught).toBeInstanceOf(ServiceFactoryIllegalUsageError)
+    })
   })
 
-  describe('dispose and revival lifecycle', () => {
+  describe('dispose', () => {
     it('supports repeated dispose/initialize cycles: one fresh instance per generation', async () => {
       const Key = new ServiceKey<{ gen: number }>('Key')
       const disposed: number[] = []
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => ({ gen: calls++ }),
-        (instance) => disposed.push(instance.gen),
-      )
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => ({ gen: calls++ }),
+        dispose: (instance) => disposed.push(instance.gen),
+      })
 
       for (let cycle = 0; cycle < 3; cycle++) {
         const instance = await factory.initialize()
@@ -260,13 +342,11 @@ describe('SingletonServiceFactory', () => {
     it('double dispose and dispose-before-initialize never over-invoke onDispose', async () => {
       const Key = new ServiceKey<string>('Key')
       const disposed: string[] = []
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => 'value',
-        (instance) => disposed.push(instance),
-      )
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => 'value',
+        dispose: (instance) => disposed.push(instance),
+      })
 
       factory.dispose() // nothing ever initialized: must be a silent no-op
       expect(disposed).toEqual([])
@@ -283,18 +363,16 @@ describe('SingletonServiceFactory', () => {
     it('a throwing onDispose cannot re-serve the disposed instance', async () => {
       const Key = new ServiceKey<{ id: number }>('Key')
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
           calls++
           return { id: calls }
         },
-        () => {
+        dispose: () => {
           throw new Error('teardown failed')
         },
-      )
+      })
 
       const first = await factory.initialize()
       expect(() => factory.dispose()).toThrow('teardown failed')
@@ -306,24 +384,20 @@ describe('SingletonServiceFactory', () => {
       expect(second).toEqual({ id: 2 })
       expect(calls).toBe(2)
     })
-  })
 
-  describe('dispose during in-flight initialization (generation races)', () => {
     it('tears down the orphan instance and rejects waiters with ServiceDisposedDuringInitError', async () => {
       const Key = new ServiceKey<{ id: number }>('Key')
       const d = deferred<{ id: number }>()
       const disposed: Array<{ id: number }> = []
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
           calls++
           return calls === 1 ? d.promise : { id: 99 }
         },
-        (instance) => disposed.push(instance),
-      )
+        dispose: (instance) => disposed.push(instance),
+      })
 
       const inFlight = factory.initialize()
 
@@ -358,13 +432,11 @@ describe('SingletonServiceFactory', () => {
       const pendings = [dA.promise, dB.promise]
       const disposed: Array<{ gen: number }> = []
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => pendings[calls++]!,
-        (instance) => disposed.push(instance),
-      )
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => pendings[calls++]!,
+        dispose: (instance) => disposed.push(instance),
+      })
 
       const pA = factory.initialize() // generation 0, in flight
       factory.dispose() // generation 1; slot cleared
@@ -398,16 +470,13 @@ describe('SingletonServiceFactory', () => {
       const Key = new ServiceKey<string>('Key')
       const d = deferred<string>()
       let calls = 0
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
           calls++
           return calls === 1 ? d.promise : 'recovered'
         },
-        undefined,
-      )
+      })
 
       const inFlight = factory.initialize()
       factory.dispose()
@@ -424,15 +493,13 @@ describe('SingletonServiceFactory', () => {
     it('a throwing onDispose during orphan cleanup does not mask the disposal rejection', async () => {
       const Key = new ServiceKey<string>('Key')
       const d = deferred<string>()
-      const factory = new SingletonServiceFactory(
-        undefined,
-        Key,
-        [],
-        () => d.promise,
-        () => {
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => d.promise,
+        dispose: () => {
           throw new Error('teardown failed')
         },
-      )
+      })
 
       const inFlight = factory.initialize()
       factory.dispose()
@@ -443,62 +510,26 @@ describe('SingletonServiceFactory', () => {
         ServiceDisposedDuringInitError,
       )
     })
-  })
 
-  describe('illegal usage guard (synchronous reentrancy from hooks)', () => {
-    it('recovers after onInitialize illegally calls dispose()', async () => {
-      const Key = new ServiceKey<string>('Key')
-      let attempts = 0
-      let misbehave = true
-      const factory: SingletonServiceFactory<string> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => {
-            attempts++
-            if (misbehave) {
-              misbehave = false
-              factory.dispose() // throws here, at the culprit
-            }
-            return 'value'
-          },
-          undefined,
-        )
-
-      expect(() => factory.initialize()).toThrow(
-        ServiceFactoryIllegalUsageError,
-      )
-      expect(attempts).toBe(1)
-
-      // Nothing cached, guard disengaged: the retry contract holds.
-      expect(await factory.initialize()).toBe('value')
-      expect(attempts).toBe(2)
-    })
-
-    // Dispose-side twin of the recovery test above: proves state was settled
-    // BEFORE onDispose ran, so the illegal inner call could not create a
-    // zombie, and revival is clean afterward.
+    // Proves state was settled BEFORE onDispose ran, so the illegal inner
+    // call could not create a zombie, and revival is clean afterward.
     it('recovers after onDispose illegally calls initialize()', async () => {
       const Key = new ServiceKey<{ id: number }>('Key')
       let calls = 0
       let misbehave = true
-      const factory: SingletonServiceFactory<{ id: number }> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => {
-            calls++
-            return { id: calls }
-          },
-          () => {
-            if (misbehave) {
-              misbehave = false
-              factory.initialize() // throws here, at the culprit
-            }
-          },
-        )
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => {
+          calls++
+          return { id: calls }
+        },
+        dispose: () => {
+          if (misbehave) {
+            misbehave = false
+            factory.initialize() // throws here, at the culprit
+          }
+        },
+      })
 
       const first = await factory.initialize()
       expect(() => factory.dispose()).toThrow(ServiceFactoryIllegalUsageError)
@@ -510,56 +541,15 @@ describe('SingletonServiceFactory', () => {
       factory.dispose() // now behaves: plain teardown of the new generation
     })
 
-    it('throws ServiceFactoryIllegalUsageError when onInitialize calls initialize()', () => {
-      const Key = new ServiceKey<string>('Key')
-      const factory: SingletonServiceFactory<string> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => {
-            factory.initialize()
-            return 'value'
-          },
-          undefined,
-        )
-
-      expect(() => factory.initialize()).toThrow(
-        ServiceFactoryIllegalUsageError,
-      )
-    })
-
-    it('throws ServiceFactoryIllegalUsageError when onInitialize calls dispose()', () => {
-      const Key = new ServiceKey<string>('Key')
-      const factory: SingletonServiceFactory<string> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => {
-            factory.dispose()
-            return 'value'
-          },
-          undefined,
-        )
-
-      expect(() => factory.initialize()).toThrow(
-        ServiceFactoryIllegalUsageError,
-      )
-    })
-
     it('throws ServiceFactoryIllegalUsageError when onDispose calls initialize()', async () => {
       const Key = new ServiceKey<string>('Key')
-      const factory: SingletonServiceFactory<string> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => 'value',
-          () => {
-            factory.initialize()
-          },
-        )
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => 'value',
+        dispose: () => {
+          factory.initialize()
+        },
+      })
 
       await factory.initialize()
 
@@ -568,77 +558,17 @@ describe('SingletonServiceFactory', () => {
 
     it('throws ServiceFactoryIllegalUsageError when onDispose calls dispose()', async () => {
       const Key = new ServiceKey<string>('Key')
-      const factory: SingletonServiceFactory<string> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => 'value',
-          () => {
-            factory.dispose()
-          },
-        )
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => 'value',
+        dispose: () => {
+          factory.dispose()
+        },
+      })
 
       await factory.initialize()
 
       expect(() => factory.dispose()).toThrow(ServiceFactoryIllegalUsageError)
-    })
-
-    it('does not leave the guard engaged after a re-entrant call is rejected', async () => {
-      const Key = new ServiceKey<string>('Key')
-      const factory: SingletonServiceFactory<string> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => {
-            expect(() => factory.initialize()).toThrow(
-              ServiceFactoryIllegalUsageError,
-            )
-            return 'value'
-          },
-          undefined,
-        )
-
-      expect(await factory.initialize()).toBe('value')
-      expect(() => factory.dispose()).not.toThrow()
-    })
-
-    // Skipped — and the gap is narrower than it looks. Post-await reentry
-    // cannot corrupt state: by the time the initializer's continuation runs,
-    // the in-flight slot is already claimed, so an inner initialize() simply
-    // joins that promise via dedup (one instance either way). The residual
-    // risk is an initializer that AWAITS its own promise — a silent
-    // self-deadlock, annoying but not corrupting. Catching it means tracking
-    // the hook's async continuation (AsyncLocalStorage), which ties core to
-    // Node and breaks bundling on runtimes like React Native. If the deadlock
-    // ever bites, the path is a pluggable tracker: no-op default in core, ALS
-    // implementation behind a Node-only subpath export — and this test
-    // un-skips in the Node suite. The assertion below is the correct tier-2
-    // semantics: the reentry happens BEFORE the init promise settles, so a
-    // settled-marker ALS guard would still flag it as inside-the-hook.
-    it.skip('throws ServiceFactoryIllegalUsageError when onInitialize calls initialize() after an await', async () => {
-      const Key = new ServiceKey<string>('Key')
-      let caught: unknown
-      const factory: SingletonServiceFactory<string> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          async () => {
-            await Promise.resolve()
-            try {
-              factory.initialize()
-            } catch (e) {
-              caught = e
-            }
-            return 'value'
-          },
-          undefined,
-        )
-
-      expect(await factory.initialize()).toBe('value')
-      expect(caught).toBeInstanceOf(ServiceFactoryIllegalUsageError)
     })
 
     // Replaces a formerly-skipped test that asserted the OPPOSITE semantics.
@@ -654,25 +584,22 @@ describe('SingletonServiceFactory', () => {
       const Key = new ServiceKey<string>('Key')
       const disposed: string[] = []
       let reentrantAttempt: Promise<unknown> = Promise.resolve()
-      const factory: SingletonServiceFactory<string> =
-        new SingletonServiceFactory(
-          undefined,
-          Key,
-          [],
-          () => 'value',
-          (instance) => {
-            disposed.push(instance)
-            reentrantAttempt = (async () => {
-              await Promise.resolve() // resumes strictly after dispose() returns
-              try {
-                factory.dispose()
-                return undefined
-              } catch (e) {
-                return e
-              }
-            })()
-          },
-        )
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => 'value',
+        dispose: (instance) => {
+          disposed.push(instance)
+          reentrantAttempt = (async () => {
+            await Promise.resolve() // resumes strictly after dispose() returns
+            try {
+              factory.dispose()
+              return undefined
+            } catch (e) {
+              return e
+            }
+          })()
+        },
+      })
 
       await factory.initialize()
       factory.dispose()
