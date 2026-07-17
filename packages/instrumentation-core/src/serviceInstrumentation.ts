@@ -181,14 +181,14 @@ export interface InstrumentOptions {
  * return an OperationSpan that is notified when that operation finishes.
  * Returning nothing opts out of completion tracking for that call.
  */
-export class ServiceInstrumentation {
+export abstract class ServiceInstrumentation {
   /**
    * Invoked at the start of the initialization process for a specific service.
    *
    * @param context - Context of the initialization, including the service key.
    * @return An OperationSpan notified when initialization finishes, or void.
    */
-  onInitialize?(context: InitializeContext): OperationSpan | void
+  abstract onInitialize(context: InitializeContext): OperationSpan
 
   /**
    * Invoked when the disposal process for a service starts.
@@ -196,7 +196,7 @@ export class ServiceInstrumentation {
    * @param context - Context of the disposal, including the service key.
    * @return An OperationSpan notified when disposal finishes, or void.
    */
-  onDispose?(context: DisposeContext): OperationSpan | void
+  abstract onDispose(context: DisposeContext): OperationSpan
 
   /**
    * Invoked when a method call starts on a service instance.
@@ -205,7 +205,7 @@ export class ServiceInstrumentation {
    * the method name, and its arguments.
    * @return An OperationSpan notified when the call finishes, or void.
    */
-  onMethodCall?(context: MethodCallContext): OperationSpan | void
+  abstract onMethodCall(context: MethodCallContext): OperationSpan
 
   /**
    * Wraps service factories so this instrumentation is notified when a

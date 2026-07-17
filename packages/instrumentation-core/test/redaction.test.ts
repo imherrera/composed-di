@@ -388,17 +388,6 @@ describe('redaction through instrument()', () => {
     expect(recorder.find('dispose').outcome).toEqual({ type: 'success' })
   })
 
-  it('should tolerate instrumentations that implement no hooks', async () => {
-    const module = ServiceModule.from(
-      observe(new ServiceInstrumentation(), [secretFactory()], {
-        redactionRules: [redactionRule(SecretKey).redactAll().build()],
-      }),
-    )
-
-    const svc = await module.get(SecretKey)
-    expect(svc.getSecret('db-password')).toBe('value-of-db-password')
-  })
-
   describe('capture flags as the primary gate', () => {
     it('should deliver neither args nor values when capture is off, rules or not', async () => {
       const recorder = new RecordingListener()
