@@ -64,6 +64,7 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
+        dependsOn: [Key1],
         initialize: () => 'value1',
       })
 
