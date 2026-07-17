@@ -11,7 +11,6 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
       })
 
@@ -24,7 +23,6 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
       })
       const module1 = ServiceModule.from([factory1])
@@ -32,7 +30,6 @@ describe('ServiceModule', () => {
       const Key2 = new ServiceKey<string>('Key2')
       const factory2 = ServiceFactory.oneShot({
         provides: Key2,
-        dependsOn: [],
         initialize: () => 'value2',
       })
 
@@ -46,12 +43,10 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1a = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1a',
       })
       const factory1b = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1b',
       })
 
@@ -65,7 +60,6 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [Key1],
         initialize: () => 'value1',
       })
 
@@ -179,7 +173,6 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
       })
 
@@ -194,7 +187,6 @@ describe('ServiceModule', () => {
 
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
       })
 
@@ -216,7 +208,6 @@ describe('ServiceModule', () => {
 
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => '1',
       })
 
@@ -250,7 +241,6 @@ describe('ServiceModule', () => {
       let counter = 0
       const factory1 = ServiceFactory.singleton({
         provides: Key1,
-        dependsOn: [],
         initialize: () => ({ id: ++counter }),
       })
 
@@ -268,7 +258,6 @@ describe('ServiceModule', () => {
       let counter = 0
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => ({ id: ++counter }),
       })
 
@@ -289,12 +278,10 @@ describe('ServiceModule', () => {
 
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
       })
       const factory2 = ServiceFactory.oneShot({
         provides: Key2,
-        dependsOn: [],
         initialize: () => 'value2',
       })
 
@@ -316,7 +303,6 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => {
           throw new Error('Init error')
         },
@@ -331,7 +317,6 @@ describe('ServiceModule', () => {
       let initCount = 0
       const factory1 = ServiceFactory.singleton({
         provides: Key1,
-        dependsOn: [],
         initialize: async () => {
           await new Promise((resolve) => setTimeout(resolve, 10))
           initCount++
@@ -356,7 +341,6 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
       })
 
@@ -377,7 +361,6 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => {
           throw new Error('Init error')
         },
@@ -394,7 +377,6 @@ describe('ServiceModule', () => {
       const dispose1 = vi.fn()
       const factory1 = ServiceFactory.singleton({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
         dispose: dispose1,
       })
@@ -403,7 +385,6 @@ describe('ServiceModule', () => {
       const dispose2 = vi.fn()
       const factory2 = ServiceFactory.singleton({
         provides: Key2,
-        dependsOn: [],
         initialize: () => 'value2',
         dispose: dispose2,
       })
@@ -429,7 +410,6 @@ describe('ServiceModule', () => {
       const factory1 = ServiceFactory.singleton({
         scope: Scope1,
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
         dispose: dispose1,
       })
@@ -439,7 +419,6 @@ describe('ServiceModule', () => {
       const factory2 = ServiceFactory.singleton({
         scope: Scope2,
         provides: Key2,
-        dependsOn: [],
         initialize: () => 'value2',
         dispose: dispose2,
       })
@@ -459,7 +438,6 @@ describe('ServiceModule', () => {
       const Key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: Key1,
-        dependsOn: [],
         initialize: () => 'value1',
       })
 
