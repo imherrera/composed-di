@@ -7,5 +7,22 @@
   "rules": {
     "unicorn/filename-case": ["error", { "case": "camelCase" }]
   },
+  "overrides": [
+    {
+      "files": ["**/test/**"],
+      "plugins": ["vitest"],
+      "rules": {
+        "vitest/no-standalone-expect": "off",
+        "vitest/no-disabled-tests": "off",
+        "vitest/consistent-test-filename": [
+          "error",
+          {
+            "allTestPattern": "\\.(test|spec)\\.ts?$",
+            "pattern": "a name without the redundant \\.test suffix, files under test/ are already tests"
+          }
+        ]
+      }
+    }
+  ],
   "ignorePatterns": ["**/dist/**", "**/node_modules/**"]
 }

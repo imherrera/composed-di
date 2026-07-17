@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     globals: true,
-    include: ['packages/*/test/**/*.test.ts'],
+    include: ['packages/*/test/**/*.ts'],
   },
   resolve: {
     // Resolve workspace packages to their sources so tests never depend

@@ -378,7 +378,7 @@ describe('ServiceModule', () => {
   describe('dispose', () => {
     it('should call dispose on all factories when no scope is provided', async () => {
       const Key1 = new ServiceKey<string>('Key1')
-      const dispose1 = vi.fn()
+      const dispose1 = vi.fn<(instance: string) => void>()
       const factory1 = ServiceFactory.singleton({
         provides: Key1,
         initialize: () => 'value1',
@@ -386,7 +386,7 @@ describe('ServiceModule', () => {
       })
 
       const Key2 = new ServiceKey<string>('Key2')
-      const dispose2 = vi.fn()
+      const dispose2 = vi.fn<(instance: string) => void>()
       const factory2 = ServiceFactory.singleton({
         provides: Key2,
         initialize: () => 'value2',
@@ -410,7 +410,7 @@ describe('ServiceModule', () => {
       const Scope2 = { name: 'Scope2' } as ServiceScope
 
       const Key1 = new ServiceKey<string>('Key1')
-      const dispose1 = vi.fn()
+      const dispose1 = vi.fn<(instance: string) => void>()
       const factory1 = ServiceFactory.singleton({
         scope: Scope1,
         provides: Key1,
@@ -419,7 +419,7 @@ describe('ServiceModule', () => {
       })
 
       const Key2 = new ServiceKey<string>('Key2')
-      const dispose2 = vi.fn()
+      const dispose2 = vi.fn<(instance: string) => void>()
       const factory2 = ServiceFactory.singleton({
         scope: Scope2,
         provides: Key2,
