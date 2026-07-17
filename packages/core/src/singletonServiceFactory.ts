@@ -1,7 +1,7 @@
-import { ServiceKey } from './serviceKey'
-import { ServiceScope } from './serviceScope'
-import { ServiceFactory } from './serviceFactory'
-import { DependencyTypes } from './types'
+import type { ServiceKey } from './serviceKey'
+import type { ServiceScope } from './serviceScope'
+import type { ServiceFactory } from './serviceFactory'
+import type { DependencyTypes } from './types'
 import { ServiceDisposedDuringInitError } from './errors'
 
 /**
@@ -16,22 +16,20 @@ import { ServiceDisposedDuringInitError } from './errors'
 export class SingletonServiceFactory<
   const T,
   const D extends readonly ServiceKey<unknown>[] = [],
-> extends ServiceFactory<T, D> {
+> implements ServiceFactory<T, D> {
   private promisedInstance: Promise<T> | undefined
   private retainedInstance: { value: T } | undefined
   private generation = 0
 
   constructor(
-    override readonly scope: ServiceScope | undefined,
-    override readonly provides: ServiceKey<T>,
-    override readonly dependsOn: D,
+    readonly scope: ServiceScope | undefined,
+    readonly provides: ServiceKey<T>,
+    readonly dependsOn: D,
     readonly onInitialize: ServiceFactory<T, D>['initialize'],
     readonly onDispose: ((instance: T) => void) | undefined,
-  ) {
-    super()
-  }
+  ) {}
 
-  override initialize(...dependencies: DependencyTypes<D>): Promise<T> | T {
+  initialize(...dependencies: DependencyTypes<D>): Promise<T> | T {
     if (this.retainedInstance !== undefined) {
       return this.retainedInstance.value
     }
@@ -76,7 +74,7 @@ export class SingletonServiceFactory<
     return this.promisedInstance
   }
 
-  override dispose(): void {
+  dispose(): void {
     // Capture the current instance
     const instance = this.retainedInstance
     this.generation += 1

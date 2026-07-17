@@ -16,10 +16,10 @@
     "test:types": "tsc --build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
+    "lint:cycles": "madge packages/*/src --extensions ts --circular",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "publish:all": "pnpm -r publish --access public",
-    "dev:dashboard": "tsc --build && node packages/observability/dist/cli.js"
+    "publish:all": "pnpm -r publish --access public"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.10",
