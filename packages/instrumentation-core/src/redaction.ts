@@ -168,6 +168,12 @@ export class RedactionRuleBuilder<T> {
   }
 }
 
+/**
+ * Creates and returns a new RedactionRuleBuilder instance for the specified service key.
+ *
+ * @param key - The service key associated with the redaction rule to be built.
+ * @return A new instance of RedactionRuleBuilder for constructing redaction rules.
+ */
 export function redactionRule<T>(key: ServiceKey<T>): RedactionRuleBuilder<T> {
   return new RedactionRuleBuilder(key)
 }
