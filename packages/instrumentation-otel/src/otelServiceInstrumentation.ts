@@ -19,6 +19,12 @@ import {
   ServiceInstrumentation,
 } from '@composed-di/instrumentation-core'
 import { ServiceKey } from '@composed-di/core'
+import {
+  ATTR_COMPOSED_DI_SERVICE_EVENT,
+  ATTR_COMPOSED_DI_SERVICE_FUNCTION_ARGUMENTS,
+  ATTR_COMPOSED_DI_SERVICE_FUNCTION_RESULT,
+  ATTR_COMPOSED_DI_SERVICE_KEY,
+} from './attributes'
 
 export interface OTELInstrumentationOptions {
   /**
@@ -108,7 +114,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
           // Present exactly when result capture is enabled in the
           // InstrumentOptions; the value arrives already redacted.
           span.setAttribute(
-            'composed_di.service.function.result',
+            ATTR_COMPOSED_DI_SERVICE_FUNCTION_RESULT,
             serialize(outcome.value),
           )
         }
@@ -126,14 +132,14 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
   }) {
     const attributes: { [key: string]: string } = {
       [ATTR_CODE_FUNCTION_NAME]: `${params.className ?? params.key.name}.${params.methodName}`,
-      'composed_di.service.key': params.key.name,
-      'composed_di.service.event': params.event,
+      [ATTR_COMPOSED_DI_SERVICE_KEY]: params.key.name,
+      [ATTR_COMPOSED_DI_SERVICE_EVENT]: params.event,
     }
 
     // Present exactly when argument capture is enabled in the
     // InstrumentOptions; the args arrive already redacted.
     if (params.args) {
-      attributes['composed_di.service.function.arguments'] = serialize(
+      attributes[ATTR_COMPOSED_DI_SERVICE_FUNCTION_ARGUMENTS] = serialize(
         params.args,
       )
     }
