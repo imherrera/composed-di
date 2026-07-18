@@ -199,7 +199,9 @@ describe('install() lifetime dispatch', () => {
         provides: CacheKey,
         initialize: () => ({ y: 2 }),
       })
-      const infra = ServiceInstrumentation.optOut(ServiceModule.from([db, cache]))
+      const infra = ServiceInstrumentation.optOut(
+        ServiceModule.from([db, cache]),
+      )
 
       const recorder = new RecordingListener()
       const module = ServiceModule.from(recorder.install([infra]))
