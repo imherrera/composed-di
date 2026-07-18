@@ -1,6 +1,6 @@
 export { ServiceKey, ServiceSelectorKey } from './serviceKey'
 export { ServiceModule } from './serviceModule'
-export { ServiceFactory } from './serviceFactory'
+export { ServiceFactory, SingletonFactory } from './serviceFactory'
 export { ServiceScope } from './serviceScope'
 export { ServiceSelector } from './serviceSelector'
 export * from './errors'

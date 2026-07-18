@@ -94,13 +94,7 @@ export abstract class ServiceFactory<
     dispose?: (instance: T) => void
     dependsOn?: D
   }): ServiceFactory<T, D> {
-    return new SingletonServiceFactory(
-      scope,
-      provides,
-      dependsOn,
-      initialize,
-      dispose,
-    )
+    return new SingletonFactory(scope, provides, dependsOn, initialize, dispose)
   }
 
   /**
@@ -125,7 +119,7 @@ export abstract class ServiceFactory<
     provides,
     dependsOn = [] as unknown as D,
     initialize,
-  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn'> & {
+  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'scope'> & {
     dependsOn?: D
   }): ServiceFactory<T, D> {
     return {
@@ -146,7 +140,7 @@ export abstract class ServiceFactory<
  * @template T - The type of the service instance managed by this factory.
  * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
  */
-export class SingletonServiceFactory<
+export class SingletonFactory<
   const T,
   const D extends readonly ServiceKey<unknown>[] = [],
 > extends ServiceFactory<T, D> {
