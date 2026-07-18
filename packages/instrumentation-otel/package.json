@@ -1,6 +1,6 @@
 {
   "name": "@composed-di/instrumentation-otel",
-  "version": "0.8.0-alpha",
+  "version": "0.9.0-alpha",
   "private": false,
   "keywords": [
     "dependency injection",
