@@ -4,7 +4,7 @@ import {
   ServiceDisposedDuringInitError,
   ServiceFactoryIllegalUsageError,
 } from './errors'
-import { ServiceSelector } from './serviceSelector'
+import type { ServiceSelector } from './serviceSelector'
 
 type ServiceType<T> =
   T extends ServiceSelectorKey<infer U>

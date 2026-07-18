@@ -1,5 +1,4 @@
-// @ts-ignore
-import { ServiceSelector } from './serviceSelector'
+import type { ServiceSelector } from './serviceSelector'
 
 /**
  * A typed token used to identify and retrieve a service from a ServiceModule.

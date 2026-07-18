@@ -1,5 +1,5 @@
 import { ServiceKey, ServiceSelectorKey } from './serviceKey'
-import { ServiceFactory } from './serviceFactory'
+import type { ServiceFactory } from './serviceFactory'
 import { ServiceScope } from './serviceScope'
 import { ServiceSelector } from './serviceSelector'
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors'

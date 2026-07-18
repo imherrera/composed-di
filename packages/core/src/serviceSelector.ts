@@ -1,5 +1,5 @@
 import { ServiceKey, ServiceSelectorKey } from './serviceKey'
-import { ServiceModule } from './serviceModule'
+import type { ServiceModule } from './serviceModule'
 
 /**
  * A runtime selector that provides access to multiple service implementations of the same type.
