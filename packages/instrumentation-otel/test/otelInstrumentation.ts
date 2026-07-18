@@ -104,13 +104,11 @@ describe('OTELInstrumentation', () => {
 
   it('should record dispose spans', async () => {
     const Key = new ServiceKey<{ x: number }>('svc')
-    const factory: ServiceFactory<{ x: number }, []> = {
+    const factory = ServiceFactory.singleton({
       provides: Key,
-      dependsOn: [],
-      scope: undefined,
       initialize: () => ({ x: 1 }),
       dispose: () => {},
-    }
+    })
     const module = ServiceModule.from(makeListener().install([factory]))
 
     await module.get(Key)
