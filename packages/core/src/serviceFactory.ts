@@ -122,12 +122,42 @@ export abstract class ServiceFactory<
   }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'scope'> & {
     dependsOn?: D
   }): ServiceFactory<T, D> {
-    return {
-      provides,
-      dependsOn,
-      initialize,
-      dispose: () => {},
-    }
+    return new OneShotFactory(provides, dependsOn, initialize)
+  }
+}
+
+/**
+ * A `OneShotFactory` builds a fresh instance on every request and retains none of
+ * them, so it has no lifecycle of its own: `dispose` is a no-op, and there is no
+ * `scope` — the caller of each request owns that instance's cleanup entirely.
+ *
+ * @template T - The type of the service instances built by this factory.
+ * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
+ */
+export class OneShotFactory<
+  const T,
+  const D extends readonly ServiceKey<unknown>[] = [],
+> extends ServiceFactory<T, D> {
+  /**
+   * Always undefined: instances are never retained, so there is nothing
+   * for a scoped `module.dispose(scope)` to target.
+   */
+  readonly scope = undefined
+
+  constructor(
+    readonly provides: ServiceKey<T>,
+    readonly dependsOn: D,
+    readonly onInitialize: ServiceFactory<T, D>['initialize'],
+  ) {
+    super()
+  }
+
+  initialize(...dependencies: DependencyTypes<D>): T | Promise<T> {
+    return this.onInitialize(...dependencies)
+  }
+
+  dispose(): void {
+    // Nothing retained, nothing to tear down.
   }
 }
 

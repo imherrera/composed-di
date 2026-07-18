@@ -1,5 +1,10 @@
-import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
-import { SingletonServiceFactory } from '@composed-di/core/src/serviceFactory'
+import {
+  OneShotFactory,
+  ServiceFactory,
+  SingletonFactory,
+  ServiceKey,
+  ServiceModule,
+} from '@composed-di/core'
 import type { RedactionRule } from './redaction'
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
@@ -330,7 +335,7 @@ function instrumentedServiceFactory<T, D extends readonly ServiceKey<any>[]>(
     }
   }
 
-  if (delegate instanceof SingletonServiceFactory) {
+  if (delegate instanceof SingletonFactory) {
     return ServiceFactory.singleton<T, D>({
       scope: delegate.scope,
       provides: delegate.provides,
@@ -339,7 +344,7 @@ function instrumentedServiceFactory<T, D extends readonly ServiceKey<any>[]>(
       dispose: () => {
         const span = instrumentation.onDispose({ key })
         try {
-          span.run(delegate.dispose)
+          span.run(() => delegate.dispose())
           span.end({ type: 'success' })
         } catch (error) {
           span.end({ type: 'failure', error })
@@ -347,14 +352,24 @@ function instrumentedServiceFactory<T, D extends readonly ServiceKey<any>[]>(
         }
       },
     })
-  } else {
+  }
+
+  if (delegate instanceof OneShotFactory) {
     return ServiceFactory.oneShot<T, D>({
-      scope: delegate.scope,
       provides: delegate.provides,
       dependsOn: delegate.dependsOn,
       initialize: initialize,
     })
   }
+
+  // An unknown implementation gives no way to tell a real initialization
+  // from a memoized cache hit, so its lifetime semantics cannot be
+  // preserved — refuse loudly rather than degrade silently.
+  throw new TypeError(
+    `install(): cannot instrument ${key.name} — ${delegate.constructor.name} ` +
+      'is not a factory built by ServiceFactory.singleton() or ' +
+      'ServiceFactory.oneShot(), so its lifetime semantics cannot be preserved.',
+  )
 }
 
 /**

@@ -369,13 +369,11 @@ describe('redaction through instrument()', () => {
   })
 
   it('should deliver dispose events untouched (nothing to redact)', async () => {
-    const factory: ServiceFactory<{ x: number }, []> = {
+    const factory = ServiceFactory.singleton({
       provides: new ServiceKey<{ x: number }>('svc'),
-      dependsOn: [],
-      scope: undefined,
       initialize: () => ({ x: 1 }),
       dispose: () => {},
-    }
+    })
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [factory], {
