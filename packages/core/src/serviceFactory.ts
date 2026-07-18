@@ -1,10 +1,22 @@
-import { ServiceKey } from './serviceKey'
+import { ServiceKey, ServiceSelectorKey } from './serviceKey'
 import { ServiceScope } from './serviceScope'
-import { DependencyTypes } from './types'
 import {
   ServiceDisposedDuringInitError,
   ServiceFactoryIllegalUsageError,
 } from './errors'
+import { ServiceSelector } from './serviceSelector'
+
+type ServiceType<T> =
+  T extends ServiceSelectorKey<infer U>
+    ? ServiceSelector<U>
+    : T extends ServiceKey<infer U>
+      ? U
+      : never
+
+// Helper types to convert an array/tuple of ServiceKey to tuple of their types
+type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
+  [K in keyof T]: ServiceType<T[K]>
+}
 
 /**
  * The component responsible for creating services. Install it into a `ServiceModule`

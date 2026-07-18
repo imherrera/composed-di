@@ -5,7 +5,6 @@ import { ServiceSelector } from './serviceSelector'
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors'
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
-type GenericKey = ServiceKey<any>
 
 /**
  * ServiceModule is a container for service factories and manages dependency resolution.
@@ -36,7 +35,7 @@ export class ServiceModule {
    * @throws {ServiceFactoryNotFoundError} If no suitable factory is found for the given key.
    */
   public async get<T>(key: ServiceKey<T>): Promise<T> {
-    const factory = this.factories.find((candidate: GenericFactory) => {
+    const factory = this.factories.find((candidate) => {
       return isSuitable(key, candidate)
     })
 
@@ -49,7 +48,7 @@ export class ServiceModule {
 
     // Resolve all dependencies first
     const dependencies = await Promise.all(
-      factory.dependsOn.map((dependencyKey: ServiceKey<unknown>) => {
+      factory.dependsOn.map((dependencyKey) => {
         // If the dependency is a ServiceSelectorKey, create a ServiceSelector instance
         if (dependencyKey instanceof ServiceSelectorKey) {
           return new ServiceSelector(this, dependencyKey)
@@ -91,36 +90,32 @@ export class ServiceModule {
    */
   public dispose(scope?: ServiceScope) {
     const factories = scope
-      ? this.factories.filter((f) => f.scope === scope)
+      ? this.factories.filter((factory) => factory.scope === scope)
       : this.factories
 
     factories.forEach((factory) => factory.dispose?.())
   }
 
   /**
-   * Creates a new ServiceModule instance by aggregating and deduplicating a list of
-   * ServiceModule or GenericFactory instances.
-   * If multiple factories provide the same
-   * ServiceKey, the last one in the list takes precedence.
+   * Creates a new `ServiceModule` instance by merging an array of `ServiceModule` or `ServiceFactory` entries.
+   * If multiple factories provide the same `ServiceKey`, the last factory encountered in the list will take precedence.
    *
-   * @param entries - An array of ServiceModule or GenericFactory
-   * instances to be processed into a single ServiceModule.
-   * @return A new ServiceModule containing the deduplicated factories.
-   * @throws {ServiceModuleInitError} If circular or missing dependencies are detected during module creation.
+   * @param entries An array of `ServiceModule` or `erviceFactory` instances to be merged.
+   * @return A new `ServiceModule` containing the merged factories, with duplicates resolved in a last-wins manner.
    */
   static from(entries: (ServiceModule | GenericFactory)[]): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
-    const flattened = entries.flatMap((e) =>
-      e instanceof ServiceModule ? e.factories : [e],
-    )
+    const flattened = entries.flatMap((e) => {
+      return e instanceof ServiceModule ? e.factories : [e]
+    })
 
-    const byKey = new Map<symbol, GenericFactory>()
+    const factoriesByKey = new Map<symbol, GenericFactory>()
     // Later factories overwrite earlier ones (last-wins)
     for (const f of flattened) {
-      byKey.set(f.provides.symbol, f)
+      factoriesByKey.set(f.provides.symbol, f)
     }
 
-    return new ServiceModule(Array.from(byKey.values()))
+    return new ServiceModule(Array.from(factoriesByKey.values()))
   }
 }
 
@@ -187,9 +182,9 @@ function checkMissingDependencies(
   factory: GenericFactory,
   factories: GenericFactory[],
 ) {
-  const missingDependencies: GenericKey[] = []
+  const missingDependencies: ServiceKey<unknown>[] = []
 
-  factory.dependsOn.forEach((dependencyKey: GenericKey) => {
+  factory.dependsOn.forEach((dependencyKey: ServiceKey<unknown>) => {
     // For ServiceSelectorKey, check all contained keys are registered
     if (dependencyKey instanceof ServiceSelectorKey) {
       dependencyKey.values.forEach((key) => {
@@ -221,7 +216,7 @@ function checkMissingDependencies(
  * @param factories The list of factories to search in.
  * @returns True if a factory provides the given key, false otherwise.
  */
-function isRegistered(key: GenericKey, factories: GenericFactory[]) {
+function isRegistered(key: ServiceKey<unknown>, factories: GenericFactory[]) {
   return factories.some((factory) => factory.provides?.symbol === key?.symbol)
 }
 
