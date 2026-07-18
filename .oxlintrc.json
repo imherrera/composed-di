@@ -4,8 +4,10 @@
     "correctness": "error",
     "suspicious": "warn"
   },
+  "plugins": ["import"],
   "rules": {
-    "unicorn/filename-case": ["error", { "case": "camelCase" }]
+    "unicorn/filename-case": ["error", { "case": "camelCase" }],
+    "import/no-cycle": "error"
   },
   "overrides": [
     {
