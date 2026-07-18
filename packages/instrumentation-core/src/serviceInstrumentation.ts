@@ -29,6 +29,21 @@ type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
  */
 export abstract class ServiceInstrumentation {
   /**
+   * Factories excluded from instrumentation by {@link ServiceInstrumentation.optOut},
+   * shared across every instrumentation instance and backend: a factory
+   * opted out here is skipped by install(), regardless of which
+   * ServiceInstrumentation wraps it.
+   */
+  private static readonly optedOut = new WeakSet<GenericFactory>()
+
+  /**
+   * Factories produced by this instrumentation's install(), so overlapping
+   * installs pass them through unchanged instead of wrapping them twice
+   * (which would report every operation twice).
+   */
+  private readonly instrumented = new WeakSet<GenericFactory>()
+
+  /**
    * Invoked at the start of the initialization process for a specific service.
    *
    * @param context - Context of the initialization, including the service key.
@@ -61,8 +76,15 @@ export abstract class ServiceInstrumentation {
    * behavior is otherwise unchanged.
    *
    * ServiceModule entries are flattened into their factories, so an
-   * already-built module can be instrumented as a whole. Compose the
-   * result with `ServiceModule.from`:
+   * already-built module can be instrumented as a whole. Factories this
+   * instrumentation already wrapped are passed through unchanged, so
+   * overlapping installs never double-report an operation. This makes
+   * layered composition safe: base modules can install instrumentation
+   * where they are defined, and a higher-level module can install over
+   * everything it aggregates without tracking which factories are
+   * already wrapped. Factories excluded via {@link ServiceInstrumentation.optOut}
+   * are likewise passed through unchanged. Compose the result with
+   * `ServiceModule.from`:
    *
    * @example
    * ```ts
@@ -88,7 +110,43 @@ export abstract class ServiceInstrumentation {
   ): GenericFactory[] {
     return entries
       .flatMap((e) => (e instanceof ServiceModule ? e.factories : [e]))
-      .map((factory) => instrumentedServiceFactory(this, options, factory))
+      .map((factory) => {
+        const shouldSkipInstrumentation =
+          ServiceInstrumentation.optedOut.has(factory) ||
+          this.instrumented.has(factory)
+        if (shouldSkipInstrumentation) {
+          return factory
+        }
+
+        const instrumentedServiceFactory = instrumentServiceFactory(
+          this,
+          options,
+          factory,
+        )
+        this.instrumented.add(instrumentedServiceFactory)
+        return instrumentedServiceFactory
+      })
+  }
+
+  /**
+   * Marks the provided services or factories as opted out for instrumentation.
+   *
+   * @param entries The list of `ServiceModule` instances or `GenericFactory` instances to opt out.
+   * @return The same list of `ServiceModule` or `GenericFactory` instances that were passed in.
+   */
+  static optOut(
+    ...entries: (ServiceModule | GenericFactory)[]
+  ): (ServiceModule | GenericFactory)[] {
+    entries.forEach((e) => {
+      if (e instanceof ServiceModule) {
+        e.factories.forEach((factory) =>
+          ServiceInstrumentation.optedOut.add(factory),
+        )
+      } else {
+        ServiceInstrumentation.optedOut.add(e)
+      }
+    })
+    return entries
   }
 }
 
@@ -156,7 +214,7 @@ function buildCapturePolicy(
  * @param delegate The original service factory to be instrumented.
  * @return A new service factory that provides the same dependencies but includes event notification logic.
  */
-function instrumentedServiceFactory<T, D extends readonly ServiceKey<any>[]>(
+function instrumentServiceFactory<T, D extends readonly ServiceKey<any>[]>(
   instrumentation: ServiceInstrumentation,
   options: InstrumentOptions,
   delegate: ServiceFactory<any, D>,
