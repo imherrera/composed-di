@@ -159,7 +159,7 @@ describe('install() lifetime dispatch', () => {
       })
       const recorder = new RecordingListener()
       const instrumentedModule = ServiceModule.from(recorder.install([factory]))
-      const module = ServiceModule.from(recorder.install([instrumentedModule]))
+      const module = ServiceModule.from(recorder.install(instrumentedModule))
 
       await module.get(Key)
       expect(recorder.count('svc.initialize:start')).toBe(1)

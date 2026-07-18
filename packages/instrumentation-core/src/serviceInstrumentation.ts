@@ -15,6 +15,8 @@ import {
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
 
+type Instrumentable = ServiceModule | GenericFactory
+
 /**
  * Base class for instrumenting services. Extend it and override the hooks
  * to observe lifecycle events and method calls of the services wrapped by
@@ -86,29 +88,35 @@ export abstract class ServiceInstrumentation {
    * are likewise passed through unchanged. Compose the result with
    * `ServiceModule.from`:
    *
-   * @example
+   * @example Wrapping factories, with a capture policy
    * ```ts
    * const module = ServiceModule.from(
-   *   otel.instrument([db, cache, api], {
+   *   otel.install([db, cache, api], {
    *     capture: {
    *       arguments: true,
    *       results: true,
-   *       redact: [redactionRule(VaultKey).redact('getSecret').build()],
+   *       redactionRules: [redactionRule(VaultKey).redact('getSecret').build()],
    *     },
    *   }),
    * );
    * ```
    *
-   * @param entries - An array of ServiceModule or factory instances to wrap.
+   * @example Instrumenting an already-built module as a whole
+   * ```ts
+   * const handlerModule = ServiceModule.from(otel.install(PaymentsModule));
+   * ```
+   *
+   * @param entries - The ServiceModule or factory instances to wrap; a
+   * single entry may be passed without the array.
    * @param options - The capture and redaction policy applied before
    * anything reaches this instrumentation.
    * @return The wrapped factories, ready to be passed to ServiceModule.from.
    */
   install(
-    entries: (ServiceModule | GenericFactory)[],
+    entries: Instrumentable | Instrumentable[],
     options: InstrumentOptions = {},
   ): GenericFactory[] {
-    return entries
+    return (Array.isArray(entries) ? entries : [entries])
       .flatMap((e) => (e instanceof ServiceModule ? e.factories : [e]))
       .map((factory) => {
         const shouldSkipInstrumentation =
@@ -129,14 +137,22 @@ export abstract class ServiceInstrumentation {
   }
 
   /**
-   * Marks the provided services or factories as opted out for instrumentation.
+   * Removes the provided entry from instrumentation, opting it out from further monitoring or tracking.
    *
-   * @param entries The list of `ServiceModule` instances or `GenericFactory` instances to opt out.
-   * @return The same list of `ServiceModule` or `GenericFactory` instances that were passed in.
+   * @param entry - The instance of the instrumentable object to be opted out.
+   * @return The same instance of the provided instrumentable object after opting out.
    */
+  static optOut<E extends Instrumentable>(entry: E): E
+  /**
+   * Removes the given entries from being instrumented in the current context.
+   *
+   * @param entries - A variable number of entries that should be opted out of instrumentation.
+   * @return The same array of entries that were passed in, to allow for chaining or further usage.
+   */
+  static optOut<E extends Instrumentable[]>(...entries: E): E
   static optOut(
-    ...entries: (ServiceModule | GenericFactory)[]
-  ): (ServiceModule | GenericFactory)[] {
+    ...entries: Instrumentable[]
+  ): Instrumentable | Instrumentable[] {
     entries.forEach((e) => {
       if (e instanceof ServiceModule) {
         e.factories.forEach((factory) =>
@@ -146,7 +162,7 @@ export abstract class ServiceInstrumentation {
         ServiceInstrumentation.optedOut.add(e)
       }
     })
-    return entries
+    return entries.length === 1 ? entries[0] : entries
   }
 }
 
