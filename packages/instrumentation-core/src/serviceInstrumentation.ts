@@ -1,4 +1,5 @@
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
+import { SingletonServiceFactory } from '@composed-di/core/src/serviceFactory'
 import type { RedactionRule } from './redaction'
 
 type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
@@ -317,44 +318,43 @@ function instrumentedServiceFactory<T, D extends readonly ServiceKey<any>[]>(
 ): ServiceFactory<T, D> {
   const key = delegate.provides
   const capturePolicy = buildCapturePolicy(options, key)
+  const initialize: ServiceFactory<T, D>['initialize'] = async (...args) => {
+    const span = instrumentation.onInitialize({ key })
+    try {
+      const instance = await span.run(() => delegate.initialize(...args))
+      span.end({ type: 'success' })
+      return observeMethodCalls(instance, instrumentation, key, capturePolicy)
+    } catch (error) {
+      span.end({ type: 'failure', error })
+      throw error
+    }
+  }
 
-  return ServiceFactory.singleton({
-    scope: delegate.scope,
-    provides: delegate.provides,
-    dependsOn: delegate.dependsOn,
-    initialize: async (...args) => {
-      const span = instrumentation.onInitialize?.({ key })
-      if (!span) {
-        return delegate.initialize(...args)
-      }
-
-      try {
-        const instance = await span.run(() => delegate.initialize(...args))
-        span.end({ type: 'success' })
-        return observeMethodCalls(instance, instrumentation, key, capturePolicy)
-      } catch (error) {
-        span.end({ type: 'failure', error })
-        throw error
-      }
-    },
-    dispose: () => {
-      const dispose = delegate.dispose
-      if (dispose) {
-        const span = instrumentation.onDispose?.({ key })
-        if (span) {
-          try {
-            span.run(dispose)
-            span.end({ type: 'success' })
-          } catch (error) {
-            span.end({ type: 'failure', error })
-            throw error
-          }
-        } else {
-          dispose()
+  if (delegate instanceof SingletonServiceFactory) {
+    return ServiceFactory.singleton<T, D>({
+      scope: delegate.scope,
+      provides: delegate.provides,
+      dependsOn: delegate.dependsOn,
+      initialize: initialize,
+      dispose: () => {
+        const span = instrumentation.onDispose({ key })
+        try {
+          span.run(delegate.dispose)
+          span.end({ type: 'success' })
+        } catch (error) {
+          span.end({ type: 'failure', error })
+          throw error
         }
-      }
-    },
-  })
+      },
+    })
+  } else {
+    return ServiceFactory.oneShot<T, D>({
+      scope: delegate.scope,
+      provides: delegate.provides,
+      dependsOn: delegate.dependsOn,
+      initialize: initialize,
+    })
+  }
 }
 
 /**
