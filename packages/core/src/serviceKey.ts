@@ -37,28 +37,54 @@ export class ServiceKey<T> {
   declare private readonly _type: T
 
   /**
-   * A unique symbol that identifies this service key.
-   * Used internally for identity comparison between keys.
-   */
-  public readonly symbol: symbol
-
-  /**
    * Creates a new ServiceKey with the given name.
    *
    * @param name A human-readable name for the service, used in error messages and debugging.
+   * @param symbol A unique symbol that identifies this service key. Used internally for identity comparison between keys.
    */
-  constructor(public readonly name: string) {
-    this.symbol = Symbol(name)
-  }
+  constructor(
+    public readonly name: string,
+    public readonly symbol: Symbol = Symbol(name),
+  ) {}
 
   /**
-   * Creates a new instance of `ServiceKey` with the specified name.
+   * Creates a `ServiceKey` backed by the global symbol registry, making it
+   * compatible with any other key created via `ServiceKey.for` with the same name.
    *
-   * @param name - The name associated with the `ServiceKey` instance.
-   * @return A new `ServiceKey` instance of the specified type.
+   * Key identity is determined by the underlying {@link symbol}, not by object
+   * reference. This method uses `Symbol.for(name)`, which searches the global
+   * symbol registry for a symbol registered under `name` and reuses it if found
+   * (registering it on first use). As a result, every `ServiceKey.for('X')` call
+   * — even across modules, bundles, or duplicated copies of this library —
+   * produces keys that identify the same service.
+   *
+   * This is the opposite guarantee of `new ServiceKey(name)`, which creates a
+   * fresh `Symbol(name)` each time and is therefore always unique, even when
+   * names collide.
+   *
+   * Because the registry is keyed only by the name string, choose names unlikely
+   * to collide (e.g., namespaced like `'my-app/Logger'`). Note that the type
+   * parameter `T` is not part of the identity: two `for` calls with the same
+   * name but different `T` silently alias the same service.
+   *
+   * @template T The type of service this key identifies.
+   * @param name The name used to look up (or register) the shared symbol in the
+   *             global symbol registry; also used in error messages and debugging.
+   * @return A `ServiceKey` whose symbol is `Symbol.for(name)`, interchangeable
+   *         with any other key created by this method with the same name.
+   *
+   * @example
+   * ```ts
+   * const A = ServiceKey.for<Logger>('Logger');
+   * const B = ServiceKey.for<Logger>('Logger');
+   * A.symbol === B.symbol; // true — both keys resolve the same service
+   *
+   * const C = new ServiceKey<Logger>('Logger');
+   * A.symbol === C.symbol; // false — the constructor always creates a unique key
+   * ```
    */
   static for<T>(name: string): ServiceKey<T> {
-    return new ServiceKey<T>(name)
+    return new ServiceKey<T>(name, Symbol.for(name))
   }
 
   /**
