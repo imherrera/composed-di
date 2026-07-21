@@ -184,7 +184,7 @@ describe('install() lifetime dispatch', () => {
       // from a memoized cache hit, so install() refuses it loudly instead
       // of silently changing its semantics.
       expect(() => recorder.install([handcrafted])).toThrow(
-        /cannot instrument rogue/,
+        /Cannot instrument factory .* for rogue/,
       )
     })
   })
