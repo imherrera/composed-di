@@ -57,15 +57,15 @@ export class DashboardInstrumentation extends ServiceInstrumentation {
     return () => this.listeners.delete(listener)
   }
 
-  onInitialize({ key }: InitializeContext): OperationSpan {
+  initializeSpan({ key }: InitializeContext): OperationSpan {
     return this.startSpan(key.name, 'initialize', 'initialize')
   }
 
-  onDispose({ key }: DisposeContext): OperationSpan {
+  disposeSpan({ key }: DisposeContext): OperationSpan {
     return this.startSpan(key.name, 'dispose', 'dispose')
   }
 
-  onMethodCall({ key, methodName, args }: MethodCallContext): OperationSpan {
+  methodCallSpan({ key, methodName, args }: MethodCallContext): OperationSpan {
     // Args are present exactly when argument capture is enabled in the
     // InstrumentOptions; they arrive already redacted.
     return this.startSpan(

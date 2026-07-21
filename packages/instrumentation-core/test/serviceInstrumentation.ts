@@ -16,15 +16,15 @@ import {
 class RecordingListener extends ServiceInstrumentation {
   readonly events: string[] = []
 
-  onInitialize({ key }: InitializeContext): OperationSpan {
+  initializeSpan({ key }: InitializeContext): OperationSpan {
     return this.span(`${key.name}.initialize`)
   }
 
-  onDispose({ key }: DisposeContext): OperationSpan {
+  disposeSpan({ key }: DisposeContext): OperationSpan {
     return this.span(`${key.name}.dispose`)
   }
 
-  onMethodCall({ key, methodName }: MethodCallContext): OperationSpan {
+  methodCallSpan({ key, methodName }: MethodCallContext): OperationSpan {
     return this.span(`${key.name}.${methodName}`)
   }
 

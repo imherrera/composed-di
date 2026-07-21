@@ -55,7 +55,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
       options.tracer ?? trace.getTracer('@composed-di/instrumentation-otel')
   }
 
-  onInitialize(context: InitializeContext): OperationSpan {
+  initializeSpan(context: InitializeContext): OperationSpan {
     const attributes = this.buildAttributes({
       key: context.key,
       event: 'initialize',
@@ -66,7 +66,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
     return this.buildSpan(spanName, attributes)
   }
 
-  onDispose(context: DisposeContext): OperationSpan {
+  disposeSpan(context: DisposeContext): OperationSpan {
     const attributes = this.buildAttributes({
       key: context.key,
       event: 'dispose',
@@ -77,7 +77,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
     return this.buildSpan(spanName, attributes)
   }
 
-  onMethodCall(context: MethodCallContext): OperationSpan {
+  methodCallSpan(context: MethodCallContext): OperationSpan {
     const attributes = this.buildAttributes({
       key: context.key,
       event: 'call',

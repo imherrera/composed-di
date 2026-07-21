@@ -44,7 +44,7 @@ export abstract class ServiceInstrumentation {
    * @param context - Identifies the service being initialized.
    * @returns The span to notify when initialization finishes.
    */
-  abstract onInitialize(context: InitializeContext): OperationSpan
+  abstract initializeSpan(context: InitializeContext): OperationSpan
 
   /**
    * Called when disposal of a service starts.
@@ -52,7 +52,7 @@ export abstract class ServiceInstrumentation {
    * @param context - Identifies the service being disposed.
    * @returns The span to notify when disposal finishes.
    */
-  abstract onDispose(context: DisposeContext): OperationSpan
+  abstract disposeSpan(context: DisposeContext): OperationSpan
 
   /**
    * Called when a method call on a service instance starts.
@@ -62,7 +62,7 @@ export abstract class ServiceInstrumentation {
    * @returns The span to notify when the call finishes — for methods that
    * return a promise, when that promise settles.
    */
-  abstract onMethodCall(context: MethodCallContext): OperationSpan
+  abstract methodCallSpan(context: MethodCallContext): OperationSpan
 
   /**
    * Creates and returns a new instrumented factory.
@@ -180,7 +180,7 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
   const key = delegate.provides
   const capturePolicy = buildCapturePolicy(options, key)
   const initialize: ServiceFactory<T, D>['initialize'] = async (...args) => {
-    const span = instrumentation.onInitialize({ key })
+    const span = instrumentation.initializeSpan({ key })
     try {
       const instance = await span.run(() => delegate.initialize(...args))
       span.end({ type: 'success' })
@@ -198,7 +198,7 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
       dependsOn: delegate.dependsOn,
       initialize: initialize,
       dispose: () => {
-        const span = instrumentation.onDispose({ key })
+        const span = instrumentation.disposeSpan({ key })
         try {
           span.run(() => delegate.dispose())
           span.end({ type: 'success' })
@@ -248,7 +248,7 @@ function observeMethodCalls(
       const value = Reflect.get(target, prop)
       if (typeof value === 'function' && typeof prop === 'string') {
         return (...args: unknown[]) => {
-          const span = instrumentation.onMethodCall({
+          const span = instrumentation.methodCallSpan({
             key,
             className,
             methodName: prop,

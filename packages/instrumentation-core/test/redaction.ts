@@ -27,15 +27,15 @@ interface RecordedEvent {
 class RecordingListener extends ServiceInstrumentation {
   readonly events: RecordedEvent[] = []
 
-  onInitialize(context: { key: ServiceKey<unknown> }) {
+  initializeSpan(context: { key: ServiceKey<unknown> }) {
     return this.record({ type: 'initialize', key: context.key })
   }
 
-  onDispose(context: { key: ServiceKey<unknown> }) {
+  disposeSpan(context: { key: ServiceKey<unknown> }) {
     return this.record({ type: 'dispose', key: context.key })
   }
 
-  onMethodCall(context: MethodCallContext) {
+  methodCallSpan(context: MethodCallContext) {
     return this.record({
       type: 'call',
       key: context.key,
