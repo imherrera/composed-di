@@ -172,24 +172,10 @@ function buildCapturePolicy(
   }
 }
 
-/**
- * Wraps a given service factory with instrumentation to notify a
- * ServiceInstrumentation of lifecycle events and method calls.
- *
- * For each of initialize, dispose, and method calls, the instrumentation
- * is invoked at the start of the operation and may return an OperationSpan
- * whose `end` is called with the outcome when the operation finishes.
- * Errors are rethrown after being reported.
- *
- * @param instrumentation The instrumentation to notify.
- * @param options The capture policy.
- * @param delegate The original service factory to be instrumented.
- * @return A new service factory that provides the same dependencies but includes event notification logic.
- */
-function instrumentServiceFactory<T, D extends readonly ServiceKey<any>[]>(
+function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
   instrumentation: ServiceInstrumentation,
   options: InstrumentOptions,
-  delegate: ServiceFactory<any, D>,
+  delegate: ServiceFactory<T, D>,
 ): ServiceFactory<T, D> {
   const key = delegate.provides
   const capturePolicy = buildCapturePolicy(options, key)
@@ -242,21 +228,8 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<any>[]>(
   )
 }
 
-/**
- * Wraps an object with a Proxy to notify the instrumentation of method calls.
- *
- * Methods returning a promise report their outcome when the promise
- * settles, not when the method returns.
- *
- * @param thing The object whose method calls need to be observed.
- * @param instrumentation The instrumentation notified of method call events.
- * @param key The service key used to identify the service in events.
- * @param capturePolicy The capture policy deciding what argument and result
- * values (if any) are delivered with each event.
- * @return A Proxy wrapping the input object, with all method calls being reported.
- */
 function observeMethodCalls(
-  thing: any,
+  thing: unknown,
   instrumentation: ServiceInstrumentation,
   key: ServiceKey<unknown>,
   capturePolicy: CapturePolicy,
@@ -266,8 +239,7 @@ function observeMethodCalls(
   }
 
   // The class name qualifies method calls in events, but only for named
-  // classes: plain object literals and null-prototype objects report no
-  // class name, so instrumentations fall back to the service key.
+  // classes
   const name = thing.constructor?.name
   const className = name && name !== 'Object' ? name : undefined
 
