@@ -222,9 +222,9 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
   // from a memoized cache hit, so its lifetime semantics cannot be
   // preserved — refuse loudly rather than degrade silently.
   throw new TypeError(
-    `install(): cannot instrument ${key.name} — ${delegate.constructor.name} ` +
-      'is not a factory built by ServiceFactory.singleton() or ' +
-      'ServiceFactory.oneShot(), so its lifetime semantics cannot be preserved.',
+    `Cannot instrument factory ${delegate.constructor.name} for ${key.name}. ` +
+      'Factories must be created with ServiceFactory.singleton() or ' +
+      'ServiceFactory.oneShot(); custom ServiceFactory implementations cannot be instrumented.',
   )
 }
 
