@@ -20,7 +20,6 @@ import type { ServiceSelector } from './serviceSelector'
  * // Use with ServiceFactory and ServiceModule
  * const loggerFactory = ServiceFactory.singleton({
  *   provides: LoggerKey,
- *   dependsOn: [],
  *   initialize: () => console,
  * });
  *
