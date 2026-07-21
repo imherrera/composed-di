@@ -169,7 +169,7 @@ describe('install() lifetime dispatch', () => {
   })
 
   describe('optOut()', () => {
-    it('should skip instrumenting an opted-out factory, for any instrumentation, and return it unchanged', async () => {
+    it('should skip instrumenting an opted-out factory and return it unchanged', async () => {
       const Key = new ServiceKey<{ ping(): string }>('secret')
       const factory = ServiceFactory.singleton({
         provides: Key,
@@ -177,17 +177,29 @@ describe('install() lifetime dispatch', () => {
       })
 
       const recorder = new RecordingListener()
-      const other = new RecordingListener()
-      const [installed] = recorder.install(
-        other.install([ServiceInstrumentation.optOut(factory)]),
-      )
+      const [installed] = recorder.install([recorder.optOut(factory)])
 
       expect(installed).toBe(factory)
       const module = ServiceModule.from([installed])
       const svc = await module.get(Key)
       svc.ping()
       expect(recorder.count('secret.initialize:start')).toBe(0)
-      expect(other.count('secret.initialize:start')).toBe(0)
+      expect(recorder.count('secret.ping:start')).toBe(0)
+    })
+
+    it('should scope the opt-out to the instrumentation it was called on', () => {
+      const Key = new ServiceKey<{ x: number }>('svc')
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => ({ x: 1 }),
+      })
+
+      const recorder = new RecordingListener()
+      const other = new RecordingListener()
+      recorder.optOut(factory)
+
+      expect(recorder.install(factory)).toBe(factory)
+      expect(other.install(factory)).not.toBe(factory)
     })
 
     it('should exclude every factory of a module opted out via its factories', async () => {
@@ -201,17 +213,58 @@ describe('install() lifetime dispatch', () => {
         provides: CacheKey,
         initialize: () => ({ y: 2 }),
       })
-      const infra = ServiceModule.from(
-        ServiceInstrumentation.optOut([db, cache]),
-      )
-
       const recorder = new RecordingListener()
+      const infra = ServiceModule.from(recorder.optOut([db, cache]))
       const module = ServiceModule.from(recorder.install(infra.factories))
 
       await module.get(DbKey)
       await module.get(CacheKey)
       expect(recorder.count('db.initialize:start')).toBe(0)
       expect(recorder.count('cache.initialize:start')).toBe(0)
+    })
+
+    it('should throw when opting out a factory that is already instrumented', () => {
+      const Key = new ServiceKey<{ x: number }>('svc')
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => ({ x: 1 }),
+      })
+      const recorder = new RecordingListener()
+      recorder.install(factory)
+
+      expect(() => recorder.optOut(factory)).toThrow(/cannot opt out svc/)
+    })
+
+    it('should throw when opting out a wrapper produced by install', () => {
+      const Key = new ServiceKey<{ x: number }>('svc')
+      const factory = ServiceFactory.singleton({
+        provides: Key,
+        initialize: () => ({ x: 1 }),
+      })
+      const recorder = new RecordingListener()
+      const wrapped = recorder.install(factory)
+
+      expect(() => recorder.optOut(wrapped)).toThrow(/cannot opt out svc/)
+    })
+
+    it('should opt out nothing when any entry is refused', async () => {
+      const FreshKey = new ServiceKey<{ x: number }>('fresh')
+      const fresh = ServiceFactory.singleton({
+        provides: FreshKey,
+        initialize: () => ({ x: 1 }),
+      })
+      const InstalledKey = new ServiceKey<{ y: number }>('installed')
+      const installed = ServiceFactory.singleton({
+        provides: InstalledKey,
+        initialize: () => ({ y: 2 }),
+      })
+      const recorder = new RecordingListener()
+      recorder.install(installed)
+
+      expect(() => recorder.optOut([fresh, installed])).toThrow(
+        /cannot opt out installed/,
+      )
+      expect(recorder.isOptedOut(fresh)).toBe(false)
     })
   })
 

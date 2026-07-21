@@ -32,12 +32,18 @@ import {
  */
 export abstract class ServiceInstrumentation {
   /**
-   * Factories excluded from instrumentation by {@link ServiceInstrumentation.optOut},
-   * shared across every instrumentation instance and backend: a factory
-   * opted out here is skipped by install(), regardless of which
-   * ServiceInstrumentation wraps it.
+   * Factories excluded from instrumentation by {@link ServiceInstrumentation.optOut}:
+   * install() passes them through unchanged instead of wrapping them.
    */
-  private static readonly optedOut = new WeakSet<ServiceFactory>()
+  private readonly optedOut = new WeakSet<ServiceFactory>()
+
+  /**
+   * Every factory that participates in this instrumentation — the wrappers
+   * produced by install() and the factories they wrap. optOut() refuses
+   * these: their operations are already being reported, so the exclusion
+   * could not be honored.
+   */
+  private readonly installed = new WeakSet<ServiceFactory>()
 
   /**
    * Factories produced by this instrumentation's install(), so overlapping
@@ -142,57 +148,66 @@ export abstract class ServiceInstrumentation {
       return input.map((factory) => this.install(factory, options))
     }
 
-    if (
-      ServiceInstrumentation.isOptedOut(input) ||
-      this.isInstrumented(input)
-    ) {
+    if (this.isOptedOut(input) || this.isInstrumented(input)) {
       return input
     }
 
     const instrumentedFactory = instrumentServiceFactory(this, options, input)
     this.instrumented.add(instrumentedFactory)
+    this.installed.add(input)
+    this.installed.add(instrumentedFactory)
     return instrumentedFactory
   }
 
   /**
-   * Excludes the given factories from instrumentation: every
-   * {@link ServiceInstrumentation.install | install} — by any
-   * instrumentation — returns them unchanged instead of wrapping them.
+   * Excludes the given factories from instrumentation, guaranteeing this
+   * instrumentation never instruments them:
+   * {@link ServiceInstrumentation.install | install} returns them
+   * unchanged instead of wrapping them.
    *
    * @remarks
-   * Opting out is preventive, not retroactive: it stops future installs
-   * from wrapping a factory, but never removes instrumentation already
-   * applied — a wrapper that is opted out keeps reporting through its
-   * existing layers. To exclude a factory entirely, opt it out before the
-   * first install.
+   * Opting out cannot remove instrumentation that is already installed,
+   * so it must happen first: a factory that is already instrumented —
+   * wrapped by an earlier install, or itself a wrapper produced by one —
+   * is refused with an error, because its operations are already being
+   * reported and the exclusion could not be honored. When any entry is
+   * refused, nothing is opted out.
    *
    * @param input - The factory or factories to exclude; a single factory
    * may be passed without the array.
    * @returns The same `input`, so a factory can be opted out inline where
-   * it is defined or installed.
+   * it is defined.
+   * @throws Error when a factory is already instrumented.
    */
-  static optOut<E extends ServiceFactory | ServiceFactory[]>(input: E): E {
-    if (!Array.isArray(input)) {
-      ServiceInstrumentation.optedOut.add(input)
-    } else {
-      input.forEach((factory) => {
-        ServiceInstrumentation.optedOut.add(factory)
-      })
-    }
+  optOut<E extends ServiceFactory | ServiceFactory[]>(input: E): E {
+    const factories = Array.isArray(input) ? input : [input]
+    factories.forEach((factory) => {
+      if (this.installed.has(factory)) {
+        throw new Error(
+          `optOut(): cannot opt out ${factory.provides.name} — it is ` +
+            'already instrumented, and opting out never removes installed ' +
+            'instrumentation, so its operations would keep being reported. ' +
+            'Opt factories out before the first install().',
+        )
+      }
+    })
+    factories.forEach((factory) => {
+      this.optedOut.add(factory)
+    })
 
     return input
   }
 
   /**
-   * Whether the factory has been excluded from instrumentation via
+   * Whether the factory has been excluded from this instrumentation via
    * {@link ServiceInstrumentation.optOut | optOut}.
    *
    * @param factory - The factory to check.
    * @returns `true` when install() returns the factory unchanged instead
    * of wrapping it.
    */
-  static isOptedOut(factory: ServiceFactory): boolean {
-    return ServiceInstrumentation.optedOut.has(factory)
+  isOptedOut(factory: ServiceFactory): boolean {
+    return this.optedOut.has(factory)
   }
 
   /**
