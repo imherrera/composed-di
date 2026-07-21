@@ -13,16 +13,22 @@ import {
 } from './types'
 
 /**
- * Base class for instrumenting services. Extend it and override the hooks
- * to observe lifecycle events and method calls of the services wrapped by
- * {@link ServiceInstrumentation.install}.
+ * Base class for observing services: extend it and implement the hooks to
+ * be notified when a service is initialized or disposed, and when a method
+ * is called on a service instance.
+ *
+ * @remarks
+ * A subclass never touches services directly. Passing factories through
+ * {@link ServiceInstrumentation.install | install} returns wrapped
+ * factories that report to this instrumentation; compose those into the
+ * ServiceModule in place of the originals.
+ *
+ * Each hook is called when its operation starts and returns an
+ * {@link OperationSpan}, whose `end` is invoked once when that operation
+ * finishes.
  *
  * Instrumentation is strictly observational: subclasses see every
  * operation but must never alter it — see the OperationSpan contract.
- *
- * Each hook is invoked when the corresponding operation starts and may
- * return an OperationSpan that is notified when that operation finishes.
- * Returning nothing opts out of completion tracking for that call.
  */
 export abstract class ServiceInstrumentation {
   /**
@@ -41,50 +47,63 @@ export abstract class ServiceInstrumentation {
   private readonly instrumented = new WeakSet<ServiceFactory>()
 
   /**
-   * Invoked at the start of the initialization process for a specific service.
+   * Called when initialization of a service starts.
    *
-   * @param context - Context of the initialization, including the service key.
-   * @return An OperationSpan notified when initialization finishes, or void.
+   * @param context - Identifies the service being initialized.
+   * @returns The span to notify when initialization finishes.
    */
   abstract onInitialize(context: InitializeContext): OperationSpan
 
   /**
-   * Invoked when the disposal process for a service starts.
+   * Called when disposal of a service starts.
    *
-   * @param context - Context of the disposal, including the service key.
-   * @return An OperationSpan notified when disposal finishes, or void.
+   * @param context - Identifies the service being disposed.
+   * @returns The span to notify when disposal finishes.
    */
   abstract onDispose(context: DisposeContext): OperationSpan
 
   /**
-   * Invoked when a method call starts on a service instance.
+   * Called when a method call on a service instance starts.
    *
-   * @param context - Context of the invocation, including the service key,
-   * the method name, and its arguments.
-   * @return An OperationSpan notified when the call finishes, or void.
+   * @param context - Identifies the service and method, and carries the
+   * call's arguments when argument capture is enabled.
+   * @returns The span to notify when the call finishes — for methods that
+   * return a promise, when that promise settles.
    */
   abstract onMethodCall(context: MethodCallContext): OperationSpan
 
-  install(factory: ServiceFactory, options?: InstrumentOptions): ServiceFactory
-  install(
-    factories: ServiceFactory[],
-    options?: InstrumentOptions,
-  ): ServiceFactory[]
   /**
-   * Wraps service factories so this instrumentation is notified when a
-   * service is initialized or disposed and when a method is called on a
-   * service instance. Service instances are wrapped in a Proxy to observe
-   * method calls, and errors are rethrown after being reported, so
-   * behavior is otherwise unchanged.
+   * Wraps a service factory so this instrumentation observes the service
+   * it provides: {@link ServiceInstrumentation.onInitialize | onInitialize},
+   * {@link ServiceInstrumentation.onDispose | onDispose}, and
+   * {@link ServiceInstrumentation.onMethodCall | onMethodCall} fire for
+   * its lifecycle and method calls.
    *
-   * Factories this instrumentation already wrapped are passed through
-   * unchanged, so overlapping installs never double-report an operation.
-   * This makes layered composition safe: base modules can install
-   * instrumentation where they are defined, and a higher-level module can
-   * install over everything it aggregates (via the module's `factories`)
-   * without tracking which factories are already wrapped. Factories
-   * excluded via {@link ServiceInstrumentation.optOut} are likewise passed
-   * through unchanged. Compose the result with `ServiceModule.from`:
+   * @remarks
+   * The service instance is wrapped in a Proxy to observe method calls,
+   * and errors are rethrown after being reported, so behavior is
+   * otherwise unchanged.
+   *
+   * Two kinds of factories are returned as-is instead of being wrapped:
+   * factories excluded via {@link ServiceInstrumentation.optOut | optOut},
+   * and factories this instrumentation itself produced — so overlapping
+   * installs never double-report an operation. The latter makes layered
+   * composition safe: a base module can install instrumentation where it
+   * is defined, and a higher-level module can install over everything it
+   * aggregates without tracking what is already wrapped.
+   *
+   * @param factory - The factory to wrap.
+   * @param options - What runtime values (arguments, results) are
+   * captured and how they are redacted before reaching this
+   * instrumentation; nothing is captured when omitted.
+   * @returns The wrapped factory — or `factory` itself when it is opted
+   * out or already wrapped — ready to be composed into a ServiceModule.
+   */
+  install(factory: ServiceFactory, options?: InstrumentOptions): ServiceFactory
+  /**
+   * Wraps each of the given service factories: the array form of
+   * {@link ServiceInstrumentation.install | install}, convenient for
+   * instrumenting many factories — or a whole module — at once.
    *
    * @example Wrapping factories, with a capture policy
    * ```ts
@@ -104,12 +123,17 @@ export abstract class ServiceInstrumentation {
    * const handlerModule = ServiceModule.from(otel.install(PaymentsModule.factories));
    * ```
    *
-   * @param input - The factory or factories to wrap; a single factory may
-   * be passed without the array, and the result is then a single factory.
-   * @param options - The capture and redaction policy applied before
-   * anything reaches this instrumentation.
-   * @return The wrapped factories, ready to be passed to ServiceModule.from.
+   * @param factories - The factories to wrap.
+   * @param options - What runtime values (arguments, results) are
+   * captured and how they are redacted before reaching this
+   * instrumentation; nothing is captured when omitted.
+   * @returns A new array in which each factory is wrapped, subject to the
+   * single-factory overload's rules, ready for `ServiceModule.from`.
    */
+  install(
+    factories: ServiceFactory[],
+    options?: InstrumentOptions,
+  ): ServiceFactory[]
   install(
     input: ServiceFactory | ServiceFactory[],
     options: InstrumentOptions = {},
@@ -131,13 +155,21 @@ export abstract class ServiceInstrumentation {
   }
 
   /**
-   * Excludes the given factories from instrumentation: install() passes
-   * them through unchanged, regardless of which ServiceInstrumentation
-   * wraps them.
+   * Excludes the given factories from instrumentation: every
+   * {@link ServiceInstrumentation.install | install} — by any
+   * instrumentation — returns them unchanged instead of wrapping them.
+   *
+   * @remarks
+   * Opting out is preventive, not retroactive: it stops future installs
+   * from wrapping a factory, but never removes instrumentation already
+   * applied — a wrapper that is opted out keeps reporting through its
+   * existing layers. To exclude a factory entirely, opt it out before the
+   * first install.
    *
    * @param input - The factory or factories to exclude; a single factory
    * may be passed without the array.
-   * @return The same input, to allow opting out inline.
+   * @returns The same `input`, so a factory can be opted out inline where
+   * it is defined or installed.
    */
   static optOut<E extends ServiceFactory | ServiceFactory[]>(input: E): E {
     if (!Array.isArray(input)) {
@@ -151,10 +183,28 @@ export abstract class ServiceInstrumentation {
     return input
   }
 
+  /**
+   * Whether the factory has been excluded from instrumentation via
+   * {@link ServiceInstrumentation.optOut | optOut}.
+   *
+   * @param factory - The factory to check.
+   * @returns `true` when install() returns the factory unchanged instead
+   * of wrapping it.
+   */
   static isOptedOut(factory: ServiceFactory): boolean {
     return ServiceInstrumentation.optedOut.has(factory)
   }
 
+  /**
+   * Whether the factory is a wrapper produced by an earlier
+   * {@link ServiceInstrumentation.install | install} of this
+   * instrumentation.
+   *
+   * @param factory - The factory to check.
+   * @returns `true` when the factory already reports to this
+   * instrumentation, in which case install() returns it unchanged rather
+   * than wrapping it a second time.
+   */
   isInstrumented(factory: ServiceFactory): boolean {
     return this.instrumented.has(factory)
   }
