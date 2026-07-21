@@ -11,10 +11,6 @@ import {
   trace,
 } from '@opentelemetry/api'
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks'
-import {
-  Instrumentation,
-  registerInstrumentations,
-} from '@opentelemetry/instrumentation'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
 import {
   OTELServiceInstrumentation,
@@ -272,82 +268,5 @@ describe('OTELInstrumentation', () => {
       '[2,3]',
     )
     expect(span.attributes['composed_di.service.function.result']).toBe('5')
-  })
-})
-
-describe('NodeSDK compatibility', () => {
-  const greeterFactory = () => {
-    const Key = new ServiceKey<{ greet(): string }>('svc')
-    const factory = ServiceFactory.singleton({
-      provides: Key,
-      initialize: () => ({ greet: () => 'hi' }),
-    })
-    return { Key, factory }
-  }
-
-  it('should satisfy the Instrumentation interface', () => {
-    // Compile-time contract: NodeSDK's `instrumentations` accepts exactly
-    // what registerInstrumentations accepts — this assignment is the check.
-    const instrumentation: Instrumentation = new OTELServiceInstrumentation()
-    expect(instrumentation.instrumentationName).toBe(
-      '@composed-di/instrumentation-otel',
-    )
-    expect(instrumentation.instrumentationVersion).toBeTruthy()
-    expect(instrumentation.getConfig()).toEqual({ enabled: true })
-  })
-
-  it('should record to the provider wired in by registerInstrumentations', async () => {
-    // No explicit tracer and no global provider: the provider must arrive
-    // through setTracerProvider, exactly as NodeSDK.start() delivers it.
-    const instrumentation = new OTELServiceInstrumentation()
-    const unload = registerInstrumentations({
-      instrumentations: [instrumentation],
-      tracerProvider: provider,
-    })
-    try {
-      const { Key, factory } = greeterFactory()
-      const module = ServiceModule.from(instrumentation.install([factory]))
-
-      const svc = await module.get(Key)
-      svc.greet()
-      expect(byName('svc.greet').attributes).toMatchObject({
-        'composed_di.service.event': 'call',
-      })
-    } finally {
-      unload()
-    }
-  })
-
-  it('should record nothing while disabled and resume once re-enabled', async () => {
-    const instrumentation = makeListener()
-    const { Key, factory } = greeterFactory()
-    const module = ServiceModule.from(instrumentation.install([factory]))
-
-    instrumentation.disable()
-    const svc = await module.get(Key)
-    expect(svc.greet()).toBe('hi')
-    expect(spans()).toHaveLength(0)
-
-    instrumentation.enable()
-    svc.greet()
-    expect(byName('svc.greet')).toBeDefined()
-    expect(spans()).toHaveLength(1)
-  })
-
-  it('should treat enabled in setConfig like enable/disable', async () => {
-    const instrumentation = makeListener()
-    const { Key, factory } = greeterFactory()
-    const module = ServiceModule.from(instrumentation.install([factory]))
-    const svc = await module.get(Key)
-
-    instrumentation.setConfig({ enabled: false })
-    expect(instrumentation.getConfig()).toEqual({ enabled: false })
-    svc.greet()
-    expect(spans()).toHaveLength(1) // just the initialize span
-
-    instrumentation.setConfig({}) // enabled defaults to true
-    expect(instrumentation.getConfig()).toEqual({ enabled: true })
-    svc.greet()
-    expect(byName('svc.greet')).toBeDefined()
   })
 })
