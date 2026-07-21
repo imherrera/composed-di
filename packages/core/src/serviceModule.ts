@@ -4,8 +4,6 @@ import { ServiceScope } from './serviceScope'
 import { ServiceSelector } from './serviceSelector'
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors'
 
-type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
-
 /**
  * ServiceModule is a container for service factories and manages dependency resolution.
  *
@@ -20,7 +18,7 @@ export class ServiceModule {
    *
    * @param factories An array of service factories that this module will manage.
    */
-  private constructor(readonly factories: GenericFactory[]) {
+  private constructor(readonly factories: ServiceFactory[]) {
     checkCircularDependencies(this.factories)
     factories.forEach((factory) => {
       checkMissingDependencies(factory, this.factories)
@@ -103,13 +101,13 @@ export class ServiceModule {
    * @param entries An array of `ServiceModule` or `erviceFactory` instances to be merged.
    * @return A new `ServiceModule` containing the merged factories, with duplicates resolved in a last-wins manner.
    */
-  static from(entries: (ServiceModule | GenericFactory)[]): ServiceModule {
+  static from(entries: (ServiceModule | ServiceFactory)[]): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
     const flattened = entries.flatMap((e) => {
       return e instanceof ServiceModule ? e.factories : [e]
     })
 
-    const factoriesByKey = new Map<symbol, GenericFactory>()
+    const factoriesByKey = new Map<symbol, ServiceFactory>()
     // Later factories overwrite earlier ones (last-wins)
     for (const f of flattened) {
       factoriesByKey.set(f.provides.symbol, f)
@@ -125,8 +123,8 @@ export class ServiceModule {
  * @param factories The list of factories to check for cycles.
  * @throws {ServiceModuleInitError} If a circular dependency is detected.
  */
-function checkCircularDependencies(factories: GenericFactory[]) {
-  const factoryMap = new Map<symbol, GenericFactory>()
+function checkCircularDependencies(factories: ServiceFactory[]) {
+  const factoryMap = new Map<symbol, ServiceFactory>()
   for (const f of factories) {
     factoryMap.set(f.provides.symbol, f)
   }
@@ -134,7 +132,7 @@ function checkCircularDependencies(factories: GenericFactory[]) {
   const visited = new Set<symbol>()
   const stack = new Set<symbol>()
 
-  function walk(factory: GenericFactory, path: string[]) {
+  function walk(factory: ServiceFactory, path: string[]) {
     const symbol = factory.provides.symbol
 
     if (stack.has(symbol)) {
@@ -179,8 +177,8 @@ function checkCircularDependencies(factories: GenericFactory[]) {
  * @throws {ServiceModuleInitError} If any dependency is missing.
  */
 function checkMissingDependencies(
-  factory: GenericFactory,
-  factories: GenericFactory[],
+  factory: ServiceFactory,
+  factories: ServiceFactory[],
 ) {
   const missingDependencies: ServiceKey<unknown>[] = []
 
@@ -216,7 +214,7 @@ function checkMissingDependencies(
  * @param factories The list of factories to search in.
  * @returns True if a factory provides the given key, false otherwise.
  */
-function isRegistered(key: ServiceKey<unknown>, factories: GenericFactory[]) {
+function isRegistered(key: ServiceKey<unknown>, factories: ServiceFactory[]) {
   return factories.some((factory) => factory.provides?.symbol === key?.symbol)
 }
 
@@ -229,7 +227,7 @@ function isRegistered(key: ServiceKey<unknown>, factories: GenericFactory[]) {
  */
 function isSuitable<T, D extends readonly ServiceKey<any>[]>(
   key: ServiceKey<T>,
-  factory: ServiceFactory<any, D>,
+  factory: ServiceFactory,
 ): factory is ServiceFactory<T, D> {
   return factory?.provides?.symbol === key?.symbol
 }

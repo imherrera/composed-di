@@ -27,8 +27,8 @@ type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
  * service, in the order {@link initialize} expects them.
  */
 export abstract class ServiceFactory<
-  const T,
-  const D extends readonly ServiceKey<unknown>[] = [],
+  const T = unknown,
+  const D extends readonly ServiceKey<unknown>[] = readonly ServiceKey<any>[],
 > {
   /**
    * The key under which this factory's service is registered and requested.
