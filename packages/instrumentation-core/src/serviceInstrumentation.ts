@@ -32,25 +32,11 @@ import {
  */
 export abstract class ServiceInstrumentation {
   /**
-   * Factories excluded from instrumentation by {@link ServiceInstrumentation.optOut}:
-   * install() passes them through unchanged instead of wrapping them.
-   */
-  private readonly optedOut = new WeakSet<ServiceFactory>()
-
-  /**
-   * Every factory that participates in this instrumentation — the wrappers
-   * produced by install() and the factories they wrap. optOut() refuses
-   * these: their operations are already being reported, so the exclusion
-   * could not be honored.
-   */
-  private readonly installed = new WeakSet<ServiceFactory>()
-
-  /**
    * Factories produced by this instrumentation's install(), so overlapping
    * installs pass them through unchanged instead of wrapping them twice
    * (which would report every operation twice).
    */
-  private readonly instrumented = new WeakSet<ServiceFactory>()
+  private readonly instrumentedFactories = new WeakSet<ServiceFactory>()
 
   /**
    * Called when initialization of a service starts.
@@ -79,62 +65,36 @@ export abstract class ServiceInstrumentation {
   abstract onMethodCall(context: MethodCallContext): OperationSpan
 
   /**
-   * Wraps a service factory so this instrumentation observes the service
-   * it provides: {@link ServiceInstrumentation.onInitialize | onInitialize},
-   * {@link ServiceInstrumentation.onDispose | onDispose}, and
-   * {@link ServiceInstrumentation.onMethodCall | onMethodCall} fire for
-   * its lifecycle and method calls.
+   * Creates and returns a new instrumented factory.
    *
-   * @remarks
-   * The service instance is wrapped in a Proxy to observe method calls,
-   * and errors are rethrown after being reported, so behavior is
-   * otherwise unchanged.
+   * @example Instrumenting one service
+   * ```ts
+   * const serviceInstrumentation = new OTELServiceInstrumentation()
+   * const module = ServiceModule.from([serviceInstrumentation.install(databaseFactory)])
+   * ```
    *
-   * Two kinds of factories are returned as-is instead of being wrapped:
-   * factories excluded via {@link ServiceInstrumentation.optOut | optOut},
-   * and factories this instrumentation itself produced — so overlapping
-   * installs never double-report an operation. The latter makes layered
-   * composition safe: a base module can install instrumentation where it
-   * is defined, and a higher-level module can install over everything it
-   * aggregates without tracking what is already wrapped.
-   *
-   * @param factory - The factory to wrap.
+   * @param factory - The factory providing the service to observe.
    * @param options - What runtime values (arguments, results) are
    * captured and how they are redacted before reaching this
-   * instrumentation; nothing is captured when omitted.
-   * @returns The wrapped factory — or `factory` itself when it is opted
-   * out or already wrapped — ready to be composed into a ServiceModule.
+   * instrumentation (nothing is captured by default).
+   * @returns The instrumented factory to compose in place of `factory` —
+   * or `factory` itself when it is opted out or already instrumented.
    */
   install(factory: ServiceFactory, options?: InstrumentOptions): ServiceFactory
   /**
-   * Wraps each of the given service factories: the array form of
-   * {@link ServiceInstrumentation.install | install}, convenient for
-   * instrumenting many factories — or a whole module — at once.
+   * Creates and returns a new array of instrumented factories.
    *
-   * @example Wrapping factories, with a capture policy
+   * @example
    * ```ts
-   * const module = ServiceModule.from(
-   *   otel.install([db, cache, api], {
-   *     capture: {
-   *       arguments: true,
-   *       results: true,
-   *       redactionRules: [redactionRule(VaultKey).redact('getSecret').build()],
-   *     },
-   *   }),
-   * );
+   * const serviceInstrumentation = new OTELServiceInstrumentation()
+   * const module = ServiceModule.from(serviceInstrumentation.install(databaseModule.factories))
    * ```
    *
-   * @example Instrumenting an already-built module as a whole
-   * ```ts
-   * const handlerModule = ServiceModule.from(otel.install(PaymentsModule.factories));
-   * ```
-   *
-   * @param factories - The factories to wrap.
+   * @param factories - The factories providing the services to observe.
    * @param options - What runtime values (arguments, results) are
    * captured and how they are redacted before reaching this
-   * instrumentation; nothing is captured when omitted.
-   * @returns A new array in which each factory is wrapped, subject to the
-   * single-factory overload's rules, ready for `ServiceModule.from`.
+   * instrumentation (nothing is captured by default).
+   * @returns A new array of instrumented factories.
    */
   install(
     factories: ServiceFactory[],
@@ -148,80 +108,17 @@ export abstract class ServiceInstrumentation {
       return input.map((factory) => this.install(factory, options))
     }
 
-    if (this.isOptedOut(input) || this.isInstrumented(input)) {
+    if (this.isInstrumented(input)) {
       return input
     }
 
-    const instrumentedFactory = instrumentServiceFactory(this, options, input)
-    this.instrumented.add(instrumentedFactory)
-    this.installed.add(input)
-    this.installed.add(instrumentedFactory)
-    return instrumentedFactory
+    const factory = instrumentServiceFactory(this, options, input)
+    this.instrumentedFactories.add(factory)
+    return factory
   }
 
-  /**
-   * Excludes the given factories from instrumentation, guaranteeing this
-   * instrumentation never instruments them:
-   * {@link ServiceInstrumentation.install | install} returns them
-   * unchanged instead of wrapping them.
-   *
-   * @remarks
-   * Opting out cannot remove instrumentation that is already installed,
-   * so it must happen first: a factory that is already instrumented —
-   * wrapped by an earlier install, or itself a wrapper produced by one —
-   * is refused with an error, because its operations are already being
-   * reported and the exclusion could not be honored. When any entry is
-   * refused, nothing is opted out.
-   *
-   * @param input - The factory or factories to exclude; a single factory
-   * may be passed without the array.
-   * @returns The same `input`, so a factory can be opted out inline where
-   * it is defined.
-   * @throws Error when a factory is already instrumented.
-   */
-  optOut<E extends ServiceFactory | ServiceFactory[]>(input: E): E {
-    const factories = Array.isArray(input) ? input : [input]
-
-    factories.forEach((factory) => {
-      if (this.installed.has(factory)) {
-        throw new Error(
-          `optOut(): cannot opt out ${factory.provides.name} — it is ` +
-          'already instrumented, and opting out never removes installed ' +
-          'instrumentation, so its operations would keep being reported. ' +
-          'Opt factories out before the first install().',
-        )
-      }
-
-      this.optedOut.add(factory)
-    })
-
-    return input
-  }
-
-  /**
-   * Whether the factory has been excluded from this instrumentation via
-   * {@link ServiceInstrumentation.optOut | optOut}.
-   *
-   * @param factory - The factory to check.
-   * @returns `true` when install() returns the factory unchanged instead
-   * of wrapping it.
-   */
-  isOptedOut(factory: ServiceFactory): boolean {
-    return this.optedOut.has(factory)
-  }
-
-  /**
-   * Whether the factory is a wrapper produced by an earlier
-   * {@link ServiceInstrumentation.install | install} of this
-   * instrumentation.
-   *
-   * @param factory - The factory to check.
-   * @returns `true` when the factory already reports to this
-   * instrumentation, in which case install() returns it unchanged rather
-   * than wrapping it a second time.
-   */
-  isInstrumented(factory: ServiceFactory): boolean {
-    return this.instrumented.has(factory)
+  private isInstrumented(factory: ServiceFactory): boolean {
+    return this.instrumentedFactories.has(factory)
   }
 }
 
