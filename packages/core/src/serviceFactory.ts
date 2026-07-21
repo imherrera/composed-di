@@ -42,7 +42,7 @@ export abstract class ServiceFactory<
   abstract dependsOn: D
 
   /**
-   * Optional scope tag for targeted teardown: `module.dispose(scope)` disposes only the
+   * Optional scope tag for targeted teardown `module.dispose(scope)` disposes only the
    * factories whose scope matches. Factories without a scope are torn down only by a
    * full `module.dispose()`.
    */
@@ -71,11 +71,11 @@ export abstract class ServiceFactory<
    *
    * @example
    * ```typescript
-   * const Database = new ServiceKey<DbClient>('Database')
+   * const databaseKey = new ServiceKey<DbClient>('Database')
    *
    * const database = ServiceFactory.singleton({
-   *   provides: Database,
-   *   dependsOn: [Config],
+   *   provides: databaseKey,
+   *   dependsOn: [configKey],
    *   initialize: (config) => DbClient.connect(config.dbUrl),
    *   dispose: (client) => client.close(),
    * })
@@ -107,10 +107,9 @@ export abstract class ServiceFactory<
    *
    * @example
    * ```typescript
-   * const RequestId = new ServiceKey<string>('RequestId')
-   *
+   * const requestIdKey = new ServiceKey<string>('RequestId')
    * const requestId = ServiceFactory.oneShot({
-   *   provides: RequestId,
+   *   provides: requestIdKey,
    *   initialize: () => crypto.randomUUID(), // fresh value per request
    * })
    * ```
