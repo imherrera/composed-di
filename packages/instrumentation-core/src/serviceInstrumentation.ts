@@ -181,17 +181,17 @@ export abstract class ServiceInstrumentation {
    */
   optOut<E extends ServiceFactory | ServiceFactory[]>(input: E): E {
     const factories = Array.isArray(input) ? input : [input]
+
     factories.forEach((factory) => {
       if (this.installed.has(factory)) {
         throw new Error(
           `optOut(): cannot opt out ${factory.provides.name} — it is ` +
-            'already instrumented, and opting out never removes installed ' +
-            'instrumentation, so its operations would keep being reported. ' +
-            'Opt factories out before the first install().',
+          'already instrumented, and opting out never removes installed ' +
+          'instrumentation, so its operations would keep being reported. ' +
+          'Opt factories out before the first install().',
         )
       }
-    })
-    factories.forEach((factory) => {
+
       this.optedOut.add(factory)
     })
 
