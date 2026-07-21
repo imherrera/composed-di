@@ -151,7 +151,7 @@ describe('install() lifetime dispatch', () => {
       expect(recorder.count('svc.ping:start')).toBe(1)
     })
 
-    it('should skip instrumented factories arriving inside a ServiceModule', async () => {
+    it("should skip instrumented factories arriving via a ServiceModule's factories", async () => {
       const Key = new ServiceKey<{ x: number }>('svc')
       const factory = ServiceFactory.singleton({
         provides: Key,
@@ -159,7 +159,9 @@ describe('install() lifetime dispatch', () => {
       })
       const recorder = new RecordingListener()
       const instrumentedModule = ServiceModule.from(recorder.install([factory]))
-      const module = ServiceModule.from(recorder.install(instrumentedModule))
+      const module = ServiceModule.from(
+        recorder.install(instrumentedModule.factories),
+      )
 
       await module.get(Key)
       expect(recorder.count('svc.initialize:start')).toBe(1)
@@ -188,7 +190,7 @@ describe('install() lifetime dispatch', () => {
       expect(other.count('secret.initialize:start')).toBe(0)
     })
 
-    it('should exclude every factory in an opted-out ServiceModule', async () => {
+    it('should exclude every factory of a module opted out via its factories', async () => {
       const DbKey = new ServiceKey<{ x: number }>('db')
       const CacheKey = new ServiceKey<{ y: number }>('cache')
       const db = ServiceFactory.singleton({
@@ -199,12 +201,12 @@ describe('install() lifetime dispatch', () => {
         provides: CacheKey,
         initialize: () => ({ y: 2 }),
       })
-      const infra = ServiceInstrumentation.optOut(
-        ServiceModule.from([db, cache]),
+      const infra = ServiceModule.from(
+        ServiceInstrumentation.optOut([db, cache]),
       )
 
       const recorder = new RecordingListener()
-      const module = ServiceModule.from(recorder.install([infra]))
+      const module = ServiceModule.from(recorder.install(infra.factories))
 
       await module.get(DbKey)
       await module.get(CacheKey)

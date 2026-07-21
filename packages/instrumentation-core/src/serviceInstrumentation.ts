@@ -3,7 +3,6 @@ import {
   ServiceFactory,
   SingletonFactory,
   ServiceKey,
-  ServiceModule,
 } from '@composed-di/core'
 import {
   DisposeContext,
@@ -12,10 +11,6 @@ import {
   MethodCallContext,
   OperationSpan,
 } from './types'
-
-type GenericFactory = ServiceFactory<unknown, readonly ServiceKey<any>[]>
-
-type Instrumentable = ServiceModule | GenericFactory
 
 /**
  * Base class for instrumenting services. Extend it and override the hooks
@@ -36,14 +31,14 @@ export abstract class ServiceInstrumentation {
    * opted out here is skipped by install(), regardless of which
    * ServiceInstrumentation wraps it.
    */
-  private static readonly optedOut = new WeakSet<GenericFactory>()
+  private static readonly optedOut = new WeakSet<ServiceFactory>()
 
   /**
    * Factories produced by this instrumentation's install(), so overlapping
    * installs pass them through unchanged instead of wrapping them twice
    * (which would report every operation twice).
    */
-  private readonly instrumented = new WeakSet<GenericFactory>()
+  private readonly instrumented = new WeakSet<ServiceFactory>()
 
   /**
    * Invoked at the start of the initialization process for a specific service.
@@ -70,6 +65,11 @@ export abstract class ServiceInstrumentation {
    */
   abstract onMethodCall(context: MethodCallContext): OperationSpan
 
+  install(factory: ServiceFactory, options?: InstrumentOptions): ServiceFactory
+  install(
+    factories: ServiceFactory[],
+    options?: InstrumentOptions,
+  ): ServiceFactory[]
   /**
    * Wraps service factories so this instrumentation is notified when a
    * service is initialized or disposed and when a method is called on a
@@ -77,16 +77,14 @@ export abstract class ServiceInstrumentation {
    * method calls, and errors are rethrown after being reported, so
    * behavior is otherwise unchanged.
    *
-   * ServiceModule entries are flattened into their factories, so an
-   * already-built module can be instrumented as a whole. Factories this
-   * instrumentation already wrapped are passed through unchanged, so
-   * overlapping installs never double-report an operation. This makes
-   * layered composition safe: base modules can install instrumentation
-   * where they are defined, and a higher-level module can install over
-   * everything it aggregates without tracking which factories are
-   * already wrapped. Factories excluded via {@link ServiceInstrumentation.optOut}
-   * are likewise passed through unchanged. Compose the result with
-   * `ServiceModule.from`:
+   * Factories this instrumentation already wrapped are passed through
+   * unchanged, so overlapping installs never double-report an operation.
+   * This makes layered composition safe: base modules can install
+   * instrumentation where they are defined, and a higher-level module can
+   * install over everything it aggregates (via the module's `factories`)
+   * without tracking which factories are already wrapped. Factories
+   * excluded via {@link ServiceInstrumentation.optOut} are likewise passed
+   * through unchanged. Compose the result with `ServiceModule.from`:
    *
    * @example Wrapping factories, with a capture policy
    * ```ts
@@ -103,66 +101,62 @@ export abstract class ServiceInstrumentation {
    *
    * @example Instrumenting an already-built module as a whole
    * ```ts
-   * const handlerModule = ServiceModule.from(otel.install(PaymentsModule));
+   * const handlerModule = ServiceModule.from(otel.install(PaymentsModule.factories));
    * ```
    *
-   * @param entries - The ServiceModule or factory instances to wrap; a
-   * single entry may be passed without the array.
+   * @param input - The factory or factories to wrap; a single factory may
+   * be passed without the array, and the result is then a single factory.
    * @param options - The capture and redaction policy applied before
    * anything reaches this instrumentation.
    * @return The wrapped factories, ready to be passed to ServiceModule.from.
    */
   install(
-    entries: Instrumentable | Instrumentable[],
+    input: ServiceFactory | ServiceFactory[],
     options: InstrumentOptions = {},
-  ): GenericFactory[] {
-    return (Array.isArray(entries) ? entries : [entries])
-      .flatMap((e) => (e instanceof ServiceModule ? e.factories : [e]))
-      .map((factory) => {
-        const shouldSkipInstrumentation =
-          ServiceInstrumentation.optedOut.has(factory) ||
-          this.instrumented.has(factory)
-        if (shouldSkipInstrumentation) {
-          return factory
-        }
+  ): ServiceFactory | ServiceFactory[] {
+    if (Array.isArray(input)) {
+      return input.map((factory) => this.install(factory, options))
+    }
 
-        const instrumentedServiceFactory = instrumentServiceFactory(
-          this,
-          options,
-          factory,
-        )
-        this.instrumented.add(instrumentedServiceFactory)
-        return instrumentedServiceFactory
-      })
+    if (
+      ServiceInstrumentation.isOptedOut(input) ||
+      this.isInstrumented(input)
+    ) {
+      return input
+    }
+
+    const instrumentedFactory = instrumentServiceFactory(this, options, input)
+    this.instrumented.add(instrumentedFactory)
+    return instrumentedFactory
   }
 
   /**
-   * Removes the provided entry from instrumentation, opting it out from further monitoring or tracking.
+   * Excludes the given factories from instrumentation: install() passes
+   * them through unchanged, regardless of which ServiceInstrumentation
+   * wraps them.
    *
-   * @param entry - The instance of the instrumentable object to be opted out.
-   * @return The same instance of the provided instrumentable object after opting out.
+   * @param input - The factory or factories to exclude; a single factory
+   * may be passed without the array.
+   * @return The same input, to allow opting out inline.
    */
-  static optOut<E extends Instrumentable>(entry: E): E
-  /**
-   * Removes the given entries from being instrumented in the current context.
-   *
-   * @param entries - A variable number of entries that should be opted out of instrumentation.
-   * @return The same array of entries that were passed in, to allow for chaining or further usage.
-   */
-  static optOut<E extends Instrumentable[]>(...entries: E): E
-  static optOut(
-    ...entries: Instrumentable[]
-  ): Instrumentable | Instrumentable[] {
-    entries.forEach((e) => {
-      if (e instanceof ServiceModule) {
-        e.factories.forEach((factory) =>
-          ServiceInstrumentation.optedOut.add(factory),
-        )
-      } else {
-        ServiceInstrumentation.optedOut.add(e)
-      }
-    })
-    return entries.length === 1 ? entries[0] : entries
+  static optOut<E extends ServiceFactory | ServiceFactory[]>(input: E): E {
+    if (!Array.isArray(input)) {
+      ServiceInstrumentation.optedOut.add(input)
+    } else {
+      input.forEach((factory) => {
+        ServiceInstrumentation.optedOut.add(factory)
+      })
+    }
+
+    return input
+  }
+
+  static isOptedOut(factory: ServiceFactory): boolean {
+    return ServiceInstrumentation.optedOut.has(factory)
+  }
+
+  isInstrumented(factory: ServiceFactory): boolean {
+    return this.instrumented.has(factory)
   }
 }
 
@@ -309,21 +303,26 @@ function observeMethodCalls(
     return thing
   }
 
-  const className = classNameOf(thing)
+  // The class name qualifies method calls in events, but only for named
+  // classes: plain object literals and null-prototype objects report no
+  // class name, so instrumentations fall back to the service key.
+  const name = thing.constructor?.name
+  const className = name && name !== 'Object' ? name : undefined
 
   return new Proxy(thing, {
     get(target, prop) {
       const value = Reflect.get(target, prop)
       if (typeof value === 'function' && typeof prop === 'string') {
         return (...args: unknown[]) => {
-          const span = instrumentation.onMethodCall?.({
+          const span = instrumentation.onMethodCall({
             key,
             className,
             methodName: prop,
             args: capturePolicy.args(prop, args),
           })
+
           try {
-            const result = invokeWithin(span, () => value.apply(target, args))
+            const result = span.run(() => value.apply(target, args))
             if (result instanceof Promise) {
               return result.then(
                 (resolved) => {
@@ -353,31 +352,4 @@ function observeMethodCalls(
       return value
     },
   })
-}
-
-/**
- * Invokes an operation through the OperationSpan's `run` wrapper when the
- * instrumentation returned a span, so it can establish ambient state
- * (tracing context) around the operation; invokes the operation directly
- * otherwise.
- *
- * @param span The OperationSpan returned by the instrumentation, if any.
- * @param fn The thunk performing the operation.
- * @returns The value returned by `fn`.
- */
-function invokeWithin<T>(span: OperationSpan | void, fn: () => T): T {
-  return span ? span.run(fn) : fn()
-}
-
-/**
- * Resolves the class name of a service instance, or undefined for values
- * that are not instances of a named class (plain object literals,
- * null-prototype objects).
- *
- * @param thing The service instance to inspect.
- * @returns The constructor name, or undefined when there is none to report.
- */
-function classNameOf(thing: object): string | undefined {
-  const name = thing.constructor?.name
-  return name && name !== 'Object' ? name : undefined
 }
