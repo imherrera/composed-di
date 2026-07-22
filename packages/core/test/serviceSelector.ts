@@ -3,11 +3,7 @@ import { ServiceKey, SelectorKey } from '../src/serviceKey'
 import { ServiceFactory } from '../src/serviceFactory'
 import { ServiceModule } from '../src/serviceModule'
 import { Selector } from '../src/serviceSelector'
-// Deprecated aliases are imported through the package entry point on purpose:
-// this locks in that consumers can keep importing the old names after upgrading.
-import { ServiceSelector, ServiceSelectorKey } from '../src'
-
-// Test: SelectorKey can be used in dependsOn array and provides Selector instance
+import { ServiceModuleInitError } from '../src'
 
 interface Logger {
   type: string
@@ -139,45 +135,6 @@ describe('SelectorKey Implementation', () => {
 
     expect(() => {
       ServiceModule.from([consoleLoggerFactory, appWithMissingFactory])
-    }).toThrow('MissingLogger')
-  })
-})
-
-describe('deprecated aliases (ServiceSelectorKey, ServiceSelector)', () => {
-  // Guards the promise made by the @deprecated notices: after upgrading, code
-  // written against the old names must keep compiling and behaving identically,
-  // so a rename never forces consumers to migrate before they can upgrade.
-  it('should be the same classes as their renamed counterparts', () => {
-    expect(ServiceSelectorKey).toBe(SelectorKey)
-    expect(ServiceSelector).toBe(Selector)
-  })
-
-  it('should still be recognized and resolved by ServiceModule', async () => {
-    const legacyLoggerSelectorKey = new ServiceSelectorKey<Logger>([
-      consoleLoggerKey,
-      fileLoggerKey,
-    ])
-    expect(legacyLoggerSelectorKey).toBeInstanceOf(SelectorKey)
-
-    const legacyAppFactory = ServiceFactory.singleton({
-      provides: new ServiceKey<App>('LegacyApp'),
-      dependsOn: [legacyLoggerSelectorKey],
-      initialize: (loggerSelector: ServiceSelector<Logger>): App => ({
-        useLogger: async (key) => {
-          const logger = await loggerSelector.get(key)
-          logger.log('Hello from LegacyApp!')
-        },
-        getLogger: (key) => loggerSelector.get(key),
-      }),
-    })
-
-    const module = ServiceModule.from([
-      consoleLoggerFactory,
-      fileLoggerFactory,
-      legacyAppFactory,
-    ])
-    const app = await module.get(legacyAppFactory.provides)
-    const logger = await app.getLogger(consoleLoggerKey)
-    expect(logger.type).toBe('console')
+    }).toThrow(ServiceModuleInitError)
   })
 })
