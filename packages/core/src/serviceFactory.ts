@@ -2,7 +2,7 @@ import { ServiceKey, SelectorKey } from './serviceKey'
 import { ServiceScope } from './serviceScope'
 import {
   ServiceDisposedDuringInitError,
-  ServiceFactoryIllegalUsageError,
+  FactoryReentrancyError,
 } from './errors'
 import type { Selector } from './serviceSelector'
 
@@ -197,7 +197,7 @@ export class SingletonFactory<
     }
 
     if (this.isRunningHook) {
-      throw new ServiceFactoryIllegalUsageError(
+      throw new FactoryReentrancyError(
         `SingletonServiceFactory(provides=${this.provides.name}): initialize() cannot be called re-entrantly from onInitialize or onDispose`,
       )
     }
@@ -250,7 +250,7 @@ export class SingletonFactory<
 
   dispose(): void {
     if (this.isRunningHook) {
-      throw new ServiceFactoryIllegalUsageError(
+      throw new FactoryReentrancyError(
         `SingletonServiceFactory(provides=${this.provides.name}): dispose() cannot be called re-entrantly from onInitialize or onDispose`,
       )
     }

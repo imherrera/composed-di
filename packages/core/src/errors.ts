@@ -2,15 +2,15 @@
  * Error thrown when a ServiceModule fails validation at creation time.
  * This can include circular dependencies or missing dependencies among the module's factories.
  */
-export class ServiceModuleValidationError extends Error {
-  name = 'ServiceModuleValidationError'
+export class ModuleValidationError extends Error {
+  name = 'ModuleValidationError'
 }
 
 /**
  * Error thrown when a requested service cannot be found within the ServiceModule.
  */
-export class ServiceFactoryNotFoundError extends Error {
-  name = 'ServiceFactoryNotFoundError'
+export class NoSuchFactoryError extends Error {
+  name = 'NoSuchFactoryError'
 }
 
 /**
@@ -31,22 +31,38 @@ export class ServiceDisposedDuringInitError extends Error {
  * Re-entrant calls of this kind would corrupt the factory's internal bookkeeping (e.g. the cached
  * instance or generation counter), so they are rejected outright.
  */
-export class ServiceFactoryIllegalUsageError extends Error {
-  name = 'ServiceFactoryIllegalUsageError'
+export class FactoryReentrancyError extends Error {
+  name = 'FactoryReentrancyError'
 }
 
 /**
- * Renamed to {@link ServiceModuleValidationError}. This alias is kept for backwards compatibility
+ * Renamed to {@link ModuleValidationError}. This alias is kept for backwards compatibility
  * and will be removed in a future release.
  *
- * @deprecated Renamed to {@link ServiceModuleValidationError}.
+ * @deprecated Renamed to {@link ModuleValidationError}.
  * */
-export const ServiceModuleInitError = ServiceModuleValidationError
+export const ServiceModuleInitError = ModuleValidationError
 
 /**
- * Renamed to {@link ServiceModuleValidationError}. This alias is kept for backwards compatibility
+ * Renamed to {@link ModuleValidationError}. This alias is kept for backwards compatibility
  * and will be removed in a future release.
  *
- * @deprecated Renamed to {@link ServiceModuleValidationError}.
+ * @deprecated Renamed to {@link ModuleValidationError}.
  * */
-export type ServiceModuleInitError = ServiceModuleValidationError
+export type ServiceModuleInitError = ModuleValidationError
+
+/**
+ * Renamed to {@link NoSuchFactoryError}. This alias is kept for backwards compatibility
+ * and will be removed in a future release.
+ *
+ * @deprecated Renamed to {@link NoSuchFactoryError}.
+ * */
+export const ServiceFactoryNotFoundError = NoSuchFactoryError
+
+/**
+ * Renamed to {@link NoSuchFactoryError}. This alias is kept for backwards compatibility
+ * and will be removed in a future release.
+ *
+ * @deprecated Renamed to {@link NoSuchFactoryError}.
+ * */
+export type ServiceFactoryNotFoundError = NoSuchFactoryError

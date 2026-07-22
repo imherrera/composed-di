@@ -4,8 +4,8 @@ import { ServiceKey, SelectorKey } from '../src/serviceKey'
 import { ServiceFactory } from '../src/serviceFactory'
 import { ServiceScope } from '../src/serviceScope'
 import {
-  ServiceFactoryNotFoundError,
-  ServiceModuleValidationError,
+  NoSuchFactoryError,
+  ModuleValidationError,
 } from '../src/errors'
 
 describe('ServiceModule', () => {
@@ -68,7 +68,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1])).toThrow(
-        ServiceModuleValidationError,
+        ModuleValidationError,
       )
     })
 
@@ -82,7 +82,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1])).toThrow(
-        ServiceModuleValidationError,
+        ModuleValidationError,
       )
     })
 
@@ -98,7 +98,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1])).toThrow(
-        ServiceModuleValidationError,
+        ModuleValidationError,
       )
     })
 
@@ -119,7 +119,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1, factory2])).toThrow(
-        ServiceModuleValidationError,
+        ModuleValidationError,
       )
     })
 
@@ -145,7 +145,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([f1, f2, f3])).toThrow(
-        ServiceModuleValidationError,
+        ModuleValidationError,
       )
     })
 
@@ -167,7 +167,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1, factory2])).toThrow(
-        ServiceModuleValidationError,
+        ModuleValidationError,
       )
     })
   })
@@ -236,7 +236,7 @@ describe('ServiceModule', () => {
       const module = ServiceModule.from([])
 
       await expect(module.get(key1)).rejects.toThrow(
-        ServiceFactoryNotFoundError,
+        NoSuchFactoryError,
       )
     })
 
@@ -361,7 +361,7 @@ describe('ServiceModule', () => {
       expect(value).toBeNull()
     })
 
-    it('should re-throw errors other than ServiceFactoryNotFoundError', async () => {
+    it('should re-throw errors other than NoSuchFactoryError', async () => {
       const key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({
         provides: key1,

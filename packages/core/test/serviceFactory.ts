@@ -3,7 +3,7 @@ import { ServiceKey } from '../src/serviceKey'
 import { ServiceFactory } from '../src/serviceFactory'
 import {
   ServiceDisposedDuringInitError,
-  ServiceFactoryIllegalUsageError,
+  FactoryReentrancyError,
 } from '../src/errors'
 
 /**
@@ -228,7 +228,7 @@ describe('SingletonServiceFactory', () => {
       })
 
       expect(() => factory.initialize()).toThrow(
-        ServiceFactoryIllegalUsageError,
+        FactoryReentrancyError,
       )
       expect(attempts).toBe(1)
 
@@ -248,7 +248,7 @@ describe('SingletonServiceFactory', () => {
       })
 
       expect(() => factory.initialize()).toThrow(
-        ServiceFactoryIllegalUsageError,
+        FactoryReentrancyError,
       )
     })
 
@@ -263,7 +263,7 @@ describe('SingletonServiceFactory', () => {
       })
 
       expect(() => factory.initialize()).toThrow(
-        ServiceFactoryIllegalUsageError,
+        FactoryReentrancyError,
       )
     })
 
@@ -273,7 +273,7 @@ describe('SingletonServiceFactory', () => {
         provides: key,
         initialize: () => {
           expect(() => factory.initialize()).toThrow(
-            ServiceFactoryIllegalUsageError,
+            FactoryReentrancyError,
           )
           return 'value'
         },
@@ -313,7 +313,7 @@ describe('SingletonServiceFactory', () => {
       })
 
       expect(await factory.initialize()).toBe('value')
-      expect(caught).toBeInstanceOf(ServiceFactoryIllegalUsageError)
+      expect(caught).toBeInstanceOf(FactoryReentrancyError)
     })
   })
 
@@ -532,7 +532,7 @@ describe('SingletonServiceFactory', () => {
       })
 
       const first = await factory.initialize()
-      expect(() => factory.dispose()).toThrow(ServiceFactoryIllegalUsageError)
+      expect(() => factory.dispose()).toThrow(FactoryReentrancyError)
 
       const second = await factory.initialize()
       expect(second).not.toBe(first)
@@ -553,7 +553,7 @@ describe('SingletonServiceFactory', () => {
 
       await factory.initialize()
 
-      expect(() => factory.dispose()).toThrow(ServiceFactoryIllegalUsageError)
+      expect(() => factory.dispose()).toThrow(FactoryReentrancyError)
     })
 
     it('throws ServiceFactoryIllegalUsageError when onDispose calls dispose()', async () => {
@@ -568,7 +568,7 @@ describe('SingletonServiceFactory', () => {
 
       await factory.initialize()
 
-      expect(() => factory.dispose()).toThrow(ServiceFactoryIllegalUsageError)
+      expect(() => factory.dispose()).toThrow(FactoryReentrancyError)
     })
 
     // Replaces a formerly-skipped test that asserted the OPPOSITE semantics.

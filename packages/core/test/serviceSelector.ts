@@ -3,7 +3,7 @@ import { ServiceKey, SelectorKey } from '../src/serviceKey'
 import { ServiceFactory } from '../src/serviceFactory'
 import { ServiceModule } from '../src/serviceModule'
 import { Selector } from '../src/serviceSelector'
-import { ServiceModuleValidationError } from '../src'
+import { ModuleValidationError } from '../src'
 
 interface Logger {
   type: string
@@ -135,6 +135,6 @@ describe('SelectorKey Implementation', () => {
 
     expect(() => {
       ServiceModule.from([consoleLoggerFactory, appWithMissingFactory])
-    }).toThrow(ServiceModuleValidationError)
+    }).toThrow(ModuleValidationError)
   })
 })

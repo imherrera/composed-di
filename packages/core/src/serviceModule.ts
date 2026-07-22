@@ -3,8 +3,8 @@ import type { ServiceFactory } from './serviceFactory'
 import { ServiceScope } from './serviceScope'
 import { Selector } from './serviceSelector'
 import {
-  ServiceFactoryNotFoundError,
-  ServiceModuleValidationError,
+  NoSuchFactoryError,
+  ModuleValidationError,
 } from './errors'
 
 /**
@@ -33,7 +33,7 @@ export class ServiceModule {
    *
    * @param key - The key of the service to retrieve.
    * @return A promise that resolves to the service instance.
-   * @throws {ServiceFactoryNotFoundError} If no suitable factory is found for the given key.
+   * @throws {NoSuchFactoryError} If no suitable factory is found for the given key.
    */
   public async get<T>(key: ServiceKey<T>): Promise<T> {
     const factory = this.factories.find((candidate) => {
@@ -42,7 +42,7 @@ export class ServiceModule {
 
     // Check if a factory to supply the requested key was not found
     if (!factory) {
-      throw new ServiceFactoryNotFoundError(
+      throw new NoSuchFactoryError(
         `Could not find a suitable factory for ${key.name}`,
       )
     }
@@ -72,7 +72,7 @@ export class ServiceModule {
     try {
       return await this.get(key)
     } catch (error) {
-      if (error instanceof ServiceFactoryNotFoundError) {
+      if (error instanceof NoSuchFactoryError) {
         return null
       }
       throw error
@@ -124,7 +124,7 @@ export class ServiceModule {
  * Validates that there are no circular dependencies among the provided factories.
  *
  * @param factories The list of factories to check for cycles.
- * @throws {ServiceModuleValidationError} If a circular dependency is detected.
+ * @throws {ModuleValidationError} If a circular dependency is detected.
  */
 function checkCircularDependencies(factories: ServiceFactory[]) {
   const factoryMap = new Map<symbol, ServiceFactory>()
@@ -140,7 +140,7 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
 
     if (stack.has(symbol)) {
       const cyclePath = [...path, factory.provides.name].join(' -> ')
-      throw new ServiceModuleValidationError(
+      throw new ModuleValidationError(
         `Circular dependency detected: ${cyclePath}`,
       )
     }
@@ -177,7 +177,7 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
  *
  * @param factory The factory whose dependencies are to be checked.
  * @param factories The list of available factories in the module.
- * @throws {ServiceModuleValidationError} If any dependency is missing.
+ * @throws {ModuleValidationError} If any dependency is missing.
  */
 function checkMissingDependencies(
   factory: ServiceFactory,
@@ -205,7 +205,7 @@ function checkMissingDependencies(
   const dependencyList = missingDependencies
     .map((dependencyKey) => ` -> ${dependencyKey.name}`)
     .join('\n')
-  throw new ServiceModuleValidationError(
+  throw new ModuleValidationError(
     `${factory.provides.name} will fail because it depends on:\n ${dependencyList}`,
   )
 }
