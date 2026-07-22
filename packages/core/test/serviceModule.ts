@@ -5,7 +5,7 @@ import { ServiceFactory } from '../src/serviceFactory'
 import { ServiceScope } from '../src/serviceScope'
 import {
   ServiceFactoryNotFoundError,
-  ServiceModuleInitError,
+  ServiceModuleValidationError,
 } from '../src/errors'
 
 describe('ServiceModule', () => {
@@ -68,7 +68,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1])).toThrow(
-        ServiceModuleInitError,
+        ServiceModuleValidationError,
       )
     })
 
@@ -82,7 +82,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1])).toThrow(
-        ServiceModuleInitError,
+        ServiceModuleValidationError,
       )
     })
 
@@ -98,7 +98,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1])).toThrow(
-        ServiceModuleInitError,
+        ServiceModuleValidationError,
       )
     })
 
@@ -119,7 +119,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1, factory2])).toThrow(
-        ServiceModuleInitError,
+        ServiceModuleValidationError,
       )
     })
 
@@ -145,7 +145,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([f1, f2, f3])).toThrow(
-        ServiceModuleInitError,
+        ServiceModuleValidationError,
       )
     })
 
@@ -167,7 +167,7 @@ describe('ServiceModule', () => {
       })
 
       expect(() => ServiceModule.from([factory1, factory2])).toThrow(
-        ServiceModuleInitError,
+        ServiceModuleValidationError,
       )
     })
   })

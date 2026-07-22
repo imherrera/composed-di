@@ -1,9 +1,9 @@
 /**
- * Error thrown when there is an issue during the initialization or configuration of a ServiceModule.
- * This can include circular dependencies or missing dependencies that are detected during module creation.
+ * Error thrown when a ServiceModule fails validation at creation time.
+ * This can include circular dependencies or missing dependencies among the module's factories.
  */
-export class ServiceModuleInitError extends Error {
-  name = 'ServiceModuleInitError'
+export class ServiceModuleValidationError extends Error {
+  name = 'ServiceModuleValidationError'
 }
 
 /**
@@ -34,3 +34,19 @@ export class ServiceDisposedDuringInitError extends Error {
 export class ServiceFactoryIllegalUsageError extends Error {
   name = 'ServiceFactoryIllegalUsageError'
 }
+
+/**
+ * Renamed to {@link ServiceModuleValidationError}. This alias is kept for backwards compatibility
+ * and will be removed in a future release.
+ *
+ * @deprecated Renamed to {@link ServiceModuleValidationError}.
+ * */
+export const ServiceModuleInitError = ServiceModuleValidationError
+
+/**
+ * Renamed to {@link ServiceModuleValidationError}. This alias is kept for backwards compatibility
+ * and will be removed in a future release.
+ *
+ * @deprecated Renamed to {@link ServiceModuleValidationError}.
+ * */
+export type ServiceModuleInitError = ServiceModuleValidationError

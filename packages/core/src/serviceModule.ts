@@ -2,7 +2,10 @@ import { ServiceKey, SelectorKey } from './serviceKey'
 import type { ServiceFactory } from './serviceFactory'
 import { ServiceScope } from './serviceScope'
 import { Selector } from './serviceSelector'
-import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors'
+import {
+  ServiceFactoryNotFoundError,
+  ServiceModuleValidationError,
+} from './errors'
 
 /**
  * ServiceModule is a container for service factories and manages dependency resolution.
@@ -121,7 +124,7 @@ export class ServiceModule {
  * Validates that there are no circular dependencies among the provided factories.
  *
  * @param factories The list of factories to check for cycles.
- * @throws {ServiceModuleInitError} If a circular dependency is detected.
+ * @throws {ServiceModuleValidationError} If a circular dependency is detected.
  */
 function checkCircularDependencies(factories: ServiceFactory[]) {
   const factoryMap = new Map<symbol, ServiceFactory>()
@@ -137,7 +140,7 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
 
     if (stack.has(symbol)) {
       const cyclePath = [...path, factory.provides.name].join(' -> ')
-      throw new ServiceModuleInitError(
+      throw new ServiceModuleValidationError(
         `Circular dependency detected: ${cyclePath}`,
       )
     }
@@ -174,7 +177,7 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
  *
  * @param factory The factory whose dependencies are to be checked.
  * @param factories The list of available factories in the module.
- * @throws {ServiceModuleInitError} If any dependency is missing.
+ * @throws {ServiceModuleValidationError} If any dependency is missing.
  */
 function checkMissingDependencies(
   factory: ServiceFactory,
@@ -202,7 +205,7 @@ function checkMissingDependencies(
   const dependencyList = missingDependencies
     .map((dependencyKey) => ` -> ${dependencyKey.name}`)
     .join('\n')
-  throw new ServiceModuleInitError(
+  throw new ServiceModuleValidationError(
     `${factory.provides.name} will fail because it depends on:\n ${dependencyList}`,
   )
 }
