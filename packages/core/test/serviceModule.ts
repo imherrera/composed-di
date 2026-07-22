@@ -406,13 +406,13 @@ describe('ServiceModule', () => {
     })
 
     it('should call dispose only on factories in the specified scope', async () => {
-      const Scope1 = { name: 'Scope1' } as ServiceScope
-      const Scope2 = { name: 'Scope2' } as ServiceScope
+      const scope1 = { name: 'Scope1' } as ServiceScope
+      const scope2 = { name: 'Scope2' } as ServiceScope
 
       const key1 = new ServiceKey<string>('Key1')
       const dispose1 = vi.fn<(instance: string) => void>()
       const factory1 = ServiceFactory.singleton({
-        scope: Scope1,
+        scope: scope1,
         provides: key1,
         initialize: () => 'value1',
         dispose: dispose1,
@@ -421,7 +421,7 @@ describe('ServiceModule', () => {
       const key2 = new ServiceKey<string>('Key2')
       const dispose2 = vi.fn<(instance: string) => void>()
       const factory2 = ServiceFactory.singleton({
-        scope: Scope2,
+        scope: scope2,
         provides: key2,
         initialize: () => 'value2',
         dispose: dispose2,
@@ -432,7 +432,7 @@ describe('ServiceModule', () => {
       await module.get(key1)
       await module.get(key2)
 
-      module.dispose(Scope1)
+      module.dispose(scope1)
 
       expect(dispose1).toHaveBeenCalled()
       expect(dispose2).not.toHaveBeenCalled()

@@ -52,25 +52,25 @@ const endOf = (start: SpanStart): SpanEnd => {
 }
 
 const echoFactory = () => {
-  const Key = new ServiceKey<{ echo(v: string): string }>('svc')
+  const key = new ServiceKey<{ echo(v: string): string }>('svc')
   const factory = ServiceFactory.singleton({
-    provides: Key,
+    provides: key,
     initialize: () => ({ echo: (v: string) => 'got:' + v }),
   })
-  return { Key, factory }
+  return { key, factory }
 }
 
 describe('DashboardClient', () => {
   it('should export initialize and method call span events', async () => {
     const client = makeClient()
-    const Key = new ServiceKey<{ greet(): string }>('svc')
+    const key = new ServiceKey<{ greet(): string }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(client.instrumentation.install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.greet()
     await client.flush()
 
@@ -87,15 +87,15 @@ describe('DashboardClient', () => {
 
   it('should register the module graph before events once attached', async () => {
     const client = makeClient()
-    const Key = new ServiceKey<{ greet(): string }>('svc')
+    const key = new ServiceKey<{ greet(): string }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(client.instrumentation.install([factory]))
     client.attach(module)
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.greet()
     await client.flush()
 
@@ -106,19 +106,19 @@ describe('DashboardClient', () => {
 
   it('should link nested service calls through parentId', async () => {
     const client = makeClient()
-    const DbKey = new ServiceKey<{ query(sql: string): Promise<string> }>(
+    const dbKey = new ServiceKey<{ query(sql: string): Promise<string> }>(
       'Database',
     )
-    const UserKey = new ServiceKey<{ getUser(id: number): Promise<string> }>(
+    const userKey = new ServiceKey<{ getUser(id: number): Promise<string> }>(
       'UserService',
     )
     const db = ServiceFactory.singleton({
-      provides: DbKey,
+      provides: dbKey,
       initialize: () => ({ query: async (sql: string) => `row:${sql}` }),
     })
     const users = ServiceFactory.singleton({
-      provides: UserKey,
-      dependsOn: [DbKey],
+      provides: userKey,
+      dependsOn: [dbKey],
       initialize: (database) => ({
         getUser: (id: number) => database.query(`u${id}`),
       }),
@@ -127,7 +127,7 @@ describe('DashboardClient', () => {
       client.instrumentation.install([db, users]),
     )
 
-    const svc = await module.get(UserKey)
+    const svc = await module.get(userKey)
     await svc.getUser(7)
     await client.flush()
 
@@ -138,9 +138,9 @@ describe('DashboardClient', () => {
 
   it('should report failures on the end event', async () => {
     const client = makeClient()
-    const Key = new ServiceKey<{ boom(): never }>('svc')
+    const key = new ServiceKey<{ boom(): never }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({
         boom: () => {
           throw new Error('kaput')
@@ -149,7 +149,7 @@ describe('DashboardClient', () => {
     })
     const module = ServiceModule.from(client.instrumentation.install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     expect(() => svc.boom()).toThrow('kaput')
     await client.flush()
 
@@ -162,14 +162,14 @@ describe('DashboardClient', () => {
 
   it('should capture serialized arguments and results on call spans when opted in', async () => {
     const client = makeClient()
-    const { Key, factory } = echoFactory()
+    const { key, factory } = echoFactory()
     const module = ServiceModule.from(
       client.instrumentation.install([factory], {
         capture: { arguments: true, results: true },
       }),
     )
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.echo('hi')
     await client.flush()
 
@@ -185,10 +185,10 @@ describe('DashboardClient', () => {
 
   it('should omit arguments and results by default', async () => {
     const client = makeClient()
-    const { Key, factory } = echoFactory()
+    const { key, factory } = echoFactory()
     const module = ServiceModule.from(client.instrumentation.install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.echo('hi')
     await client.flush()
 
@@ -202,14 +202,14 @@ describe('DashboardClient', () => {
       url: 'http://localhost:4321',
       maxValueLength: 10,
     })
-    const { Key, factory } = echoFactory()
+    const { key, factory } = echoFactory()
     const module = ServiceModule.from(
       client.instrumentation.install([factory], {
         capture: { arguments: true },
       }),
     )
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.echo('x'.repeat(50))
     await client.flush()
 
@@ -220,14 +220,14 @@ describe('DashboardClient', () => {
 
   it('should stop exporting after close', async () => {
     const client = makeClient()
-    const Key = new ServiceKey<{ greet(): string }>('svc')
+    const key = new ServiceKey<{ greet(): string }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(client.instrumentation.install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     await client.close()
     const exportedBefore = exportedEvents().length
 

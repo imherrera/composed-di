@@ -51,14 +51,14 @@ const parentIdOf = (span: ReadableSpan) =>
 
 describe('OTELInstrumentation', () => {
   it('should record initialize and method call spans with attributes', async () => {
-    const Key = new ServiceKey<{ greet(): string }>('svc')
+    const key = new ServiceKey<{ greet(): string }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({ greet: () => 'hi' }),
     })
     const module = ServiceModule.from(makeListener().install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.greet()
 
     const init = byName('ServiceFactory[svc].initialize')
@@ -82,14 +82,14 @@ describe('OTELInstrumentation', () => {
         return 'hi'
       }
     }
-    const Key = new ServiceKey<GreeterImpl>('greeter')
+    const key = new ServiceKey<GreeterImpl>('greeter')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => new GreeterImpl(),
     })
     const module = ServiceModule.from(makeListener().install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.greet()
 
     // Both the span name and code.function.name point at the implementing
@@ -103,15 +103,15 @@ describe('OTELInstrumentation', () => {
   })
 
   it('should record dispose spans', async () => {
-    const Key = new ServiceKey<{ x: number }>('svc')
+    const key = new ServiceKey<{ x: number }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({ x: 1 }),
       dispose: () => {},
     })
     const module = ServiceModule.from(makeListener().install([factory]))
 
-    await module.get(Key)
+    await module.get(key)
     module.dispose()
     expect(byName('ServiceFactory[svc].dispose').attributes).toMatchObject({
       'composed_di.service.event': 'dispose',
@@ -123,16 +123,16 @@ describe('OTELInstrumentation', () => {
     trace.disable()
     trace.setGlobalTracerProvider(provider)
     try {
-      const Key = new ServiceKey<{ greet(): string }>('svc')
+      const key = new ServiceKey<{ greet(): string }>('svc')
       const factory = ServiceFactory.singleton({
-        provides: Key,
+        provides: key,
         initialize: () => ({ greet: () => 'hi' }),
       })
       const module = ServiceModule.from(
         new OTELServiceInstrumentation().install([factory]),
       )
 
-      const svc = await module.get(Key)
+      const svc = await module.get(key)
       svc.greet()
       expect(byName('svc.greet').attributes).toMatchObject({
         'composed_di.service.event': 'call',
@@ -143,26 +143,26 @@ describe('OTELInstrumentation', () => {
   })
 
   it('should parent nested service calls across async boundaries', async () => {
-    const DbKey = new ServiceKey<{ query(sql: string): Promise<string> }>(
+    const dbKey = new ServiceKey<{ query(sql: string): Promise<string> }>(
       'Database',
     )
-    const UserKey = new ServiceKey<{ getUser(id: number): Promise<string> }>(
+    const userKey = new ServiceKey<{ getUser(id: number): Promise<string> }>(
       'UserService',
     )
     const db = ServiceFactory.singleton({
-      provides: DbKey,
+      provides: dbKey,
       initialize: () => ({ query: async (sql: string) => `row:${sql}` }),
     })
     const users = ServiceFactory.singleton({
-      provides: UserKey,
-      dependsOn: [DbKey],
+      provides: userKey,
+      dependsOn: [dbKey],
       initialize: (database) => ({
         getUser: (id: number) => database.query(`u${id}`),
       }),
     })
     const module = ServiceModule.from(makeListener().install([db, users]))
 
-    const svc = await module.get(UserKey)
+    const svc = await module.get(userKey)
     await svc.getUser(7)
 
     const getUser = byName('UserService.getUser')
@@ -172,9 +172,9 @@ describe('OTELInstrumentation', () => {
   })
 
   it('should mark failed operations with ERROR status and the exception', async () => {
-    const Key = new ServiceKey<{ boom(): never }>('svc')
+    const key = new ServiceKey<{ boom(): never }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({
         boom: () => {
           throw new Error('kaput')
@@ -183,7 +183,7 @@ describe('OTELInstrumentation', () => {
     })
     const module = ServiceModule.from(makeListener().install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     expect(() => svc.boom()).toThrow('kaput')
 
     const span = byName('svc.boom')
@@ -194,9 +194,9 @@ describe('OTELInstrumentation', () => {
   })
 
   it('should set error.type to _OTHER for non-Error throws', async () => {
-    const Key = new ServiceKey<{ boom(): never }>('svc')
+    const key = new ServiceKey<{ boom(): never }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({
         boom: () => {
           throw 'string kaput'
@@ -205,7 +205,7 @@ describe('OTELInstrumentation', () => {
     })
     const module = ServiceModule.from(makeListener().install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     expect(() => svc.boom()).toThrow('string kaput')
 
     const span = byName('svc.boom')
@@ -214,9 +214,9 @@ describe('OTELInstrumentation', () => {
   })
 
   it('should end async method spans when the promise settles', async () => {
-    const Key = new ServiceKey<{ fail(): Promise<never> }>('svc')
+    const key = new ServiceKey<{ fail(): Promise<never> }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({
         fail: async () => {
           throw new Error('async kaput')
@@ -225,20 +225,20 @@ describe('OTELInstrumentation', () => {
     })
     const module = ServiceModule.from(makeListener().install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     await expect(svc.fail()).rejects.toThrow('async kaput')
     expect(byName('svc.fail').status.code).toBe(SpanStatusCode.ERROR)
   })
 
   it('should not capture arguments or results by default', async () => {
-    const Key = new ServiceKey<{ add(a: number, b: number): number }>('svc')
+    const key = new ServiceKey<{ add(a: number, b: number): number }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     })
     const module = ServiceModule.from(makeListener().install([factory]))
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.add(2, 3)
     const span = byName('svc.add')
     expect(
@@ -250,9 +250,9 @@ describe('OTELInstrumentation', () => {
   })
 
   it('should capture arguments and results when opted in', async () => {
-    const Key = new ServiceKey<{ add(a: number, b: number): number }>('svc')
+    const key = new ServiceKey<{ add(a: number, b: number): number }>('svc')
     const factory = ServiceFactory.singleton({
-      provides: Key,
+      provides: key,
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     })
     const module = ServiceModule.from(
@@ -261,7 +261,7 @@ describe('OTELInstrumentation', () => {
       }),
     )
 
-    const svc = await module.get(Key)
+    const svc = await module.get(key)
     svc.add(2, 3)
     const span = byName('svc.add')
     expect(span.attributes['composed_di.service.function.arguments']).toBe(

@@ -68,14 +68,14 @@ class RecordingListener extends ServiceInstrumentation {
   }
 }
 
-const SecretKey = new ServiceKey<{
+const secretKey = new ServiceKey<{
   getSecret(name: string): string
   listSecretNames(): string[]
 }>('SecretClient')
 
 const secretFactory = () =>
   ServiceFactory.singleton({
-    provides: SecretKey,
+    provides: secretKey,
     initialize: () => ({
       getSecret: (name: string) => `value-of-${name}`,
       listSecretNames: () => ['db-password'],
@@ -97,11 +97,11 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redactionRules: [redactionRule(SecretKey).redact('getSecret').build()],
+        redactionRules: [redactionRule(secretKey).redact('getSecret').build()],
       }),
     )
 
-    const svc = await module.get(SecretKey)
+    const svc = await module.get(secretKey)
     svc.getSecret('db-password')
     svc.listSecretNames()
 
@@ -124,11 +124,11 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redactionRules: [redactionRule(SecretKey).redactAll().build()],
+        redactionRules: [redactionRule(secretKey).redactAll().build()],
       }),
     )
 
-    await module.get(SecretKey)
+    await module.get(secretKey)
 
     expect(recorder.find('initialize').outcome).toEqual({ type: 'success' })
   })
@@ -138,7 +138,7 @@ describe('redaction through instrument()', () => {
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
         redactionRules: [
-          redactionRule(SecretKey)
+          redactionRule(secretKey)
             .redact('getSecret')
             .redact('listSecretNames')
             .build(),
@@ -146,7 +146,7 @@ describe('redaction through instrument()', () => {
       }),
     )
 
-    const svc = await module.get(SecretKey)
+    const svc = await module.get(secretKey)
     svc.getSecret('db-password')
     svc.listSecretNames()
 
@@ -165,7 +165,7 @@ describe('redaction through instrument()', () => {
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
         redactionRules: [
-          redactionRule(SecretKey)
+          redactionRule(secretKey)
             .redactAll()
             .exclude('listSecretNames')
             .build(),
@@ -173,7 +173,7 @@ describe('redaction through instrument()', () => {
       }),
     )
 
-    const svc = await module.get(SecretKey)
+    const svc = await module.get(secretKey)
     svc.getSecret('db-password')
     svc.listSecretNames()
 
@@ -194,7 +194,7 @@ describe('redaction through instrument()', () => {
 
   it('exclude alone (without redactAll or redact) throws: it would never redact anything', () => {
     expect(() =>
-      redactionRule(SecretKey).exclude('listSecretNames').build(),
+      redactionRule(secretKey).exclude('listSecretNames').build(),
     ).toThrow(/has no effect/)
   })
 
@@ -203,7 +203,7 @@ describe('redaction through instrument()', () => {
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
         redactionRules: [
-          redactionRule(SecretKey)
+          redactionRule(secretKey)
             .redactAll()
             .redact('getSecret', {
               maskArgs: (name) => `masked:${name.length}`,
@@ -214,7 +214,7 @@ describe('redaction through instrument()', () => {
       }),
     )
 
-    const svc = await module.get(SecretKey)
+    const svc = await module.get(secretKey)
     svc.getSecret('db-password')
     svc.listSecretNames()
 
@@ -236,11 +236,11 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redactionRules: [redactionRule(SecretKey).redactAll().build()],
+        redactionRules: [redactionRule(secretKey).redactAll().build()],
       }),
     )
 
-    const svc = await module.get(SecretKey)
+    const svc = await module.get(secretKey)
     svc.getSecret('db-password')
 
     expect(recorder.find('call', 'getSecret').outcome).toEqual({
@@ -254,7 +254,7 @@ describe('redaction through instrument()', () => {
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
         redactionRules: [
-          redactionRule(SecretKey)
+          redactionRule(secretKey)
             .redact('getSecret', {
               maskArgs: (name) => `masked:${name.length}`,
               maskResult: (value) => `masked:${value.length}`,
@@ -264,7 +264,7 @@ describe('redaction through instrument()', () => {
       }),
     )
 
-    const svc = await module.get(SecretKey)
+    const svc = await module.get(secretKey)
     svc.getSecret('db-password')
 
     const call = recorder.find('call', 'getSecret')
@@ -279,11 +279,11 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redactionRules: [redactionRule(SecretKey).redact('getSecret').build()],
+        redactionRules: [redactionRule(secretKey).redact('getSecret').build()],
       }),
     )
 
-    const svc = await module.get(SecretKey)
+    const svc = await module.get(secretKey)
     svc.getSecret('db-password')
     svc.listSecretNames()
 
@@ -298,27 +298,27 @@ describe('redaction through instrument()', () => {
   })
 
   it('build() throws when neither redactAll nor redact was called', () => {
-    expect(() => redactionRule(SecretKey).build()).toThrow(/has no effect/)
+    expect(() => redactionRule(secretKey).build()).toThrow(/has no effect/)
   })
 
   it('should not redact services outside the rules', async () => {
-    const PlainKey = new ServiceKey<{ add(a: number, b: number): number }>(
+    const plainKey = new ServiceKey<{ add(a: number, b: number): number }>(
       'Calculator',
     )
     const plain = ServiceFactory.singleton({
-      provides: PlainKey,
+      provides: plainKey,
       initialize: () => ({ add: (a: number, b: number) => a + b }),
     })
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory(), plain], {
         redactionRules: [
-          redactionRule(SecretKey).redact('listSecretNames').build(),
+          redactionRule(secretKey).redact('listSecretNames').build(),
         ],
       }),
     )
 
-    const calc = await module.get(PlainKey)
+    const calc = await module.get(plainKey)
     calc.add(2, 3)
 
     const call = recorder.find('call', 'add')
@@ -327,9 +327,9 @@ describe('redaction through instrument()', () => {
   })
 
   it('should pass failure outcomes through unchanged', async () => {
-    const BoomKey = new ServiceKey<{ boom(secret: string): never }>('Boom')
+    const boomKey = new ServiceKey<{ boom(secret: string): never }>('Boom')
     const factory = ServiceFactory.singleton({
-      provides: BoomKey,
+      provides: boomKey,
       initialize: () => ({
         boom: () => {
           throw new Error('kaput')
@@ -339,11 +339,11 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [factory], {
-        redactionRules: [redactionRule(BoomKey).redactAll().build()],
+        redactionRules: [redactionRule(boomKey).redactAll().build()],
       }),
     )
 
-    const svc = await module.get(BoomKey)
+    const svc = await module.get(boomKey)
     expect(() => svc.boom('hunter2')).toThrow('kaput')
 
     const call = recorder.find('call', 'boom')
@@ -358,11 +358,11 @@ describe('redaction through instrument()', () => {
     const recorder = new RecordingListener()
     const module = ServiceModule.from(
       observe(recorder, [secretFactory()], {
-        redactionRules: [redactionRule(SecretKey).redactAll().build()],
+        redactionRules: [redactionRule(secretKey).redactAll().build()],
       }),
     )
 
-    const svc = await module.get(SecretKey)
+    const svc = await module.get(secretKey)
     svc.getSecret('db-password')
 
     expect(recorder.find('call', 'getSecret').ranWithin).toBe(true)
@@ -396,7 +396,7 @@ describe('redaction through instrument()', () => {
           capture: {
             // Rules cannot re-enable delivery: there is nothing to redact.
             redactionRules: [
-              redactionRule(SecretKey)
+              redactionRule(secretKey)
                 .redactAll()
                 .exclude('listSecretNames')
                 .build(),
@@ -405,7 +405,7 @@ describe('redaction through instrument()', () => {
         }),
       )
 
-      const svc = await module.get(SecretKey)
+      const svc = await module.get(secretKey)
       svc.getSecret('db-password')
       svc.listSecretNames()
 
@@ -426,7 +426,7 @@ describe('redaction through instrument()', () => {
         }),
       )
 
-      const svc = await module.get(SecretKey)
+      const svc = await module.get(secretKey)
       svc.getSecret('db-password')
 
       const call = recorder.find('call', 'getSecret')
@@ -435,9 +435,9 @@ describe('redaction through instrument()', () => {
     })
 
     it('should deliver a present value for methods that return undefined', async () => {
-      const VoidKey = new ServiceKey<{ fire(): void }>('Void')
+      const voidKey = new ServiceKey<{ fire(): void }>('Void')
       const factory = ServiceFactory.singleton({
-        provides: VoidKey,
+        provides: voidKey,
         initialize: () => ({ fire: () => undefined }),
       })
       const recorder = new RecordingListener()
@@ -447,7 +447,7 @@ describe('redaction through instrument()', () => {
         }),
       )
 
-      const svc = await module.get(VoidKey)
+      const svc = await module.get(voidKey)
       svc.fire()
 
       const outcome = recorder.find('call', 'fire').outcome!

@@ -7,17 +7,17 @@ import { createDotGraph, createMermaidGraph } from '../src/utils'
 describe('utils', () => {
   describe('createDotGraph', () => {
     it('generates a valid DOT graph', () => {
-      const KeyA = new ServiceKey<string>('ServiceA')
-      const KeyB = new ServiceKey<string>('ServiceB')
+      const keyA = new ServiceKey<string>('ServiceA')
+      const keyB = new ServiceKey<string>('ServiceB')
 
       const factoryB = ServiceFactory.singleton({
-        provides: KeyB,
+        provides: keyB,
         initialize: () => 'B',
       })
 
       const factoryA = ServiceFactory.singleton({
-        provides: KeyA,
-        dependsOn: [KeyB],
+        provides: keyA,
+        dependsOn: [keyB],
         initialize: (b) => 'A' + b,
       })
 
@@ -35,17 +35,17 @@ describe('utils', () => {
 
   describe('createMermaidGraph', () => {
     it('generates a valid Mermaid flowchart', () => {
-      const KeyA = new ServiceKey<string>('ServiceA')
-      const KeyB = new ServiceKey<string>('ServiceB')
+      const keyA = new ServiceKey<string>('ServiceA')
+      const keyB = new ServiceKey<string>('ServiceB')
 
       const factoryB = ServiceFactory.singleton({
-        provides: KeyB,
+        provides: keyB,
         initialize: () => 'B',
       })
 
       const factoryA = ServiceFactory.singleton({
-        provides: KeyA,
-        dependsOn: [KeyB],
+        provides: keyA,
+        dependsOn: [keyB],
         initialize: (b) => 'A' + b,
       })
 
@@ -62,9 +62,9 @@ describe('utils', () => {
     })
 
     it('handles special characters in service names', () => {
-      const Key = new ServiceKey<string>('Service "Name"')
+      const key = new ServiceKey<string>('Service "Name"')
       const factory = ServiceFactory.singleton({
-        provides: Key,
+        provides: key,
         initialize: () => 'val',
       })
       const module = ServiceModule.from([factory])

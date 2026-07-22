@@ -73,12 +73,12 @@ export class ServiceKey<T> {
    *
    * @example
    * ```ts
-   * const A = ServiceKey.for<Logger>('Logger');
-   * const B = ServiceKey.for<Logger>('Logger');
-   * A.symbol === B.symbol; // true — both keys resolve the same service
+   * const keyA = ServiceKey.for<Logger>('Logger');
+   * const keyB = ServiceKey.for<Logger>('Logger');
+   * keyA.symbol === keyB.symbol; // true — both keys resolve the same service
    *
-   * const C = new ServiceKey<Logger>('Logger');
-   * A.symbol === C.symbol; // false — the constructor always creates a unique key
+   * const keyC = new ServiceKey<Logger>('Logger');
+   * keyA.symbol === keyC.symbol; // false — the constructor always creates a unique key
    * ```
    */
   static for<T>(name: string): ServiceKey<T> {
@@ -122,11 +122,12 @@ export class ServiceKey<T> {
  * ]);
  *
  * // Use in a factory's dependsOn array
+ * const appKey = new ServiceKey<App>('App');
  * const appFactory = ServiceFactory.singleton({
- *   provides: AppKey,
+ *   provides: appKey,
  *   dependsOn: [loggerSelectorKey] as const,
  *   initialize: (loggerSelector: Selector<Logger>) => {
- *     // loggerSelector.get(ConsoleLoggerKey) or loggerSelector.get(FileLoggerKey)
+ *     // loggerSelector.get(consoleLoggerKey) or loggerSelector.get(fileLoggerKey)
  *     return new App(loggerSelector);
  *   },
  * });

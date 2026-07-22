@@ -5,9 +5,11 @@
     "suspicious": "warn"
   },
   "plugins": ["import"],
+  "jsPlugins": ["./lint/composedDiPlugin.mjs"],
   "rules": {
     "unicorn/filename-case": ["error", { "case": "camelCase" }],
-    "import/no-cycle": "error"
+    "import/no-cycle": "error",
+    "composed-di/instance-naming": "error"
   },
   "overrides": [
     {

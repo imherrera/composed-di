@@ -47,17 +47,17 @@ class RecordingListener extends ServiceInstrumentation {
 describe('install() lifetime dispatch', () => {
   describe('singleton delegates', () => {
     it('should preserve identity across get() calls and initialize once', async () => {
-      const Key = new ServiceKey<{ id: number }>('singleton')
+      const key = new ServiceKey<{ id: number }>('singleton')
       let counter = 0
       const factory = ServiceFactory.singleton({
-        provides: Key,
+        provides: key,
         initialize: () => ({ id: ++counter }),
       })
       const recorder = new RecordingListener()
       const module = ServiceModule.from(recorder.install([factory]))
 
-      const a = await module.get(Key)
-      const b = await module.get(Key)
+      const a = await module.get(key)
+      const b = await module.get(key)
       expect(a).toBe(b)
       expect(counter).toBe(1)
       // Repeat gets are cache hits inside the delegate, not
@@ -66,10 +66,10 @@ describe('install() lifetime dispatch', () => {
     })
 
     it('should report dispose and tear down the delegate', async () => {
-      const Key = new ServiceKey<{ x: number }>('singleton')
+      const key = new ServiceKey<{ x: number }>('singleton')
       let disposed = false
       const factory = ServiceFactory.singleton({
-        provides: Key,
+        provides: key,
         initialize: () => ({ x: 1 }),
         dispose: () => {
           disposed = true
@@ -78,7 +78,7 @@ describe('install() lifetime dispatch', () => {
       const recorder = new RecordingListener()
       const module = ServiceModule.from(recorder.install([factory]))
 
-      await module.get(Key)
+      await module.get(key)
       module.dispose()
       expect(disposed).toBe(true)
       expect(recorder.count('singleton.dispose:start')).toBe(1)
@@ -86,18 +86,18 @@ describe('install() lifetime dispatch', () => {
     })
 
     it('should initialize a fresh instance after dispose()', async () => {
-      const Key = new ServiceKey<{ id: number }>('singleton')
+      const key = new ServiceKey<{ id: number }>('singleton')
       let counter = 0
       const factory = ServiceFactory.singleton({
-        provides: Key,
+        provides: key,
         initialize: () => ({ id: ++counter }),
       })
       const recorder = new RecordingListener()
       const module = ServiceModule.from(recorder.install([factory]))
 
-      const before = await module.get(Key)
+      const before = await module.get(key)
       module.dispose()
-      const after = await module.get(Key)
+      const after = await module.get(key)
       expect(before).not.toBe(after)
       expect(after.id).toBe(2)
       expect(recorder.count('singleton.initialize:start')).toBe(2)
@@ -106,10 +106,10 @@ describe('install() lifetime dispatch', () => {
 
   describe('one-shot delegates', () => {
     it('should initialize on every get() and observe each instance', async () => {
-      const Key = new ServiceKey<{ id(): number }>('oneShot')
+      const key = new ServiceKey<{ id(): number }>('oneShot')
       let counter = 0
       const factory = ServiceFactory.oneShot({
-        provides: Key,
+        provides: key,
         initialize: () => {
           const id = ++counter
           return { id: () => id }
@@ -118,8 +118,8 @@ describe('install() lifetime dispatch', () => {
       const recorder = new RecordingListener()
       const module = ServiceModule.from(recorder.install([factory]))
 
-      const a = await module.get(Key)
-      const b = await module.get(Key)
+      const a = await module.get(key)
+      const b = await module.get(key)
       // install() must not impose singleton semantics on a one-shot
       // delegate: each get() produces (and reports) a fresh instance.
       expect(a).not.toBe(b)
@@ -132,9 +132,9 @@ describe('install() lifetime dispatch', () => {
 
   describe('already-instrumented factories', () => {
     it('should pass through factories it already wrapped instead of double-reporting', async () => {
-      const Key = new ServiceKey<{ ping(): string }>('svc')
+      const key = new ServiceKey<{ ping(): string }>('svc')
       const factory = ServiceFactory.singleton({
-        provides: Key,
+        provides: key,
         initialize: () => ({ ping: () => 'pong' }),
       })
       const recorder = new RecordingListener()
@@ -145,16 +145,16 @@ describe('install() lifetime dispatch', () => {
       // operation reported exactly once.
       expect(twice[0]).toBe(once[0])
       const module = ServiceModule.from(twice)
-      const svc = await module.get(Key)
+      const svc = await module.get(key)
       svc.ping()
       expect(recorder.count('svc.initialize:start')).toBe(1)
       expect(recorder.count('svc.ping:start')).toBe(1)
     })
 
     it("should skip instrumented factories arriving via a ServiceModule's factories", async () => {
-      const Key = new ServiceKey<{ x: number }>('svc')
+      const key = new ServiceKey<{ x: number }>('svc')
       const factory = ServiceFactory.singleton({
-        provides: Key,
+        provides: key,
         initialize: () => ({ x: 1 }),
       })
       const recorder = new RecordingListener()
@@ -163,16 +163,16 @@ describe('install() lifetime dispatch', () => {
         recorder.install(instrumentedModule.factories),
       )
 
-      await module.get(Key)
+      await module.get(key)
       expect(recorder.count('svc.initialize:start')).toBe(1)
     })
   })
 
   describe('unknown implementations', () => {
     it('should reject factories whose lifetime cannot be determined', () => {
-      const Key = new ServiceKey<{ x: number }>('rogue')
+      const key = new ServiceKey<{ x: number }>('rogue')
       const handcrafted: ServiceFactory<{ x: number }, []> = {
-        provides: Key,
+        provides: key,
         dependsOn: [],
         scope: undefined,
         initialize: () => ({ x: 1 }),
