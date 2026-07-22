@@ -1,7 +1,7 @@
-import { ServiceKey, ServiceSelectorKey } from './serviceKey'
+import { ServiceKey, SelectorKey } from './serviceKey'
 import type { ServiceFactory } from './serviceFactory'
 import { ServiceScope } from './serviceScope'
-import { ServiceSelector } from './serviceSelector'
+import { Selector } from './serviceSelector'
 import { ServiceFactoryNotFoundError, ServiceModuleInitError } from './errors'
 
 /**
@@ -47,9 +47,9 @@ export class ServiceModule {
     // Resolve all dependencies first
     const dependencies = await Promise.all(
       factory.dependsOn.map((dependencyKey) => {
-        // If the dependency is a ServiceSelectorKey, create a ServiceSelector instance
-        if (dependencyKey instanceof ServiceSelectorKey) {
-          return new ServiceSelector(this, dependencyKey)
+        // If the dependency is a SelectorKey, create a Selector instance
+        if (dependencyKey instanceof SelectorKey) {
+          return new Selector(this, dependencyKey)
         }
         return this.get(dependencyKey)
       }),
@@ -151,7 +151,7 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
 
     for (const depKey of factory.dependsOn) {
       const keysToCheck =
-        depKey instanceof ServiceSelectorKey ? depKey.values : [depKey]
+        depKey instanceof SelectorKey ? depKey.values : [depKey]
 
       for (const key of keysToCheck) {
         const depFactory = factoryMap.get(key.symbol)
@@ -183,8 +183,8 @@ function checkMissingDependencies(
   const missingDependencies: ServiceKey<unknown>[] = []
 
   factory.dependsOn.forEach((dependencyKey: ServiceKey<unknown>) => {
-    // For ServiceSelectorKey, check all contained keys are registered
-    if (dependencyKey instanceof ServiceSelectorKey) {
+    // For SelectorKey, check all contained keys are registered
+    if (dependencyKey instanceof SelectorKey) {
       dependencyKey.values.forEach((key) => {
         if (!isRegistered(key, factories)) {
           missingDependencies.push(key)

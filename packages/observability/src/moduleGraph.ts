@@ -1,8 +1,4 @@
-import {
-  ServiceKey,
-  ServiceModule,
-  ServiceSelectorKey,
-} from '@composed-di/core'
+import { ServiceKey, ServiceModule, SelectorKey } from '@composed-di/core'
 import { GraphEdge, GraphNode } from './events'
 
 export interface ModuleGraph {
@@ -23,9 +19,7 @@ export function moduleGraph(module: ServiceModule): ModuleGraph {
   const edges = module.factories.flatMap((factory) =>
     factory.dependsOn.flatMap((dependency: ServiceKey<unknown>) => {
       const targets =
-        dependency instanceof ServiceSelectorKey
-          ? dependency.values
-          : [dependency]
+        dependency instanceof SelectorKey ? dependency.values : [dependency]
       return targets.map((target) => ({
         from: factory.provides.name,
         to: target.name,

@@ -126,12 +126,17 @@ Retrieves a service instance. Returns a `Promise<T>`.
 
 Disposes of services. If a `scope` is provided, only services in that scope are disposed.
 
-### `ServiceSelectorKey<T>` and `ServiceSelector<T>`
+### `SelectorKey<T>` and `Selector<T>`
 
 Useful for choosing between multiple implementations of the same interface at runtime.
 
+> `SelectorKey` and `Selector` were previously named `ServiceSelectorKey` and
+> `ServiceSelector`. The old names keep working as deprecated aliases of the
+> same classes, so upgrading is never blocked by the rename — migrating is a
+> drop-in find-and-replace you can do at your convenience.
+
 ```typescript
-const LoggerSelectorKey = new ServiceSelectorKey<Logger>([
+const LoggerSelectorKey = new SelectorKey<Logger>([
   ConsoleLoggerKey,
   FileLoggerKey,
 ])

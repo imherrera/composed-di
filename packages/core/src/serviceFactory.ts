@@ -1,14 +1,14 @@
-import { ServiceKey, ServiceSelectorKey } from './serviceKey'
+import { ServiceKey, SelectorKey } from './serviceKey'
 import { ServiceScope } from './serviceScope'
 import {
   ServiceDisposedDuringInitError,
   ServiceFactoryIllegalUsageError,
 } from './errors'
-import type { ServiceSelector } from './serviceSelector'
+import type { Selector } from './serviceSelector'
 
 type ServiceType<T> =
-  T extends ServiceSelectorKey<infer U>
-    ? ServiceSelector<U>
+  T extends SelectorKey<infer U>
+    ? Selector<U>
     : T extends ServiceKey<infer U>
       ? U
       : never

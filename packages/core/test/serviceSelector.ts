@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceKey, ServiceSelectorKey } from '../src/serviceKey'
+import { ServiceKey, SelectorKey } from '../src/serviceKey'
 import { ServiceFactory } from '../src/serviceFactory'
 import { ServiceModule } from '../src/serviceModule'
-import { ServiceSelector } from '../src/serviceSelector'
+import { Selector } from '../src/serviceSelector'
+// Deprecated aliases are imported through the package entry point on purpose:
+// this locks in that consumers can keep importing the old names after upgrading.
+import { ServiceSelector, ServiceSelectorKey } from '../src'
 
-// Test: ServiceSelectorKey can be used in dependsOn array and provides ServiceSelector instance
+// Test: SelectorKey can be used in dependsOn array and provides Selector instance
 
 interface Logger {
   type: string
@@ -20,18 +23,18 @@ interface FileLogger extends Logger {
 }
 
 // Create service keys for different logger implementations
-const ConsoleLoggerKey = new ServiceKey<ConsoleLogger>('ConsoleLogger')
-const FileLoggerKey = new ServiceKey<FileLogger>('FileLogger')
+const consoleLoggerKey = new ServiceKey<ConsoleLogger>('ConsoleLogger')
+const fileLoggerKey = new ServiceKey<FileLogger>('FileLogger')
 
-// Create a ServiceSelectorKey that groups both logger keys
-const LoggerSelectorKey = new ServiceSelectorKey<Logger>([
-  ConsoleLoggerKey,
-  FileLoggerKey,
+// Create a SelectorKey that groups both logger keys
+const loggerSelectorKey = new SelectorKey<Logger>([
+  consoleLoggerKey,
+  fileLoggerKey,
 ])
 
 // Create factories for the logger implementations
 const consoleLoggerFactory = ServiceFactory.singleton({
-  provides: ConsoleLoggerKey,
+  provides: consoleLoggerKey,
   dependsOn: [],
   initialize: (): ConsoleLogger => ({
     type: 'console',
@@ -40,7 +43,7 @@ const consoleLoggerFactory = ServiceFactory.singleton({
 })
 
 const fileLoggerFactory = ServiceFactory.singleton({
-  provides: FileLoggerKey,
+  provides: fileLoggerKey,
   dependsOn: [],
   initialize: (): FileLogger => ({
     type: 'file',
@@ -54,11 +57,11 @@ interface App {
   getLogger: (key: ServiceKey<Logger>) => Promise<Logger>
 }
 
-const AppKey = new ServiceKey<App>('App')
+const appKey = new ServiceKey<App>('App')
 
 const appFactory = ServiceFactory.singleton({
-  provides: AppKey,
-  dependsOn: [LoggerSelectorKey],
+  provides: appKey,
+  dependsOn: [loggerSelectorKey],
   initialize: (loggerSelector): App => {
     return {
       useLogger: async (key: ServiceKey<Logger>) => {
@@ -72,8 +75,8 @@ const appFactory = ServiceFactory.singleton({
   },
 })
 
-describe('ServiceSelectorKey Implementation', () => {
-  it('should create ServiceModule with ServiceSelectorKey dependency', () => {
+describe('SelectorKey Implementation', () => {
+  it('should create ServiceModule with SelectorKey dependency', () => {
     const module = ServiceModule.from([
       consoleLoggerFactory,
       fileLoggerFactory,
@@ -82,53 +85,53 @@ describe('ServiceSelectorKey Implementation', () => {
     expect(module).toBeDefined()
   })
 
-  it('should resolve App service with ServiceSelector dependency', async () => {
+  it('should resolve App service with Selector dependency', async () => {
     const module = ServiceModule.from([
       consoleLoggerFactory,
       fileLoggerFactory,
       appFactory,
     ])
-    const app = await module.get(AppKey)
+    const app = await module.get(appKey)
     expect(app).toBeDefined()
     expect(app.useLogger).toBeDefined()
     expect(app.getLogger).toBeDefined()
   })
 
-  it('should use ServiceSelector to get ConsoleLogger', async () => {
+  it('should use Selector to get ConsoleLogger', async () => {
     const module = ServiceModule.from([
       consoleLoggerFactory,
       fileLoggerFactory,
       appFactory,
     ])
-    const app = await module.get(AppKey)
-    const logger = await app.getLogger(ConsoleLoggerKey)
+    const app = await module.get(appKey)
+    const logger = await app.getLogger(consoleLoggerKey)
     expect(logger).toBeDefined()
     expect(logger.type).toBe('console')
   })
 
-  it('should use ServiceSelector to get FileLogger', async () => {
+  it('should use Selector to get FileLogger', async () => {
     const module = ServiceModule.from([
       consoleLoggerFactory,
       fileLoggerFactory,
       appFactory,
     ])
-    const app = await module.get(AppKey)
-    const logger = await app.getLogger(FileLoggerKey)
+    const app = await module.get(appKey)
+    const logger = await app.getLogger(fileLoggerKey)
     expect(logger).toBeDefined()
     expect(logger.type).toBe('file')
   })
 
-  it('should detect missing dependency for ServiceSelectorKey', () => {
-    const MissingLoggerKey = new ServiceKey<Logger>('MissingLogger')
-    const selectorWithMissing = new ServiceSelectorKey<Logger>([
-      ConsoleLoggerKey,
-      MissingLoggerKey,
+  it('should detect missing dependency for SelectorKey', () => {
+    const missingLoggerKey = new ServiceKey<Logger>('MissingLogger')
+    const selectorWithMissing = new SelectorKey<Logger>([
+      consoleLoggerKey,
+      missingLoggerKey,
     ])
 
     const appWithMissingFactory = ServiceFactory.singleton({
       provides: new ServiceKey<App>('AppWithMissing'),
       dependsOn: [selectorWithMissing],
-      initialize: (_selector: ServiceSelector<Logger>): App => ({
+      initialize: (_selector: Selector<Logger>): App => ({
         useLogger: async () => {},
         getLogger: async () => ({ type: '', log: () => {} }),
       }),
@@ -137,5 +140,44 @@ describe('ServiceSelectorKey Implementation', () => {
     expect(() => {
       ServiceModule.from([consoleLoggerFactory, appWithMissingFactory])
     }).toThrow('MissingLogger')
+  })
+})
+
+describe('deprecated aliases (ServiceSelectorKey, ServiceSelector)', () => {
+  // Guards the promise made by the @deprecated notices: after upgrading, code
+  // written against the old names must keep compiling and behaving identically,
+  // so a rename never forces consumers to migrate before they can upgrade.
+  it('should be the same classes as their renamed counterparts', () => {
+    expect(ServiceSelectorKey).toBe(SelectorKey)
+    expect(ServiceSelector).toBe(Selector)
+  })
+
+  it('should still be recognized and resolved by ServiceModule', async () => {
+    const legacyLoggerSelectorKey = new ServiceSelectorKey<Logger>([
+      consoleLoggerKey,
+      fileLoggerKey,
+    ])
+    expect(legacyLoggerSelectorKey).toBeInstanceOf(SelectorKey)
+
+    const legacyAppFactory = ServiceFactory.singleton({
+      provides: new ServiceKey<App>('LegacyApp'),
+      dependsOn: [legacyLoggerSelectorKey],
+      initialize: (loggerSelector: ServiceSelector<Logger>): App => ({
+        useLogger: async (key) => {
+          const logger = await loggerSelector.get(key)
+          logger.log('Hello from LegacyApp!')
+        },
+        getLogger: (key) => loggerSelector.get(key),
+      }),
+    })
+
+    const module = ServiceModule.from([
+      consoleLoggerFactory,
+      fileLoggerFactory,
+      legacyAppFactory,
+    ])
+    const app = await module.get(legacyAppFactory.provides)
+    const logger = await app.getLogger(consoleLoggerKey)
+    expect(logger.type).toBe('console')
   })
 })
