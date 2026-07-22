@@ -227,9 +227,7 @@ describe('SingletonServiceFactory', () => {
         },
       })
 
-      expect(() => factory.initialize()).toThrow(
-        FactoryReentrancyError,
-      )
+      expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
       expect(attempts).toBe(1)
 
       // Nothing cached, guard disengaged: the retry contract holds.
@@ -247,9 +245,7 @@ describe('SingletonServiceFactory', () => {
         },
       })
 
-      expect(() => factory.initialize()).toThrow(
-        FactoryReentrancyError,
-      )
+      expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
     })
 
     it('throws FactoryReentrancyError when onInitialize calls dispose()', () => {
@@ -262,9 +258,7 @@ describe('SingletonServiceFactory', () => {
         },
       })
 
-      expect(() => factory.initialize()).toThrow(
-        FactoryReentrancyError,
-      )
+      expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
     })
 
     it('does not leave the guard engaged after a re-entrant call is rejected', async () => {
@@ -272,9 +266,7 @@ describe('SingletonServiceFactory', () => {
       const factory = ServiceFactory.singleton({
         provides: key,
         initialize: () => {
-          expect(() => factory.initialize()).toThrow(
-            FactoryReentrancyError,
-          )
+          expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
           return 'value'
         },
       })

@@ -3,10 +3,7 @@ import { ServiceModule } from '../src/serviceModule'
 import { ServiceKey, SelectorKey } from '../src/serviceKey'
 import { ServiceFactory } from '../src/serviceFactory'
 import { ServiceScope } from '../src/serviceScope'
-import {
-  NoSuchFactoryError,
-  ModuleValidationError,
-} from '../src/errors'
+import { NoSuchFactoryError, ModuleValidationError } from '../src/errors'
 
 describe('ServiceModule', () => {
   describe('from', () => {
@@ -235,9 +232,7 @@ describe('ServiceModule', () => {
       const key1 = new ServiceKey<string>('Key1')
       const module = ServiceModule.from([])
 
-      await expect(module.get(key1)).rejects.toThrow(
-        NoSuchFactoryError,
-      )
+      await expect(module.get(key1)).rejects.toThrow(NoSuchFactoryError)
     })
 
     it('should respect singleton scope', async () => {

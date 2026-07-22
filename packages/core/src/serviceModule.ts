@@ -2,10 +2,7 @@ import { ServiceKey, SelectorKey } from './serviceKey'
 import type { ServiceFactory } from './serviceFactory'
 import { ServiceScope } from './serviceScope'
 import { Selector } from './serviceSelector'
-import {
-  NoSuchFactoryError,
-  ModuleValidationError,
-} from './errors'
+import { NoSuchFactoryError, ModuleValidationError } from './errors'
 
 /**
  * ServiceModule is a container for service factories and manages dependency resolution.
@@ -139,9 +136,13 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
     const symbol = factory.provides.symbol
 
     if (stack.has(symbol)) {
-      const cyclePath = [...path, factory.provides.name].join(' -> ')
+      const cycle = [...path, factory.provides.name]
+      const frames = cycle.slice(0, -1).map((name, index) => {
+        const edge = `${name} factory depends on ${cycle[index + 1]}`
+        return index === cycle.length - 2 ? `${edge} (circular)` : edge
+      })
       throw new ModuleValidationError(
-        `Circular dependency detected: ${cyclePath}`,
+        `Circular dependency detected:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
       )
     }
 
@@ -183,30 +184,29 @@ function checkMissingDependencies(
   factory: ServiceFactory,
   factories: ServiceFactory[],
 ) {
-  const missingDependencies: ServiceKey<unknown>[] = []
+  const frames: string[] = []
 
-  factory.dependsOn.forEach((dependencyKey: ServiceKey<unknown>) => {
-    // For SelectorKey, check all contained keys are registered
+  factory.dependsOn.forEach((dependencyKey) => {
+    // For SelectorKey, trace each contained key that is not registered
     if (dependencyKey instanceof SelectorKey) {
       dependencyKey.values.forEach((key) => {
         if (!isRegistered(key, factories)) {
-          missingDependencies.push(key)
+          frames.push(
+            `${key.name} declared on SelectorKey(${dependencyKey.name})`,
+          )
         }
       })
     } else if (!isRegistered(dependencyKey, factories)) {
-      missingDependencies.push(dependencyKey)
+      frames.push(dependencyKey.name)
     }
   })
 
-  if (missingDependencies.length === 0) {
+  if (frames.length === 0) {
     return
   }
 
-  const dependencyList = missingDependencies
-    .map((dependencyKey) => ` -> ${dependencyKey.name}`)
-    .join('\n')
   throw new ModuleValidationError(
-    `${factory.provides.name} will fail because it depends on:\n ${dependencyList}`,
+    `${factory.provides.name} factory will fail to initialize because it depends on keys that no factory provides:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
   )
 }
 
