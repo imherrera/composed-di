@@ -174,7 +174,6 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
 /**
  * Validates that all dependencies of a given factory are present in the list of factories.
  *
- * @param factory The factory whose dependencies are to be checked.
  * @param factories The list of available factories in the module.
  * @throws {ModuleValidationError} If any dependency is missing.
  */
