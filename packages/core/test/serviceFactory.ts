@@ -237,7 +237,7 @@ describe('SingletonServiceFactory', () => {
       expect(attempts).toBe(2)
     })
 
-    it('throws ServiceFactoryIllegalUsageError when onInitialize calls initialize()', () => {
+    it('throws FactoryReentrancyError when onInitialize calls initialize()', () => {
       const key = new ServiceKey<string>('Key')
       const factory = ServiceFactory.singleton({
         provides: key,
@@ -252,7 +252,7 @@ describe('SingletonServiceFactory', () => {
       )
     })
 
-    it('throws ServiceFactoryIllegalUsageError when onInitialize calls dispose()', () => {
+    it('throws FactoryReentrancyError when onInitialize calls dispose()', () => {
       const key = new ServiceKey<string>('Key')
       const factory = ServiceFactory.singleton({
         provides: key,
@@ -296,7 +296,7 @@ describe('SingletonServiceFactory', () => {
     // un-skips in the Node suite. The assertion below is the correct tier-2
     // semantics: the reentry happens BEFORE the init promise settles, so a
     // settled-marker ALS guard would still flag it as inside-the-hook.
-    it.skip('throws ServiceFactoryIllegalUsageError when onInitialize calls initialize() after an await', async () => {
+    it.skip('throws FactoryReentrancyError when onInitialize calls initialize() after an await', async () => {
       const key = new ServiceKey<string>('Key')
       let caught: unknown
       const factory = ServiceFactory.singleton({
@@ -541,7 +541,7 @@ describe('SingletonServiceFactory', () => {
       factory.dispose() // now behaves: plain teardown of the new generation
     })
 
-    it('throws ServiceFactoryIllegalUsageError when onDispose calls initialize()', async () => {
+    it('throws FactoryReentrancyError when onDispose calls initialize()', async () => {
       const key = new ServiceKey<string>('Key')
       const factory = ServiceFactory.singleton({
         provides: key,
@@ -556,7 +556,7 @@ describe('SingletonServiceFactory', () => {
       expect(() => factory.dispose()).toThrow(FactoryReentrancyError)
     })
 
-    it('throws ServiceFactoryIllegalUsageError when onDispose calls dispose()', async () => {
+    it('throws FactoryReentrancyError when onDispose calls dispose()', async () => {
       const key = new ServiceKey<string>('Key')
       const factory = ServiceFactory.singleton({
         provides: key,
