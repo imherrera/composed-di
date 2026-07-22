@@ -84,16 +84,6 @@ export class ServiceKey<T> {
   static for<T>(name: string): ServiceKey<T> {
     return new ServiceKey<T>(name, Symbol.for(name))
   }
-
-  /**
-   * Creates a new instance of SelectorKey using the provided keys.
-   *
-   * @param keys - An array of ServiceKey objects to be used for creating the SelectorKey.
-   * @return A new instance of SelectorKey constructed with the specified keys.
-   */
-  static from<T>(...keys: ServiceKey<T>[]): SelectorKey<T> {
-    return new SelectorKey<T>(keys)
-  }
 }
 
 /**
