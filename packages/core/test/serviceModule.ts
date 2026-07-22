@@ -5,6 +5,18 @@ import { ServiceFactory } from '../src/serviceFactory'
 import { ServiceScope } from '../src/serviceScope'
 import { NoSuchFactoryError, ModuleValidationError } from '../src/errors'
 
+function captureValidationError(create: () => ServiceModule) {
+  try {
+    create()
+  } catch (error) {
+    if (error instanceof ModuleValidationError) {
+      return error
+    }
+    throw error
+  }
+  throw new Error('Expected module creation to throw ModuleValidationError')
+}
+
 describe('ServiceModule', () => {
   describe('from', () => {
     it('should create a module from a list of factories', () => {
@@ -332,6 +344,94 @@ describe('ServiceModule', () => {
       expect(val1).toBe('value1')
       expect(val2).toBe('value1')
       expect(initCount).toBe(1)
+    })
+
+    it('renders the dependency chain that closes the cycle', () => {
+      const userServiceKey = new ServiceKey<string>('UserService')
+      const databaseKey = new ServiceKey<string>('Database')
+      const configKey = new ServiceKey<string>('Config')
+
+      const userServiceFactory = ServiceFactory.oneShot({
+        provides: userServiceKey,
+        dependsOn: [databaseKey],
+        initialize: () => 'root',
+      })
+      const databaseFactory = ServiceFactory.oneShot({
+        provides: databaseKey,
+        dependsOn: [configKey],
+        initialize: () => 'a',
+      })
+      const configFactory = ServiceFactory.oneShot({
+        provides: configKey,
+        dependsOn: [databaseKey],
+        initialize: () => 'b',
+      })
+
+      const error = captureValidationError(() =>
+        ServiceModule.from([
+          userServiceFactory,
+          databaseFactory,
+          configFactory,
+        ]),
+      )
+
+      expect(error.message).toEqual(
+        'Circular dependency detected:\n' +
+          '    UserService factory depends on Database\n' +
+          '    Database factory depends on Config\n' +
+          '    Config factory depends on Database (circular)',
+      )
+    })
+
+    it('renders one trace frame per missing dependency', () => {
+      const userServiceKey = new ServiceKey<string>('UserService')
+      const configKey = new ServiceKey<string>('Config')
+      const databaseKey = new ServiceKey<string>('Database')
+      const consoleLoggerKey = new ServiceKey<string>('ConsoleLogger')
+      const fileLoggerKey = new ServiceKey<string>('FileLogger')
+      const authServiceKey = new ServiceKey<string>('AuthService')
+      const authConfigKey = new ServiceKey<string>('AuthConfig')
+      const loggerSelectorKey = new SelectorKey<string>([
+        consoleLoggerKey,
+        fileLoggerKey,
+      ])
+
+      const configFactory = ServiceFactory.oneShot({
+        provides: configKey,
+        initialize: () => 'config',
+      })
+      const consoleLoggerFactory = ServiceFactory.oneShot({
+        provides: consoleLoggerKey,
+        initialize: () => 'console',
+      })
+      const appFactory = ServiceFactory.oneShot({
+        provides: userServiceKey,
+        dependsOn: [configKey, databaseKey, loggerSelectorKey],
+        initialize: () => 'app',
+      })
+      const authServiceFactory = ServiceFactory.oneShot({
+        provides: authServiceKey,
+        dependsOn: [authConfigKey],
+        initialize: () => 'auth',
+      })
+
+      const error = captureValidationError(() =>
+        ServiceModule.from([
+          configFactory,
+          consoleLoggerFactory,
+          appFactory,
+          authServiceFactory,
+        ]),
+      )
+
+      expect(error.message).toEqual(
+        'UserService factory will fail to initialize because it depends on service keys that no factory provides:\n' +
+          '    Database\n' +
+          '    FileLogger\n' +
+          '\n' +
+          'AuthService factory will fail to initialize because it depends on service keys that no factory provides:\n' +
+          '    AuthConfig',
+      )
     })
   })
 

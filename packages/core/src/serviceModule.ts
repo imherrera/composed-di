@@ -20,9 +20,7 @@ export class ServiceModule {
    */
   private constructor(readonly factories: ServiceFactory[]) {
     checkCircularDependencies(this.factories)
-    factories.forEach((factory) => {
-      checkMissingDependencies(factory, this.factories)
-    })
+    checkMissingDependencies(this.factories)
   }
 
   /**
@@ -180,34 +178,35 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
  * @param factories The list of available factories in the module.
  * @throws {ModuleValidationError} If any dependency is missing.
  */
-function checkMissingDependencies(
-  factory: ServiceFactory,
-  factories: ServiceFactory[],
-) {
-  const frames: string[] = []
+function checkMissingDependencies(factories: ServiceFactory[]) {
+  const issues = factories.reduce((acc, factory) => {
+    const frames: string[] = []
 
-  factory.dependsOn.forEach((dependencyKey) => {
-    // For SelectorKey, trace each contained key that is not registered
-    if (dependencyKey instanceof SelectorKey) {
-      dependencyKey.values.forEach((key) => {
-        if (!isRegistered(key, factories)) {
-          frames.push(
-            `${key.name} declared on SelectorKey(${dependencyKey.name})`,
-          )
-        }
-      })
-    } else if (!isRegistered(dependencyKey, factories)) {
-      frames.push(dependencyKey.name)
+    factory.dependsOn.forEach((dependencyKey) => {
+      // For SelectorKey, trace each contained key that is not registered
+      if (dependencyKey instanceof SelectorKey) {
+        dependencyKey.values.forEach((key) => {
+          if (!isRegistered(key, factories)) {
+            frames.push(key.name)
+          }
+        })
+      } else if (!isRegistered(dependencyKey, factories)) {
+        frames.push(dependencyKey.name)
+      }
+    })
+
+    if (frames.length !== 0) {
+      acc.push(
+        `${factory.provides.name} factory will fail to initialize because it depends on service keys that no factory provides:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
+      )
     }
-  })
 
-  if (frames.length === 0) {
-    return
+    return acc
+  }, new Array<string>())
+
+  if (issues.length > 0) {
+    throw new ModuleValidationError(issues.join('\n\n'))
   }
-
-  throw new ModuleValidationError(
-    `${factory.provides.name} factory will fail to initialize because it depends on keys that no factory provides:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
-  )
 }
 
 /**
