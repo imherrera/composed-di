@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { ServiceKey } from '../src/serviceKey'
 import { ServiceFactory } from '../src/serviceFactory'
 import {
-  ServiceDisposedDuringInitError,
+  SingletonDisposedDuringInitError,
   FactoryReentrancyError,
 } from '../src/errors'
 
@@ -385,7 +385,7 @@ describe('SingletonServiceFactory', () => {
       expect(calls).toBe(2)
     })
 
-    it('tears down the orphan instance and rejects waiters with ServiceDisposedDuringInitError', async () => {
+    it('tears down the orphan instance and rejects waiters with SingletonDisposedDuringInitError', async () => {
       const key = new ServiceKey<{ id: number }>('Key')
       const d = deferred<{ id: number }>()
       const disposed: Array<{ id: number }> = []
@@ -410,7 +410,7 @@ describe('SingletonServiceFactory', () => {
       d.resolve(orphan)
 
       await expect(inFlight).rejects.toBeInstanceOf(
-        ServiceDisposedDuringInitError,
+        SingletonDisposedDuringInitError,
       )
       // The late-arriving instance was handed to onDispose — not leaked.
       expect(disposed).toEqual([orphan])
@@ -446,7 +446,7 @@ describe('SingletonServiceFactory', () => {
       // A settles AFTER the revival.
       const orphanA = { gen: 0 }
       dA.resolve(orphanA)
-      await expect(pA).rejects.toBeInstanceOf(ServiceDisposedDuringInitError)
+      await expect(pA).rejects.toBeInstanceOf(SingletonDisposedDuringInitError)
       expect(disposed).toEqual([orphanA])
 
       // If A's cleanup had clobbered the slot, this third caller would start
@@ -507,7 +507,7 @@ describe('SingletonServiceFactory', () => {
 
       // Waiters must see the lifecycle error, not the teardown error.
       await expect(inFlight).rejects.toBeInstanceOf(
-        ServiceDisposedDuringInitError,
+        SingletonDisposedDuringInitError,
       )
     })
 

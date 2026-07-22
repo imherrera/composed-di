@@ -1,7 +1,7 @@
 import { ServiceKey, SelectorKey } from './serviceKey'
 import { ServiceScope } from './serviceScope'
 import {
-  ServiceDisposedDuringInitError,
+  SingletonDisposedDuringInitError,
   FactoryReentrancyError,
 } from './errors'
 import type { Selector } from './serviceSelector'
@@ -229,7 +229,7 @@ export class SingletonFactory<
           } finally {
             this.isRunningHook = false
           }
-          throw new ServiceDisposedDuringInitError(
+          throw new SingletonDisposedDuringInitError(
             `SingletonServiceFactory[provides=${this.provides.name}]: disposed during initialization`,
           )
         }

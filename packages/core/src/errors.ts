@@ -1,35 +1,47 @@
 /**
- * Error thrown when a ServiceModule fails validation at creation time.
- * This can include circular dependencies or missing dependencies among the module's factories.
+ * Error thrown by `ServiceModule.from` when the given factories cannot form a valid
+ * module: the dependency graph contains a cycle, or a factory depends on a key that
+ * no factory in the module provides.
+ *
+ * Always indicates a bug in the module composition — fix the factory graph rather
+ * than catching this at runtime.
  */
 export class ModuleValidationError extends Error {
   name = 'ModuleValidationError'
 }
 
 /**
- * Error thrown when a requested service cannot be found within the ServiceModule.
+ * Error thrown by `ServiceModule.get` when no factory in the module provides the
+ * requested key.
+ *
+ * Catch this to treat a service as optional — or use `ServiceModule.getOrNull`,
+ * which catches it for you and returns `null` instead.
  */
 export class NoSuchFactoryError extends Error {
   name = 'NoSuchFactoryError'
 }
 
 /**
- * Represents an error thrown when a service is disposed of during its initialization process.
+ * Error thrown by a singleton factory when `dispose()` is called while the instance
+ * is still being initialized: the pending `initialize()` promise rejects with this
+ * error, and the abandoned instance is passed to the factory's `dispose` callback so
+ * nothing leaks.
  *
- * This error typically indicates a logic or lifecycle issue where a service is destroyed or cleaned up
- * before it has fully completed its initialization. It is useful for catching cases where resource management
- * conflicts arise during the service setup phase.
+ * This is a race, not necessarily a bug — disposing a module during shutdown can
+ * legitimately interrupt an in-flight `get()`. Callers may treat it as a cancellation
+ * signal; a later `initialize()` starts fresh.
  */
-export class ServiceDisposedDuringInitError extends Error {
-  name = 'ServiceDisposedDuringInitError'
+export class SingletonDisposedDuringInitError extends Error {
+  name = 'SingletonDisposedDuringInitError'
 }
 
 /**
- * Error thrown when a service factory lifecycle hook (`onInitialize` or `onDispose`) attempts to
- * re-enter the factory by calling `initialize` or `dispose` on itself.
+ * Error thrown by a singleton factory when the `initialize` or `dispose` callback
+ * supplied to `ServiceFactory.singleton` synchronously re-enters the factory by
+ * calling its `initialize()` or `dispose()` method.
  *
- * Re-entrant calls of this kind would corrupt the factory's internal bookkeeping (e.g. the cached
- * instance or generation counter), so they are rejected outright.
+ * Re-entrant calls would corrupt the factory's in-flight state, so they are rejected
+ * outright.
  */
 export class FactoryReentrancyError extends Error {
   name = 'FactoryReentrancyError'
