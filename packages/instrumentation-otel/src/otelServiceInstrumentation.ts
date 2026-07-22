@@ -39,12 +39,6 @@ export interface OTELInstrumentationOptions {
 
 /**
  * A ServiceInstrumentation that records service events as OTEL spans.
- *
- * Arguments and results are recorded (as the
- * `composed_di.service.function.arguments` / `.result` attributes,
- * serialized to JSON) exactly when `instrument()` (inherited from
- * ServiceInstrumentation) delivers them — capture and redaction policy
- * live in the InstrumentOptions, not here.
  */
 export class OTELServiceInstrumentation extends ServiceInstrumentation {
   private readonly tracer: Tracer
