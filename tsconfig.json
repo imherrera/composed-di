@@ -3,7 +3,6 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/instrumentation-core" },
-    { "path": "packages/instrumentation-otel" },
-    { "path": "packages/observability" }
+    { "path": "packages/instrumentation-otel" }
   ]
 }
