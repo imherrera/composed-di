@@ -1,6 +1,6 @@
 {
   "name": "composed-di-monorepo",
-  "version": "0.10.0-alpha",
+  "version": "0.11.0-alpha",
   "private": true,
   "license": "MIT",
   "author": "Juan Herrera juanhr454@gmail.com",
