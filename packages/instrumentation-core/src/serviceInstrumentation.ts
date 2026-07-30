@@ -3,6 +3,7 @@ import {
   ServiceFactory,
   SingletonFactory,
   ServiceKey,
+  ServiceModule,
 } from '@composed-di/core'
 import {
   DisposeContext,
@@ -100,10 +101,22 @@ export abstract class ServiceInstrumentation {
     factories: ServiceFactory[],
     options?: InstrumentOptions,
   ): ServiceFactory[]
+  /**
+   * Installs a service module with optional instrumentation settings.
+   *
+   * @param {ServiceModule} module - The service module to be installed.
+   * @param {InstrumentOptions} [options] - Optional configuration for instrumentation.
+   * @return {ServiceModule} The installed and possibly modified service module.
+   */
+  install(module: ServiceModule, options?: InstrumentOptions): ServiceModule
   install(
-    input: ServiceFactory | ServiceFactory[],
+    input: ServiceModule | ServiceFactory | ServiceFactory[],
     options: InstrumentOptions = {},
-  ): ServiceFactory | ServiceFactory[] {
+  ): ServiceModule | ServiceFactory | ServiceFactory[] {
+    if (input instanceof ServiceModule) {
+      return ServiceModule.from(this.install(input.factories, options))
+    }
+
     if (Array.isArray(input)) {
       return input.map((factory) => this.install(factory, options))
     }
