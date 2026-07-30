@@ -48,18 +48,18 @@ interface Database {
 }
 
 // 1. Declare typed keys — unique tokens that identify each service.
-const ConfigKey = new ServiceKey<Config>('Config')
-const DatabaseKey = new ServiceKey<Database>('Database')
+const configKey = new ServiceKey<Config>('Config')
+const databaseKey = new ServiceKey<Database>('Database')
 
 // 2. Describe how each service is built and what it depends on.
 const configFactory = ServiceFactory.singleton({
-  provides: ConfigKey,
+  provides: configKey,
   initialize: () => ({ dbUrl: process.env.DB_URL! }),
 })
 
 const databaseFactory = ServiceFactory.singleton({
-  provides: DatabaseKey,
-  dependsOn: [ConfigKey] as const,
+  provides: databaseKey,
+  dependsOn: [configKey] as const,
   initialize: (config) => connectToDatabase(config.dbUrl), // may be async
   dispose: (db) => db.close(),
 })
@@ -68,7 +68,7 @@ const databaseFactory = ServiceFactory.singleton({
 const module = ServiceModule.from([configFactory, databaseFactory])
 
 // 4. Request services. Config is created first — lazily, exactly once.
-const db = await module.get(DatabaseKey)
+const db = await module.get(databaseKey)
 
 // 5. Tear everything down when you're done.
 module.dispose()
@@ -78,10 +78,47 @@ module.dispose()
 
 ### Keys
 
-A `ServiceKey<T>` is a typed token backed by a unique `Symbol`, so two keys with the same name never collide. When you _want_ keys to be shared across modules or bundles, use the global-registry variant:
+A `ServiceKey<T>` is a typed token backed by a unique `Symbol`, so two keys with the same name never collide.
+
+For services that are part of your application domain, prefer unique keys — `new ServiceKey(...)` — declared in the same package as the factories that provide them. Identity travels with the exported object, so no naming discipline is needed, and the package stays self-contained: it exports a single `ServiceModule` plus its keys, and consumers import both.
 
 ```ts
-const LoggerKey = ServiceKey.for<Logger>('my-app/Logger') // same symbol everywhere
+// @myapp/data — the whole package surface: one module + its keys.
+export const userRepositoryKey = new ServiceKey<UserRepository>(
+  'UserRepository',
+)
+export const invoiceRepositoryKey = new ServiceKey<InvoiceRepository>(
+  'InvoiceRepository',
+)
+
+export const dataModule = ServiceModule.from([
+  ServiceFactory.singleton({
+    provides: userRepositoryKey,
+    initialize: () => new PostgresUserRepository(),
+  }),
+  ServiceFactory.singleton({
+    provides: invoiceRepositoryKey,
+    initialize: () => new PostgresInvoiceRepository(),
+  }),
+])
+```
+
+```ts
+// Elsewhere in the app: compose the module, resolve by the imported key.
+import { dataModule, userRepositoryKey } from '@myapp/data'
+
+const module = ServiceModule.from([dataModule, notificationsModule])
+const users = await module.get(userRepositoryKey)
+```
+
+Reach for the global-registry variant — `ServiceKey.for` — only when a key cannot be shared as an import: across independent bundles or duplicated copies of a library, typically for third-party services. Registry keys are identified by their name string alone, so pick a clash-safe name: the package the service comes from, followed by the service itself.
+
+```ts
+const secretsClientKey = ServiceKey.for<SecretsManagerClient>(
+  '@aws-sdk/client-secrets-manager/SecretsManagerClient',
+)
+const mongooseKey = ServiceKey.for<Connection>('mongoose/Connection')
+const redisKey = ServiceKey.for<Redis>('ioredis/Redis')
 ```
 
 ### Factories
@@ -93,7 +130,7 @@ Two lifetimes are provided:
 
 ```ts
 const requestIdFactory = ServiceFactory.oneShot({
-  provides: RequestIdKey,
+  provides: requestIdKey,
   initialize: () => crypto.randomUUID(), // new value per request
 })
 ```
@@ -115,22 +152,22 @@ A `SelectorKey<T>` groups several implementations of the same interface. A facto
 ```ts
 import { Selector, SelectorKey } from '@composed-di/core'
 
-const PaymentSelectorKey = new SelectorKey([StripeKey, PaypalKey])
+const paymentSelectorKey = new SelectorKey([stripeKey, paypalKey])
 
 class CheckoutService {
   constructor(private readonly payments: Selector<PaymentGateway>) {}
 
   async pay(order: Order) {
     const gateway = await this.payments.get(
-      order.method === 'paypal' ? PaypalKey : StripeKey,
+      order.method === 'paypal' ? paypalKey : stripeKey,
     )
     return gateway.charge(order)
   }
 }
 
 const checkoutFactory = ServiceFactory.singleton({
-  provides: CheckoutKey,
-  dependsOn: [PaymentSelectorKey] as const,
+  provides: checkoutKey,
+  dependsOn: [paymentSelectorKey] as const,
   initialize: (payments) => new CheckoutService(payments),
 })
 ```
@@ -173,8 +210,8 @@ const module = instrumentation.install(baseModule, {
     arguments: true,
     results: true,
     redactionRules: [
-      redactionRule(VaultKey).redactAll().exclude('ping').build(),
-      redactionRule(BillingKey)
+      redactionRule(vaultKey).redactAll().exclude('ping').build(),
+      redactionRule(billingKey)
         .redact('chargeCard', {
           maskResult: (card) => `card ending in ${card.number.slice(-4)}`,
         })

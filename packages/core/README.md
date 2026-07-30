@@ -24,17 +24,17 @@ interface Database {
 }
 
 // Typed keys identify each service.
-const ConfigKey = new ServiceKey<Config>('Config')
-const DatabaseKey = new ServiceKey<Database>('Database')
+const configKey = new ServiceKey<Config>('Config')
+const databaseKey = new ServiceKey<Database>('Database')
 
 const configFactory = ServiceFactory.singleton({
-  provides: ConfigKey,
+  provides: configKey,
   initialize: () => ({ dbUrl: process.env.DB_URL! }),
 })
 
 const databaseFactory = ServiceFactory.singleton({
-  provides: DatabaseKey,
-  dependsOn: [ConfigKey] as const,
+  provides: databaseKey,
+  dependsOn: [configKey] as const,
   initialize: (config) => connectToDatabase(config.dbUrl), // may be async
   dispose: (db) => db.close(),
 })
@@ -43,7 +43,7 @@ const databaseFactory = ServiceFactory.singleton({
 const module = ServiceModule.from([configFactory, databaseFactory])
 
 // Config is created first — lazily, exactly once.
-const db = await module.get(DatabaseKey)
+const db = await module.get(databaseKey)
 
 module.dispose()
 ```
@@ -52,7 +52,32 @@ module.dispose()
 
 ### `ServiceKey<T>`
 
-A typed token backed by a unique `Symbol`, so two keys with the same name never collide. `ServiceKey.for<T>(name)` instead uses the global symbol registry, producing keys that identify the same service across modules, bundles, or duplicated copies of this library.
+A typed token backed by a unique `Symbol`, so two keys with the same name never collide.
+
+For services that are part of your application domain, prefer unique keys — `new ServiceKey(...)` — declared in the same package as the factories that provide them, so the package stays self-contained: it exports a single `ServiceModule` plus its keys, and consumers import both.
+
+```ts
+// @myapp/data — the whole package surface: one module + its keys.
+export const userRepositoryKey = new ServiceKey<UserRepository>(
+  'UserRepository',
+)
+
+export const dataModule = ServiceModule.from([
+  ServiceFactory.singleton({
+    provides: userRepositoryKey,
+    initialize: () => new PostgresUserRepository(),
+  }),
+])
+```
+
+`ServiceKey.for<T>(name)` instead uses the global symbol registry, producing keys that identify the same service across independent bundles or duplicated copies of this library — typically for third-party services. Registry keys are identified by their name string alone, so pick a clash-safe name: the package the service comes from, followed by the service itself.
+
+```ts
+const secretsClientKey = ServiceKey.for<SecretsManagerClient>(
+  '@aws-sdk/client-secrets-manager/SecretsManagerClient',
+)
+const mongooseKey = ServiceKey.for<Connection>('mongoose/Connection')
+```
 
 ### `ServiceFactory`
 

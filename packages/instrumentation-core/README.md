@@ -113,9 +113,9 @@ const module = instrumentation.install(baseModule, {
     results: true, // deliver return values on the success outcome
     redactionRules: [
       // Blank everything this service sees...
-      redactionRule(VaultKey).redactAll().exclude('ping').build(),
+      redactionRule(vaultKey).redactAll().exclude('ping').build(),
       // ...or mask specific methods with custom output.
-      redactionRule(BillingKey)
+      redactionRule(billingKey)
         .redact('chargeCard', {
           maskResult: (card) => `card ending in ${card.number.slice(-4)}`,
         })

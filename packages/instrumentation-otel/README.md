@@ -26,7 +26,7 @@ const module = instrumentation.install(
 
 // Traced end to end: a ServiceModule[Database].get span, with a child
 // ServiceFactory[Database].initialize span on first resolution.
-const db = await module.get(DatabaseKey)
+const db = await module.get(databaseKey)
 
 // Each method call on a resolved service is a span too, e.g. DbClient.query.
 await db.query('SELECT 1')
@@ -63,7 +63,7 @@ const module = instrumentation.install(baseModule, {
   capture: {
     arguments: true,
     results: true,
-    redactionRules: [redactionRule(VaultKey).redactAll().build()],
+    redactionRules: [redactionRule(vaultKey).redactAll().build()],
   },
 })
 ```
