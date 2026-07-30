@@ -30,7 +30,7 @@ importers:
   packages/core: {}
 
   packages/instrumentation-core:
-    dependencies:
+    devDependencies:
       '@composed-di/core':
         specifier: workspace:^
         version: link:../core
