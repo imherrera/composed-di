@@ -71,6 +71,7 @@ export type ServiceLifecycleEvent =
   | 'factory_initialize'
   | 'factory_dispose'
   | 'module_get'
+  | 'module_get_or_null'
   | 'module_dispose'
 
 /**

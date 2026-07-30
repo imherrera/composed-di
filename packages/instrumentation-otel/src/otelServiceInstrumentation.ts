@@ -135,6 +135,7 @@ const LIFECYCLE_TARGETS: Record<
   factory_initialize: { className: 'ServiceFactory', methodName: 'initialize' },
   factory_dispose: { className: 'ServiceFactory', methodName: 'dispose' },
   module_get: { className: 'ServiceModule', methodName: 'get' },
+  module_get_or_null: { className: 'ServiceModule', methodName: 'getOrNull' },
   module_dispose: { className: 'ServiceModule', methodName: 'dispose' },
 }
 

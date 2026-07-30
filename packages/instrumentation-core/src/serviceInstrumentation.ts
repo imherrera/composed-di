@@ -41,7 +41,8 @@ export abstract class ServiceInstrumentation {
 
   /**
    * Called when a lifecycle operation starts: a factory initializing or
-   * disposing its service, or a module resolving (`get`) or disposing.
+   * disposing its service, or a module resolving (`get` / `getOrNull`)
+   * or disposing.
    *
    * @param context - Which operation started and, except for module
    * disposal, the service it concerns.
@@ -97,9 +98,9 @@ export abstract class ServiceInstrumentation {
   ): ServiceFactory[]
   /**
    * Creates and returns a new instrumented module: its factories are
-   * instrumented as by the array overload, and the module's own `get` and
-   * `dispose` are reported as `module_get` / `module_dispose` lifecycle
-   * operations.
+   * instrumented as by the array overload, and the module's own `get`,
+   * `getOrNull` and `dispose` are reported as `module_get` /
+   * `module_get_or_null` / `module_dispose` lifecycle operations.
    *
    * @example
    * ```ts
@@ -254,19 +255,26 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
 
 /**
  * Wraps a module so its public entry points are reported to the
- * instrumentation: `get` as a `module_get` span around the whole
- * resolution, dependencies included, and `dispose` as a `module_dispose`
- * span around the teardown of every factory. Everything else — including
- * the factories array — is served by the module untouched.
+ * instrumentation: `get` and `getOrNull` as `module_get` /
+ * `module_get_or_null` spans around the whole resolution, dependencies
+ * included, and `dispose` as a `module_dispose` span around the teardown
+ * of every factory. A `getOrNull` miss ends its span successfully:
+ * returning null is that operation working as intended, not a failure.
+ * Everything else — including the factories array — is served by the
+ * module untouched.
  */
 function instrumentServiceModule(
   instrumentation: ServiceInstrumentation,
   module: ServiceModule,
 ): ServiceModule {
-  const get = async <T>(key: ServiceKey<T>): Promise<T> => {
-    const span = instrumentation.lifecycleSpan({ event: 'module_get', key })
+  const resolution = async <T>(
+    event: 'module_get' | 'module_get_or_null',
+    key: ServiceKey<unknown>,
+    resolve: () => Promise<T>,
+  ): Promise<T> => {
+    const span = instrumentation.lifecycleSpan({ event, key })
     try {
-      const instance = await span.run(() => module.get(key))
+      const instance = await span.run(resolve)
       span.end({ type: 'success' })
       return instance
     } catch (error) {
@@ -274,6 +282,12 @@ function instrumentServiceModule(
       throw error
     }
   }
+
+  const get = <T>(key: ServiceKey<T>): Promise<T> =>
+    resolution('module_get', key, () => module.get(key))
+
+  const getOrNull = <T>(key: ServiceKey<T>): Promise<T | null> =>
+    resolution('module_get_or_null', key, () => module.getOrNull(key))
 
   const dispose = (): void => {
     const span = instrumentation.lifecycleSpan({ event: 'module_dispose' })
@@ -286,13 +300,13 @@ function instrumentServiceModule(
     }
   }
 
-  // getOrNull is intentionally not intercepted: it delegates to get on
-  // `this`, which resolves through this proxy, so a getOrNull call is
-  // reported as the module_get it performs (a miss as a failed one).
   return new Proxy(module, {
     get(target, prop) {
       if (prop === 'get') {
         return get
+      }
+      if (prop === 'getOrNull') {
+        return getOrNull
       }
       if (prop === 'dispose') {
         return dispose
