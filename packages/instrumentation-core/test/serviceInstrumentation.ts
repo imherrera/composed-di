@@ -6,8 +6,7 @@ import {
   SingletonDisposedDuringInitError,
 } from '@composed-di/core'
 import {
-  DisposeContext,
-  InitializeContext,
+  LifecycleContext,
   MethodCallContext,
   OperationOutcome,
   OperationSpan,
@@ -24,12 +23,10 @@ class RecordingListener extends ServiceInstrumentation {
   readonly methodContexts: MethodCallContext[] = []
   readonly outcomes = new Map<string, OperationOutcome>()
 
-  initializeSpan({ key }: InitializeContext): OperationSpan {
-    return this.span(`${key.name}.initialize`)
-  }
-
-  disposeSpan({ key }: DisposeContext): OperationSpan {
-    return this.span(`${key.name}.dispose`)
+  lifecycleSpan(context: LifecycleContext): OperationSpan {
+    return this.span(
+      context.key ? `${context.key.name}.${context.event}` : context.event,
+    )
   }
 
   methodCallSpan(context: MethodCallContext): OperationSpan {
@@ -76,7 +73,7 @@ describe('install() lifetime dispatch', () => {
       expect(counter).toBe(1)
       // Repeat gets are cache hits inside the delegate, not
       // initializations — they must not be reported as one.
-      expect(recorder.count('singleton.initialize:start')).toBe(1)
+      expect(recorder.count('singleton.factory_initialize:start')).toBe(1)
     })
 
     it('should report dispose and tear down the delegate', async () => {
@@ -95,8 +92,8 @@ describe('install() lifetime dispatch', () => {
       await module.get(key)
       module.dispose()
       expect(disposed).toBe(true)
-      expect(recorder.count('singleton.dispose:start')).toBe(1)
-      expect(recorder.count('singleton.dispose:end')).toBe(1)
+      expect(recorder.count('singleton.factory_dispose:start')).toBe(1)
+      expect(recorder.count('singleton.factory_dispose:end')).toBe(1)
     })
 
     it('should initialize a fresh instance after dispose()', async () => {
@@ -114,7 +111,7 @@ describe('install() lifetime dispatch', () => {
       const after = await module.get(key)
       expect(before).not.toBe(after)
       expect(after.id).toBe(2)
-      expect(recorder.count('singleton.initialize:start')).toBe(2)
+      expect(recorder.count('singleton.factory_initialize:start')).toBe(2)
     })
   })
 
@@ -139,7 +136,7 @@ describe('install() lifetime dispatch', () => {
       expect(a).not.toBe(b)
       expect(a.id()).toBe(1)
       expect(b.id()).toBe(2)
-      expect(recorder.count('oneShot.initialize:start')).toBe(2)
+      expect(recorder.count('oneShot.factory_initialize:start')).toBe(2)
       expect(recorder.count('oneShot.id:start')).toBe(2)
     })
   })
@@ -161,7 +158,7 @@ describe('install() lifetime dispatch', () => {
       const module = ServiceModule.from(twice)
       const svc = await module.get(key)
       svc.ping()
-      expect(recorder.count('svc.initialize:start')).toBe(1)
+      expect(recorder.count('svc.factory_initialize:start')).toBe(1)
       expect(recorder.count('svc.ping:start')).toBe(1)
     })
 
@@ -178,7 +175,7 @@ describe('install() lifetime dispatch', () => {
       )
 
       await module.get(key)
-      expect(recorder.count('svc.initialize:start')).toBe(1)
+      expect(recorder.count('svc.factory_initialize:start')).toBe(1)
     })
   })
 
@@ -221,7 +218,7 @@ describe('install() overload shapes', () => {
     const module = ServiceModule.from([instrumented])
     const svc = await module.get(key)
     svc.ping()
-    expect(recorder.count('svc.initialize:start')).toBe(1)
+    expect(recorder.count('svc.factory_initialize:start')).toBe(1)
     expect(recorder.count('svc.ping:start')).toBe(1)
   })
 
@@ -262,7 +259,7 @@ describe('install() overload shapes', () => {
 
     const svc = await instrumented.get(key)
     expect(svc.ping()).toBe('pong')
-    expect(recorder.count('svc.initialize:start')).toBe(1)
+    expect(recorder.count('svc.factory_initialize:start')).toBe(1)
     expect(recorder.count('svc.ping:start')).toBe(1)
   })
 
@@ -306,7 +303,7 @@ describe('install() overload shapes', () => {
     expect(twice.factories[0]).toBe(once.factories[0])
     const svc = await twice.get(key)
     svc.ping()
-    expect(recorder.count('svc.initialize:start')).toBe(1)
+    expect(recorder.count('svc.factory_initialize:start')).toBe(1)
     expect(recorder.count('svc.ping:start')).toBe(1)
   })
 })
@@ -327,12 +324,12 @@ describe('install() initialization outcomes', () => {
 
     const pending = module.get(key)
     await flushTasks()
-    expect(recorder.count('slow.initialize:start')).toBe(1)
-    expect(recorder.count('slow.initialize:end')).toBe(0)
+    expect(recorder.count('slow.factory_initialize:start')).toBe(1)
+    expect(recorder.count('slow.factory_initialize:end')).toBe(0)
 
     resolveInit({ ready: () => true })
     const svc = await pending
-    expect(recorder.count('slow.initialize:end')).toBe(1)
+    expect(recorder.count('slow.factory_initialize:end')).toBe(1)
     expect(svc.ready()).toBe(true)
     expect(recorder.count('slow.ready:start')).toBe(1)
   })
@@ -354,8 +351,8 @@ describe('install() initialization outcomes', () => {
     const module = ServiceModule.from(recorder.install([factory]))
 
     await expect(module.get(key)).rejects.toThrow('connection refused')
-    expect(recorder.count('flaky.initialize:error')).toBe(1)
-    expect(recorder.outcomes.get('flaky.initialize')).toEqual({
+    expect(recorder.count('flaky.factory_initialize:error')).toBe(1)
+    expect(recorder.outcomes.get('flaky.factory_initialize')).toEqual({
       type: 'failure',
       error: new Error('connection refused'),
     })
@@ -364,8 +361,8 @@ describe('install() initialization outcomes', () => {
     // reported as a fresh initialization.
     const svc = await module.get(key)
     expect(svc.id).toBe(2)
-    expect(recorder.count('flaky.initialize:start')).toBe(2)
-    expect(recorder.count('flaky.initialize:end')).toBe(1)
+    expect(recorder.count('flaky.factory_initialize:start')).toBe(2)
+    expect(recorder.count('flaky.factory_initialize:end')).toBe(1)
   })
 
   it('should report a failing dispose and rethrow its error', async () => {
@@ -382,7 +379,7 @@ describe('install() initialization outcomes', () => {
     await module.get(key)
 
     expect(() => module.dispose()).toThrow('already closed')
-    expect(recorder.count('svc.dispose:error')).toBe(1)
+    expect(recorder.count('svc.factory_dispose:error')).toBe(1)
   })
 
   it('should preserve dispose-during-initialization semantics through the wrapper', async () => {
@@ -412,9 +409,9 @@ describe('install() initialization outcomes', () => {
     // The initialization itself succeeded, and the orphaned instance was
     // immediately torn down; both operations are reported.
     expect(disposed).toBe(true)
-    expect(recorder.count('svc.initialize:end')).toBe(1)
-    expect(recorder.count('svc.dispose:start')).toBe(1)
-    expect(recorder.count('svc.dispose:end')).toBe(1)
+    expect(recorder.count('svc.factory_initialize:end')).toBe(1)
+    expect(recorder.count('svc.factory_dispose:start')).toBe(1)
+    expect(recorder.count('svc.factory_dispose:end')).toBe(1)
   })
 })
 
@@ -492,9 +489,9 @@ describe('install() contract preservation', () => {
     const db = await module.get(dbKey)
     expect(db.connectedTo()).toBe('postgres://real')
     // The dependency is initialized (and observed) before its dependent.
-    expect(recorder.events.indexOf('config.initialize:end')).toBeLessThan(
-      recorder.events.indexOf('db.initialize:end'),
-    )
+    expect(
+      recorder.events.indexOf('config.factory_initialize:end'),
+    ).toBeLessThan(recorder.events.indexOf('db.factory_initialize:end'))
   })
 
   it('should report className for class instances and omit it for literals', async () => {
@@ -542,6 +539,6 @@ describe('install() contract preservation', () => {
 
     const token = await module.get(key)
     expect(token).toBe('abc-123')
-    expect(recorder.count('token.initialize:end')).toBe(1)
+    expect(recorder.count('token.factory_initialize:end')).toBe(1)
   })
 })

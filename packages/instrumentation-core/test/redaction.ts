@@ -3,9 +3,11 @@ import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
 import {
   CaptureOptions,
   redactionRule,
+  LifecycleContext,
   OperationOutcome,
   MethodCallContext,
   ServiceInstrumentation,
+  ServiceLifecycleEvent,
 } from '../src'
 
 // Deliberately not derived via Parameters<install>: on an overloaded
@@ -14,8 +16,8 @@ import {
 type Entries = ServiceFactory[]
 
 interface RecordedEvent {
-  type: 'initialize' | 'dispose' | 'call'
-  key: ServiceKey<unknown>
+  type: ServiceLifecycleEvent | 'call'
+  key?: ServiceKey<unknown>
   methodName?: string
   args?: readonly unknown[]
   outcome?: OperationOutcome
@@ -30,12 +32,8 @@ interface RecordedEvent {
 class RecordingListener extends ServiceInstrumentation {
   readonly events: RecordedEvent[] = []
 
-  initializeSpan(context: { key: ServiceKey<unknown> }) {
-    return this.record({ type: 'initialize', key: context.key })
-  }
-
-  disposeSpan(context: { key: ServiceKey<unknown> }) {
-    return this.record({ type: 'dispose', key: context.key })
+  lifecycleSpan(context: LifecycleContext) {
+    return this.record({ type: context.event, key: context.key })
   }
 
   methodCallSpan(context: MethodCallContext) {
@@ -133,7 +131,9 @@ describe('redaction through instrument()', () => {
 
     await module.get(secretKey)
 
-    expect(recorder.find('initialize').outcome).toEqual({ type: 'success' })
+    expect(recorder.find('factory_initialize').outcome).toEqual({
+      type: 'success',
+    })
   })
 
   it('redact: multiple calls accumulate properties', async () => {
@@ -388,7 +388,9 @@ describe('redaction through instrument()', () => {
     module.dispose()
 
     // Dispose produces no value, so its outcome never carries one.
-    expect(recorder.find('dispose').outcome).toEqual({ type: 'success' })
+    expect(recorder.find('factory_dispose').outcome).toEqual({
+      type: 'success',
+    })
   })
 
   describe('capture flags as the primary gate', () => {
@@ -418,7 +420,9 @@ describe('redaction through instrument()', () => {
         expect(call.outcome).toEqual({ type: 'success' })
         expect(call.outcome && 'value' in call.outcome).toBe(false)
       }
-      expect(recorder.find('initialize').outcome).toEqual({ type: 'success' })
+      expect(recorder.find('factory_initialize').outcome).toEqual({
+        type: 'success',
+      })
     })
 
     it('should gate arguments and results independently', async () => {

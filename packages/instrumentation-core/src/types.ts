@@ -62,26 +62,42 @@ export type OperationOutcome =
   | { type: 'failure'; error: unknown }
 
 /**
- * Context of a service initialization, delivered to onInitialize.
- * Future fields are added here rather than as extra parameters.
+ * The lifecycle operations reported to
+ * {@link ServiceInstrumentation.lifecycleSpan}: `factory_*` events are the
+ * operations of an instrumented factory on its one service, `module_*`
+ * events are the public entry points of an instrumented ServiceModule.
  */
-export interface InitializeContext {
-  /**
-   * The unique identifier of the service that is being initialized.
-   */
-  key: ServiceKey<unknown>
-}
+export type ServiceLifecycleEvent =
+  | 'factory_initialize'
+  | 'factory_dispose'
+  | 'module_get'
+  | 'module_dispose'
 
 /**
- * Context of a service disposal, delivered to onDispose.
+ * Context of a lifecycle operation, delivered to lifecycleSpan.
  * Future fields are added here rather than as extra parameters.
+ *
+ * Every event carries the key of the service it concerns except
+ * `module_dispose`, which tears down every factory in the module and so
+ * has no single key (each factory's own teardown is still reported as a
+ * keyed `factory_dispose`).
  */
-export interface DisposeContext {
-  /**
-   * The unique identifier of the service that is being disposed.
-   */
-  key: ServiceKey<unknown>
-}
+export type LifecycleContext =
+  | {
+      /**
+       * Which lifecycle operation is starting.
+       */
+      event: Exclude<ServiceLifecycleEvent, 'module_dispose'>
+
+      /**
+       * The unique identifier of the service the operation concerns.
+       */
+      key: ServiceKey<unknown>
+    }
+  | {
+      event: 'module_dispose'
+      key?: undefined
+    }
 
 /**
  * Context of a method invocation, delivered to onMethodCall.

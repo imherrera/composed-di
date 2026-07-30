@@ -6,17 +6,17 @@ import {
   ServiceModule,
 } from '@composed-di/core'
 import {
-  DisposeContext,
-  InitializeContext,
   InstrumentOptions,
+  LifecycleContext,
   MethodCallContext,
   OperationSpan,
 } from './types'
 
 /**
  * Base class for observing services: extend it and implement the hooks to
- * be notified when a service is initialized or disposed, and when a method
- * is called on a service instance.
+ * be notified of lifecycle operations — a factory initializing or
+ * disposing a service, a module resolving or disposing — and of method
+ * calls on service instances.
  *
  * @remarks
  * A subclass never touches services directly. Passing factories through
@@ -40,20 +40,14 @@ export abstract class ServiceInstrumentation {
   private readonly instrumentedFactories = new WeakSet<ServiceFactory>()
 
   /**
-   * Called when initialization of a service starts.
+   * Called when a lifecycle operation starts: a factory initializing or
+   * disposing its service, or a module resolving (`get`) or disposing.
    *
-   * @param context - Identifies the service being initialized.
-   * @returns The span to notify when initialization finishes.
+   * @param context - Which operation started and, except for module
+   * disposal, the service it concerns.
+   * @returns The span to notify when the operation finishes.
    */
-  abstract initializeSpan(context: InitializeContext): OperationSpan
-
-  /**
-   * Called when disposal of a service starts.
-   *
-   * @param context - Identifies the service being disposed.
-   * @returns The span to notify when disposal finishes.
-   */
-  abstract disposeSpan(context: DisposeContext): OperationSpan
+  abstract lifecycleSpan(context: LifecycleContext): OperationSpan
 
   /**
    * Called when a method call on a service instance starts.
@@ -102,11 +96,22 @@ export abstract class ServiceInstrumentation {
     options?: InstrumentOptions,
   ): ServiceFactory[]
   /**
-   * Installs a service module with optional instrumentation settings.
+   * Creates and returns a new instrumented module: its factories are
+   * instrumented as by the array overload, and the module's own `get` and
+   * `dispose` are reported as `module_get` / `module_dispose` lifecycle
+   * operations.
    *
-   * @param {ServiceModule} module - The service module to be installed.
-   * @param {InstrumentOptions} [options] - Optional configuration for instrumentation.
-   * @return {ServiceModule} The installed and possibly modified service module.
+   * @example
+   * ```ts
+   * const serviceInstrumentation = new OTELServiceInstrumentation()
+   * const module = serviceInstrumentation.install(databaseModule)
+   * ```
+   *
+   * @param module - The module whose services to observe.
+   * @param options - What runtime values (arguments, results) are
+   * captured and how they are redacted before reaching this
+   * instrumentation (nothing is captured by default).
+   * @returns The instrumented module to use in place of `module`.
    */
   install(module: ServiceModule, options?: InstrumentOptions): ServiceModule
   install(
@@ -114,7 +119,8 @@ export abstract class ServiceInstrumentation {
     options: InstrumentOptions = {},
   ): ServiceModule | ServiceFactory | ServiceFactory[] {
     if (input instanceof ServiceModule) {
-      return ServiceModule.from(this.install(input.factories, options))
+      const module = ServiceModule.from(this.install(input.factories, options))
+      return instrumentServiceModule(this, module)
     }
 
     if (Array.isArray(input)) {
@@ -193,7 +199,10 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
   const key = delegate.provides
   const capturePolicy = buildCapturePolicy(options, key)
   const initialize: ServiceFactory<T, D>['initialize'] = async (...args) => {
-    const span = instrumentation.initializeSpan({ key })
+    const span = instrumentation.lifecycleSpan({
+      event: 'factory_initialize',
+      key,
+    })
     try {
       const instance = await span.run(() => delegate.initialize(...args))
       span.end({ type: 'success' })
@@ -210,7 +219,10 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
       dependsOn: delegate.dependsOn,
       initialize: initialize,
       dispose: () => {
-        const span = instrumentation.disposeSpan({ key })
+        const span = instrumentation.lifecycleSpan({
+          event: 'factory_dispose',
+          key,
+        })
         try {
           span.run(() => delegate.dispose())
           span.end({ type: 'success' })
@@ -238,6 +250,56 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
       'Factories must be created with ServiceFactory.singleton() or ' +
       'ServiceFactory.oneShot(); custom ServiceFactory implementations cannot be instrumented.',
   )
+}
+
+/**
+ * Wraps a module so its public entry points are reported to the
+ * instrumentation: `get` as a `module_get` span around the whole
+ * resolution, dependencies included, and `dispose` as a `module_dispose`
+ * span around the teardown of every factory. Everything else — including
+ * the factories array — is served by the module untouched.
+ */
+function instrumentServiceModule(
+  instrumentation: ServiceInstrumentation,
+  module: ServiceModule,
+): ServiceModule {
+  const get = async <T>(key: ServiceKey<T>): Promise<T> => {
+    const span = instrumentation.lifecycleSpan({ event: 'module_get', key })
+    try {
+      const instance = await span.run(() => module.get(key))
+      span.end({ type: 'success' })
+      return instance
+    } catch (error) {
+      span.end({ type: 'failure', error })
+      throw error
+    }
+  }
+
+  const dispose = (): void => {
+    const span = instrumentation.lifecycleSpan({ event: 'module_dispose' })
+    try {
+      span.run(() => module.dispose())
+      span.end({ type: 'success' })
+    } catch (error) {
+      span.end({ type: 'failure', error })
+      throw error
+    }
+  }
+
+  // getOrNull is intentionally not intercepted: it delegates to get on
+  // `this`, which resolves through this proxy, so a getOrNull call is
+  // reported as the module_get it performs (a miss as a failed one).
+  return new Proxy(module, {
+    get(target, prop) {
+      if (prop === 'get') {
+        return get
+      }
+      if (prop === 'dispose') {
+        return dispose
+      }
+      return Reflect.get(target, prop)
+    },
+  })
 }
 
 function observeMethodCalls(

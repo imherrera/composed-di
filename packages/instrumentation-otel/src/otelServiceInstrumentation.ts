@@ -11,12 +11,12 @@ import {
   ERROR_TYPE_VALUE_OTHER,
 } from '@opentelemetry/semantic-conventions'
 import {
-  DisposeContext,
+  LifecycleContext,
   OperationOutcome,
   OperationSpan,
-  InitializeContext,
   MethodCallContext,
   ServiceInstrumentation,
+  ServiceLifecycleEvent,
 } from '@composed-di/instrumentation-core'
 import { ServiceKey } from '@composed-di/core'
 import {
@@ -35,25 +35,17 @@ export interface OTELInstrumentationOptions {}
 export class OTELServiceInstrumentation extends ServiceInstrumentation {
   private readonly tracer: Tracer = trace.getTracer(pkg.name, pkg.version)
 
-  initializeSpan(context: InitializeContext): OperationSpan {
+  lifecycleSpan(context: LifecycleContext): OperationSpan {
+    const { className, methodName } = LIFECYCLE_TARGETS[context.event]
     const attributes = this.buildAttributes({
       key: context.key,
-      event: 'initialize',
-      className: 'ServiceFactory',
-      methodName: 'initialize',
+      event: context.event,
+      className,
+      methodName,
     })
-    const spanName = `ServiceFactory[${context.key.name}].initialize`
-    return this.buildSpan(spanName, attributes)
-  }
-
-  disposeSpan(context: DisposeContext): OperationSpan {
-    const attributes = this.buildAttributes({
-      key: context.key,
-      event: 'dispose',
-      className: 'ServiceFactory',
-      methodName: 'dispose',
-    })
-    const spanName = `ServiceFactory[${context.key.name}].dispose`
+    const spanName = context.key
+      ? `${className}[${context.key.name}].${methodName}`
+      : `${className}.${methodName}`
     return this.buildSpan(spanName, attributes)
   }
 
@@ -104,16 +96,20 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
   }
 
   private buildAttributes(params: {
-    key: ServiceKey<unknown>
-    event: 'initialize' | 'dispose' | 'call'
+    key?: ServiceKey<unknown>
+    event: ServiceLifecycleEvent | 'call'
     className?: string
     methodName: string
     args?: readonly unknown[]
   }) {
     const attributes: { [key: string]: string } = {
-      [ATTR_CODE_FUNCTION_NAME]: `${params.className ?? params.key.name}.${params.methodName}`,
-      [ATTR_COMPOSED_DI_SERVICE_KEY]: params.key.name,
+      [ATTR_CODE_FUNCTION_NAME]: `${params.className ?? params.key?.name}.${params.methodName}`,
       [ATTR_COMPOSED_DI_SERVICE_EVENT]: params.event,
+    }
+
+    // module_dispose concerns the whole module, not one service
+    if (params.key) {
+      attributes[ATTR_COMPOSED_DI_SERVICE_KEY] = params.key.name
     }
 
     // Present exactly when argument capture is enabled in the
@@ -126,6 +122,20 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
 
     return attributes
   }
+}
+
+/**
+ * The class and method each lifecycle event corresponds to, used to name
+ * the span and its code attributes.
+ */
+const LIFECYCLE_TARGETS: Record<
+  ServiceLifecycleEvent,
+  { className: string; methodName: string }
+> = {
+  factory_initialize: { className: 'ServiceFactory', methodName: 'initialize' },
+  factory_dispose: { className: 'ServiceFactory', methodName: 'dispose' },
+  module_get: { className: 'ServiceModule', methodName: 'get' },
+  module_dispose: { className: 'ServiceModule', methodName: 'dispose' },
 }
 
 function serialize(value: unknown): string {

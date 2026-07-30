@@ -12,10 +12,7 @@ import {
 } from '@opentelemetry/api'
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
-import {
-  OTELServiceInstrumentation,
-  OTELInstrumentationOptions,
-} from '../src/otelServiceInstrumentation'
+import { OTELServiceInstrumentation } from '../src/otelServiceInstrumentation'
 
 let exporter: InMemorySpanExporter
 let provider: BasicTracerProvider
@@ -25,6 +22,10 @@ beforeEach(() => {
   provider = new BasicTracerProvider({
     spanProcessors: [new SimpleSpanProcessor(exporter)],
   })
+  // The instrumentation resolves its tracer from the global provider;
+  // re-register per test (the API keeps the first global otherwise).
+  trace.disable()
+  trace.setGlobalTracerProvider(provider)
   // Nesting relies on the ambient OTEL context, which only propagates when
   // a context manager is registered (NodeSDK does this in real setups).
   otelContext.setGlobalContextManager(
@@ -32,11 +33,7 @@ beforeEach(() => {
   )
 })
 
-const makeListener = (options: Partial<OTELInstrumentationOptions> = {}) =>
-  new OTELServiceInstrumentation({
-    tracer: provider.getTracer('test'),
-    ...options,
-  })
+const makeListener = () => new OTELServiceInstrumentation()
 
 const spans = () => exporter.getFinishedSpans()
 const byName = (name: string) => {
@@ -65,7 +62,7 @@ describe('OTELInstrumentation', () => {
     expect(init.attributes).toMatchObject({
       'code.function.name': 'ServiceFactory.initialize',
       'composed_di.service.key': 'svc',
-      'composed_di.service.event': 'initialize',
+      'composed_di.service.event': 'factory_initialize',
     })
     const call = byName('svc.greet')
     expect(call.attributes).toMatchObject({
@@ -114,7 +111,7 @@ describe('OTELInstrumentation', () => {
     await module.get(key)
     module.dispose()
     expect(byName('ServiceFactory[svc].dispose').attributes).toMatchObject({
-      'composed_di.service.event': 'dispose',
+      'composed_di.service.event': 'factory_dispose',
     })
   })
 
