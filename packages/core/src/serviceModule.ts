@@ -1,6 +1,5 @@
 import { ServiceKey, SelectorKey } from './serviceKey'
 import type { ServiceFactory } from './serviceFactory'
-import { ServiceScope } from './serviceScope'
 import { Selector } from './serviceSelector'
 import { NoSuchFactoryError, ModuleValidationError } from './errors'
 
@@ -75,21 +74,15 @@ export class ServiceModule {
   }
 
   /**
-   * Disposes of service factories within the specified scope or all factories if no scope is provided.
+   * Disposes of all service factories in this module.
    *
    * This method is useful for cleaning up resources and instances held by service factories,
    * such as singleton factories, as they may hold database connections or other resources that need to be released.
    *
-   * @param scope The scope to filter the factories to be disposed.
-   * If not provided, all factories are disposed of.
    * @return No return value.
    */
-  public dispose(scope?: ServiceScope) {
-    const factories = scope
-      ? this.factories.filter((factory) => factory.scope === scope)
-      : this.factories
-
-    factories.forEach((factory) => factory.dispose?.())
+  public dispose() {
+    this.factories.forEach((factory) => factory.dispose?.())
   }
 
   /**

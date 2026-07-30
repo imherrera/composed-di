@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { ServiceModule } from '../src/serviceModule'
 import { ServiceKey, SelectorKey } from '../src/serviceKey'
 import { ServiceFactory } from '../src/serviceFactory'
-import { ServiceScope } from '../src/serviceScope'
 import { NoSuchFactoryError, ModuleValidationError } from '../src/errors'
 
 function captureValidationError(create: () => ServiceModule) {
@@ -471,7 +470,7 @@ describe('ServiceModule', () => {
   })
 
   describe('dispose', () => {
-    it('should call dispose on all factories when no scope is provided', async () => {
+    it('should call dispose on all factories', async () => {
       const key1 = new ServiceKey<string>('Key1')
       const dispose1 = vi.fn<(instance: string) => void>()
       const factory1 = ServiceFactory.singleton({
@@ -498,39 +497,6 @@ describe('ServiceModule', () => {
 
       expect(dispose1).toHaveBeenCalled()
       expect(dispose2).toHaveBeenCalled()
-    })
-
-    it('should call dispose only on factories in the specified scope', async () => {
-      const scope1 = { name: 'Scope1' } as ServiceScope
-      const scope2 = { name: 'Scope2' } as ServiceScope
-
-      const key1 = new ServiceKey<string>('Key1')
-      const dispose1 = vi.fn<(instance: string) => void>()
-      const factory1 = ServiceFactory.singleton({
-        scope: scope1,
-        provides: key1,
-        initialize: () => 'value1',
-        dispose: dispose1,
-      })
-
-      const key2 = new ServiceKey<string>('Key2')
-      const dispose2 = vi.fn<(instance: string) => void>()
-      const factory2 = ServiceFactory.singleton({
-        scope: scope2,
-        provides: key2,
-        initialize: () => 'value2',
-        dispose: dispose2,
-      })
-
-      const module = ServiceModule.from([factory1, factory2])
-
-      await module.get(key1)
-      await module.get(key2)
-
-      module.dispose(scope1)
-
-      expect(dispose1).toHaveBeenCalled()
-      expect(dispose2).not.toHaveBeenCalled()
     })
 
     it('should not fail if factory has no dispose method', () => {

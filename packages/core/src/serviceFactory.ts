@@ -1,5 +1,4 @@
 import { ServiceKey, SelectorKey } from './serviceKey'
-import { ServiceScope } from './serviceScope'
 import {
   SingletonDisposedDuringInitError,
   FactoryReentrancyError,
@@ -42,13 +41,6 @@ export abstract class ServiceFactory<
   abstract dependsOn: D
 
   /**
-   * Optional scope tag for targeted teardown `module.dispose(scope)` disposes only the
-   * factories whose scope matches. Factories without a scope are torn down only by a
-   * full `module.dispose()`.
-   */
-  abstract scope?: ServiceScope
-
-  /**
    * Creates the service instance.
    *
    * Called by the `ServiceModule` with dependencies resolved per {@link dependsOn};
@@ -85,7 +77,6 @@ export abstract class ServiceFactory<
     const T,
     const D extends readonly ServiceKey<unknown>[] = [],
   >({
-    scope,
     provides,
     dependsOn = [] as unknown as D,
     initialize,
@@ -94,7 +85,7 @@ export abstract class ServiceFactory<
     dispose?: (instance: T) => void
     dependsOn?: D
   }): ServiceFactory<T, D> {
-    return new SingletonFactory(scope, provides, dependsOn, initialize, dispose)
+    return new SingletonFactory(provides, dependsOn, initialize, dispose)
   }
 
   /**
@@ -118,7 +109,7 @@ export abstract class ServiceFactory<
     provides,
     dependsOn = [] as unknown as D,
     initialize,
-  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'scope'> & {
+  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn'> & {
     dependsOn?: D
   }): ServiceFactory<T, D> {
     return new OneShotFactory(provides, dependsOn, initialize)
@@ -127,8 +118,8 @@ export abstract class ServiceFactory<
 
 /**
  * A `OneShotFactory` builds a fresh instance on every request and retains none of
- * them, so it has no lifecycle of its own: `dispose` is a no-op, and there is no
- * `scope` — the caller of each request owns that instance's cleanup entirely.
+ * them, so it has no lifecycle of its own: `dispose` is a no-op — the caller of
+ * each request owns that instance's cleanup entirely.
  *
  * @template T - The type of the service instances built by this factory.
  * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
@@ -137,12 +128,6 @@ export class OneShotFactory<
   const T,
   const D extends readonly ServiceKey<unknown>[] = [],
 > extends ServiceFactory<T, D> {
-  /**
-   * Always undefined: instances are never retained, so there is nothing
-   * for a scoped `module.dispose(scope)` to target.
-   */
-  readonly scope = undefined
-
   constructor(
     readonly provides: ServiceKey<T>,
     readonly dependsOn: D,
@@ -179,7 +164,6 @@ export class SingletonFactory<
   private isRunningHook = false
 
   constructor(
-    readonly scope: ServiceScope | undefined,
     readonly provides: ServiceKey<T>,
     readonly dependsOn: D,
     readonly onInitialize: ServiceFactory<T, D>['initialize'],

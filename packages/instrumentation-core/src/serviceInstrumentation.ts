@@ -206,7 +206,6 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
 
   if (delegate instanceof SingletonFactory) {
     return ServiceFactory.singleton<T, D>({
-      scope: delegate.scope,
       provides: delegate.provides,
       dependsOn: delegate.dependsOn,
       initialize: initialize,

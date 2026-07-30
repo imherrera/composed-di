@@ -3,7 +3,6 @@ import {
   ServiceFactory,
   ServiceKey,
   ServiceModule,
-  ServiceScope,
   SingletonDisposedDuringInitError,
 } from '@composed-di/core'
 import {
@@ -189,7 +188,6 @@ describe('install() lifetime dispatch', () => {
       const handcrafted: ServiceFactory<{ x: number }, []> = {
         provides: key,
         dependsOn: [],
-        scope: undefined,
         initialize: () => ({ x: 1 }),
         dispose: () => {},
       }
@@ -497,43 +495,6 @@ describe('install() contract preservation', () => {
     expect(recorder.events.indexOf('config.initialize:end')).toBeLessThan(
       recorder.events.indexOf('db.initialize:end'),
     )
-  })
-
-  it('should preserve the delegate scope so scoped disposal reaches the wrapper', async () => {
-    const requestScope = new ServiceScope('request')
-    const scopedKey = new ServiceKey<{ x: number }>('scoped')
-    const globalKey = new ServiceKey<{ y: number }>('global')
-    let scopedDisposed = false
-    let globalDisposed = false
-    const recorder = new RecordingListener()
-    const instrumented = recorder.install([
-      ServiceFactory.singleton({
-        scope: requestScope,
-        provides: scopedKey,
-        initialize: () => ({ x: 1 }),
-        dispose: () => {
-          scopedDisposed = true
-        },
-      }),
-      ServiceFactory.singleton({
-        provides: globalKey,
-        initialize: () => ({ y: 2 }),
-        dispose: () => {
-          globalDisposed = true
-        },
-      }),
-    ])
-    expect(instrumented[0].scope).toBe(requestScope)
-
-    const module = ServiceModule.from(instrumented)
-    await module.get(scopedKey)
-    await module.get(globalKey)
-    module.dispose(requestScope)
-
-    expect(scopedDisposed).toBe(true)
-    expect(globalDisposed).toBe(false)
-    expect(recorder.count('scoped.dispose:start')).toBe(1)
-    expect(recorder.count('global.dispose:start')).toBe(0)
   })
 
   it('should report className for class instances and omit it for literals', async () => {
