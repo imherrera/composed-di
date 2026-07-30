@@ -18,7 +18,8 @@
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "publish:all": "pnpm lint && pnpm fmt:check && pnpm build && pnpm test && pnpm -r publish --access public"
+    "publish:all": "pnpm lint && pnpm fmt:check && pnpm build && pnpm test && pnpm -r publish --access public",
+    "prepare": "pnpm build"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.10",
