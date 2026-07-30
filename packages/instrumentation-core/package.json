@@ -1,6 +1,6 @@
 {
   "name": "@composed-di/instrumentation-core",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "private": false,
   "keywords": [
     "dependency injection",
@@ -39,7 +39,10 @@
     "clean": "tsc --build --clean",
     "prepublishOnly": "npm run build"
   },
-  "dependencies": {
+  "devDependencies": {
     "@composed-di/core": "workspace:^"
+  },
+  "peerDependencies": {
+    "@composed-di/core": "^0.13.0"
   }
 }

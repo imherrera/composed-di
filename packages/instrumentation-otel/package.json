@@ -1,6 +1,6 @@
 {
   "name": "@composed-di/instrumentation-otel",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "private": false,
   "keywords": [
     "dependency injection",
@@ -51,6 +51,8 @@
     "@opentelemetry/sdk-trace-base": "^2.9.0"
   },
   "peerDependencies": {
+    "@composed-di/core": "^0.13.0",
+    "@composed-di/instrumentation-core": "^0.13.0",
     "@opentelemetry/api": "^1.9.0"
   }
 }
