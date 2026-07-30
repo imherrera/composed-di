@@ -25,29 +25,15 @@ import {
   ATTR_COMPOSED_DI_SERVICE_FUNCTION_RESULT,
   ATTR_COMPOSED_DI_SERVICE_KEY,
 } from './attributes'
+import * as pkg from '../package.json'
 
-export interface OTELInstrumentationOptions {
-  /**
-   * The tracer used to create spans. Defaults to a tracer obtained from
-   * the global tracer provider — the one `NodeSDK` (and therefore
-   * `@opentelemetry/auto-instrumentations-node`) registers on startup —
-   * so most setups can omit it. The global lookup is lazy: it also works
-   * when the instrumentation is constructed before the SDK starts.
-   */
-  tracer?: Tracer
-}
+export interface OTELInstrumentationOptions {}
 
 /**
  * A ServiceInstrumentation that records service events as OTEL spans.
  */
 export class OTELServiceInstrumentation extends ServiceInstrumentation {
-  private readonly tracer: Tracer
-
-  constructor(options: OTELInstrumentationOptions = {}) {
-    super()
-    this.tracer =
-      options.tracer ?? trace.getTracer('@composed-di/instrumentation-otel')
-  }
+  private readonly tracer: Tracer = trace.getTracer(pkg.name, pkg.version)
 
   initializeSpan(context: InitializeContext): OperationSpan {
     const attributes = this.buildAttributes({
