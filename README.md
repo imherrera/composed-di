@@ -148,7 +148,7 @@ printDotGraph(module) // paste into a Graphviz viewer
 
 ### OpenTelemetry
 
-Wrap your factories (or a whole module) with `OTELServiceInstrumentation` to get a span for every service initialization, disposal, and method call — parented to whatever OTEL context is active, so they slot into your existing traces:
+Wrap your factories (or a whole module) with `OTELServiceInstrumentation` to get a span for every service initialization, disposal, module resolution, and method call — parented to whatever OTEL context is active, so they slot into your existing traces:
 
 ```ts
 import { ServiceModule } from '@composed-di/core'
@@ -186,7 +186,7 @@ const module = instrumentation.install(baseModule, {
 
 ### Custom backends
 
-To report to something other than OpenTelemetry, extend `ServiceInstrumentation` from `@composed-di/instrumentation-core` and implement three hooks (`initializeSpan`, `disposeSpan`, `methodCallSpan`), each returning an `OperationSpan` that is notified when the operation finishes. See [`packages/instrumentation-otel`](packages/instrumentation-otel/src/otelServiceInstrumentation.ts) for a complete reference implementation.
+To report to something other than OpenTelemetry, extend `ServiceInstrumentation` from `@composed-di/instrumentation-core` and implement two hooks (`lifecycleSpan`, `methodCallSpan`), each returning an `OperationSpan` that is notified when the operation finishes. See the [`@composed-di/instrumentation-core` README](packages/instrumentation-core/README.md) for the contract, and [`packages/instrumentation-otel`](packages/instrumentation-otel/src/otelServiceInstrumentation.ts) for a complete reference implementation.
 
 ## Development
 
