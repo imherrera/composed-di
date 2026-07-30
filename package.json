@@ -1,29 +1,9 @@
 {
-  "name": "composed-di",
-  "private": false,
-  "version": "0.3.1",
-  "author": "Juan Herrera juanhr454@gmail.com",
-  "type": "commonjs",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "sideEffects": false,
-  "keywords": [
-    "dependency injection",
-    "di",
-    "lazy dependency injection"
-  ],
+  "name": "composed-di-monorepo",
+  "version": "0.13.0",
+  "private": true,
   "license": "MIT",
+  "author": "Juan Herrera juanhr454@gmail.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/imherrera/composed-di.git"
@@ -31,14 +11,20 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "prepublishOnly": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:types": "tsc --build",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "publish:all": "pnpm lint && pnpm fmt:check && pnpm build && pnpm test && pnpm -r publish --access public"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.10",
     "@types/node": "24.0.10",
-    "prettier": "^3.3.1",
+    "oxfmt": "^0.59.0",
+    "oxlint": "^1.74.0",
     "typescript": "^5.2.2",
     "vitest": "^4.0.16"
   }

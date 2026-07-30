@@ -1,182 +1,214 @@
-# lazy-di
+# composed-di
 
-A lightweight, lazy, and typesafe dependency injection library for TypeScript.
+[![npm version](https://img.shields.io/npm/v/%40composed-di%2Fcore)](https://www.npmjs.com/package/@composed-di/core)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 
-## Features
+A lightweight, lazy, and type-safe dependency injection library for TypeScript — no decorators, no reflection metadata, no framework lock-in. Services are described as plain factories, composed into modules, and created only when they are actually requested.
 
-- **Lazy Initialization**: Services are only created when they are actually needed.
-- **Type-Safe**: Full TypeScript support with typed keys and dependency resolution.
-- **Circular Dependency Detection**: Validates your dependency graph at module creation.
-- **Flexible Scoping**: Support for singletons, transient (one-shot) services, and custom scopes.
-- **Runtime Selection**: Dynamically choose between multiple implementations of the same interface.
-- **Async Support**: Native support for asynchronous service initialization.
-- **Visualization**: Built-in support for generating Mermaid and DOT diagrams of your dependency graph.
+## Packages
 
-## Installation
+| Package                                                              | Description                                                                                    |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [`@composed-di/core`](packages/core)                                 | The DI container: keys, factories, modules, selectors, and graph visualization.                |
+| [`@composed-di/instrumentation-core`](packages/instrumentation-core) | Framework-agnostic observability hooks for service initialization, disposal, and method calls. |
+| [`@composed-di/instrumentation-otel`](packages/instrumentation-otel) | OpenTelemetry implementation that records service events as spans.                             |
 
-```bash
-npm install lazy-di
+## Why composed-di?
+
+- **Lazy initialization** — a service is created on its first `get()`, never before. Dependencies are resolved recursively, in order.
+- **Type-safe** — `ServiceKey<T>` is a typed token; a factory's `initialize` receives its dependencies fully typed, in declaration order. No strings, no `any`.
+- **Fail-fast validation** — `ServiceModule.from()` detects circular dependencies and missing factories at module creation, with readable traces of the broken path.
+- **Explicit lifecycles** — lazily-created singletons with deterministic `dispose()`, and one-shot (transient) factories.
+- **Async-native** — `initialize` may return a promise; concurrent requests for an in-flight singleton share the same initialization.
+- **Runtime selection** — `SelectorKey` groups multiple implementations of an interface so a service can pick one at runtime.
+- **Observability built in** — instrument any factory to trace initialization, disposal, and every method call, with opt-in argument/result capture and redaction rules for sensitive services.
+- **Visualization** — generate [Mermaid](https://mermaid.live/) or Graphviz DOT diagrams of your dependency graph.
+
+## Getting started
+
+### Installation
+
+```sh
+npm install @composed-di/core
+# optional, for OpenTelemetry tracing of your services:
+npm install @composed-di/instrumentation-otel @opentelemetry/api
 ```
 
-## Quick Start
+### Quick start
 
-### 1. Define your Service Keys
+```ts
+import { ServiceKey, ServiceFactory, ServiceModule } from '@composed-di/core'
 
-Service keys are typed tokens that identify your services. They ensure type safety when injecting and retrieving services.
-
-```typescript
-import { ServiceKey } from 'lazy-di';
-
+interface Config {
+  dbUrl: string
+}
 interface Database {
-  query: (sql: string) => Promise<any>;
+  query(sql: string): Promise<unknown[]>
+  close(): void
 }
 
-export const DatabaseKey = new ServiceKey<Database>('Database');
+// 1. Declare typed keys — unique tokens that identify each service.
+const ConfigKey = new ServiceKey<Config>('Config')
+const DatabaseKey = new ServiceKey<Database>('Database')
 
-interface UserService {
-  getUser: (id: string) => Promise<any>;
-}
-
-export const UserServiceKey = new ServiceKey<UserService>('UserService');
-```
-
-### 2. Create Service Factories
-
-Factories define how services are created and what they depend on. `lazy-di` supports both singleton (created once) and one-shot (created every time) services.
-
-```typescript
-import { ServiceFactory } from 'lazy-di';
-import { DatabaseKey, UserServiceKey } from './keys';
+// 2. Describe how each service is built and what it depends on.
+const configFactory = ServiceFactory.singleton({
+  provides: ConfigKey,
+  initialize: () => ({ dbUrl: process.env.DB_URL! }),
+})
 
 const databaseFactory = ServiceFactory.singleton({
   provides: DatabaseKey,
-  initialize: () => {
-    console.log('Initializing Database...');
-    return {
-      query: async (sql) => ({ id: '1', name: 'John Doe' }),
-    };
-  },
-});
+  dependsOn: [ConfigKey] as const,
+  initialize: (config) => connectToDatabase(config.dbUrl), // may be async
+  dispose: (db) => db.close(),
+})
 
-const userServiceFactory = ServiceFactory.singleton({
-  provides: UserServiceKey,
-  dependsOn: [DatabaseKey],
-  initialize: (db) => {
-    // db is automatically typed as Database
-    return {
-      getUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`),
-    };
-  },
-});
+// 3. Compose a module. Cycles and missing dependencies throw here, not later.
+const module = ServiceModule.from([configFactory, databaseFactory])
+
+// 4. Request services. Config is created first — lazily, exactly once.
+const db = await module.get(DatabaseKey)
+
+// 5. Tear everything down when you're done.
+module.dispose()
 ```
 
-### 3. Create a Service Module and Get Services
+## Core concepts
 
-A `ServiceModule` aggregates factories and manages their lifecycle.
+### Keys
 
-```typescript
-import { ServiceModule } from 'lazy-di';
+A `ServiceKey<T>` is a typed token backed by a unique `Symbol`, so two keys with the same name never collide. When you _want_ keys to be shared across modules or bundles, use the global-registry variant:
 
-const module = ServiceModule.from([
-  databaseFactory,
-  userServiceFactory
-]);
-
-// At this point, no services have been initialized.
-
-// This will initialize Database and then UserService lazily.
-const userService = await module.get(UserServiceKey);
-const user = await userService.getUser('1');
+```ts
+const LoggerKey = ServiceKey.for<Logger>('my-app/Logger') // same symbol everywhere
 ```
 
-## Public API
+### Factories
 
-### `ServiceKey<T>`
+Two lifetimes are provided:
 
-A unique identifier for a service of type `T`.
+- **`ServiceFactory.singleton({...})`** — `initialize` runs on the first request; every later request shares the instance. A failed initialization is never cached, and after `dispose()` the next request builds a fresh instance.
+- **`ServiceFactory.oneShot({...})`** — a fresh instance on every request, with no framework-managed cleanup; the requester owns the instance.
 
-```typescript
-const MyKey = new ServiceKey<MyInterface>('MyService');
+```ts
+const requestIdFactory = ServiceFactory.oneShot({
+  provides: RequestIdKey,
+  initialize: () => crypto.randomUUID(), // new value per request
+})
 ```
 
-### `ServiceFactory`
+### Modules
 
-#### `ServiceFactory.singleton(options)`
-Creates a factory for a service that is instantiated only once.
+`ServiceModule.from()` accepts factories _and other modules_, flattening them into one container. When two entries provide the same key, the last one wins — handy for overriding real services with fakes in tests:
 
-- `provides`: The `ServiceKey` this factory satisfies.
-- `dependsOn`: (Optional) An array of `ServiceKey`s this service depends on.
-- `initialize`: A function that creates the service instance. It receives the resolved dependencies as arguments. Can return a Promise.
-- `dispose`: (Optional) A function called when the service is disposed.
-- `scope`: (Optional) A `ServiceScope` for grouping services.
+```ts
+const testModule = ServiceModule.from([productionModule, fakeDatabaseFactory])
+```
 
-#### `ServiceFactory.oneShot(options)`
-Creates a factory for a service that is instantiated every time it is requested.
+`module.get(key)` resolves a service (throws `NoSuchFactoryError` if nothing provides the key); `module.getOrNull(key)` returns `null` instead for optional services.
 
-### `ServiceModule`
+### Runtime selection
 
-#### `ServiceModule.from(entries)`
-Creates a module from an array of factories or other `ServiceModule` instances. It automatically detects circular dependencies and missing dependencies.
+A `SelectorKey<T>` groups several implementations of the same interface. A factory that depends on one receives a `Selector<T>` and chooses at runtime:
 
-#### `module.get(key)`
-Retrieves a service instance. Returns a `Promise<T>`.
+```ts
+import { Selector, SelectorKey } from '@composed-di/core'
 
-#### `module.dispose(scope?)`
-Disposes of services. If a `scope` is provided, only services in that scope are disposed.
+const PaymentSelectorKey = new SelectorKey([StripeKey, PaypalKey])
 
-### `ServiceSelectorKey<T>` and `ServiceSelector<T>`
+class CheckoutService {
+  constructor(private readonly payments: Selector<PaymentGateway>) {}
 
-Useful for choosing between multiple implementations of the same interface at runtime.
-
-```typescript
-const LoggerSelectorKey = new ServiceSelectorKey<Logger>([
-  ConsoleLoggerKey,
-  FileLoggerKey,
-]);
-
-const AppFactory = ServiceFactory.singleton({
-  provides: AppKey,
-  dependsOn: [LoggerSelectorKey],
-  initialize: (loggerSelector) => {
-    return {
-      run: async (useFile: boolean) => {
-        const logger = await loggerSelector.get(
-          useFile ? FileLoggerKey : ConsoleLoggerKey
-        );
-        logger.log('Running...');
-      }
-    };
+  async pay(order: Order) {
+    const gateway = await this.payments.get(
+      order.method === 'paypal' ? PaypalKey : StripeKey,
+    )
+    return gateway.charge(order)
   }
-});
+}
+
+const checkoutFactory = ServiceFactory.singleton({
+  provides: CheckoutKey,
+  dependsOn: [PaymentSelectorKey] as const,
+  initialize: (payments) => new CheckoutService(payments),
+})
 ```
 
-### `ServiceScope`
+### Visualizing the graph
 
-Used to group services for collective disposal.
+```ts
+import { printMermaidGraph, printDotGraph } from '@composed-di/core'
 
-```typescript
-const MyScope = new ServiceScope('MyScope');
+printMermaidGraph(module) // paste into https://mermaid.live/
+printDotGraph(module) // paste into a Graphviz viewer
 ```
 
-## Visualization
+## Observability
 
-Visualize your dependency graph using Mermaid or DOT format.
+### OpenTelemetry
 
-```typescript
-import { printMermaidGraph, printDotGraph } from 'lazy-di';
+Wrap your factories (or a whole module) with `OTELServiceInstrumentation` to get a span for every service initialization, disposal, module resolution, and method call — parented to whatever OTEL context is active, so they slot into your existing traces:
 
-// Outputs a Mermaid diagram string
-printMermaidGraph(module);
+```ts
+import { ServiceModule } from '@composed-di/core'
+import { OTELServiceInstrumentation } from '@composed-di/instrumentation-otel'
 
-// Outputs a DOT diagram string
-printDotGraph(module);
+const instrumentation = new OTELServiceInstrumentation() // uses the global tracer provider
+
+const module = instrumentation.install(
+  ServiceModule.from([configFactory, databaseFactory]),
+)
 ```
 
-## Error Handling
+### Capturing arguments and results
 
-- `ServiceModuleInitError`: Thrown during `ServiceModule.from()` if the dependency graph is invalid (circular or missing dependencies).
-- `ServiceFactoryNotFoundError`: Thrown by `module.get()` if a requested key is not registered.
+Nothing is captured by default — runtime values may be large or secret. Opt in per `install()`, and scrub sensitive services with redaction rules:
+
+```ts
+import { redactionRule } from '@composed-di/instrumentation-core'
+
+const module = instrumentation.install(baseModule, {
+  capture: {
+    arguments: true,
+    results: true,
+    redactionRules: [
+      redactionRule(VaultKey).redactAll().exclude('ping').build(),
+      redactionRule(BillingKey)
+        .redact('chargeCard', {
+          maskResult: (card) => `card ending in ${card.number.slice(-4)}`,
+        })
+        .build(),
+    ],
+  },
+})
+```
+
+### Custom backends
+
+To report to something other than OpenTelemetry, extend `ServiceInstrumentation` from `@composed-di/instrumentation-core` and implement two hooks (`lifecycleSpan`, `methodCallSpan`), each returning an `OperationSpan` that is notified when the operation finishes. See the [`@composed-di/instrumentation-core` README](packages/instrumentation-core/README.md) for the contract, and [`packages/instrumentation-otel`](packages/instrumentation-otel/src/otelServiceInstrumentation.ts) for a complete reference implementation.
+
+## Development
+
+This is a [pnpm](https://pnpm.io/) workspace:
+
+```sh
+pnpm install     # install dependencies
+pnpm build       # type-check and build all packages (tsc --build)
+pnpm test        # run the vitest suite
+pnpm lint        # oxlint
+pnpm fmt:check   # oxfmt
+```
+
+## Getting help
+
+- **Bugs and feature requests** — open an issue on [GitHub](https://github.com/imherrera/composed-di/issues).
+- **API reference** — the source is thoroughly documented with TSDoc; start at [`packages/core/src/index.ts`](packages/core/src/index.ts).
+
+## Maintainers
+
+Maintained by [Juan Herrera](https://github.com/imherrera). Contributions are welcome — open an issue to discuss a change before submitting a pull request.
 
 ## License
 
-MIT
+[MIT](https://opensource.org/licenses/MIT)
