@@ -38,11 +38,11 @@ importers:
   packages/instrumentation-otel:
     dependencies:
       '@composed-di/core':
-        specifier: workspace:^
-        version: link:../core
+        specifier: ^0.13.0
+        version: 0.13.0
       '@composed-di/instrumentation-core':
-        specifier: workspace:^
-        version: link:../instrumentation-core
+        specifier: ^0.13.0
+        version: 0.13.0
       '@opentelemetry/semantic-conventions':
         specifier: ^1.30.0
         version: 1.42.0
@@ -58,6 +58,12 @@ importers:
         version: 2.9.0(@opentelemetry/api@1.9.1)
 
 packages:
+
+  '@composed-di/core@0.13.0':
+    resolution: {integrity: sha512-5r05Q9ZQJFdgQTO4qPIrz/vAOoqcKmAL1kfsFOniTRoqFwpkq1GFCW3ZUaLOkQ4WTb7g4sSvi1ra/3bUARpb1A==}
+
+  '@composed-di/instrumentation-core@0.13.0':
+    resolution: {integrity: sha512-5lO1OnNP6TTpRDwuHT3wIObifeZpSXKRkRWj8lecYWB0qA9ao54jaUGeY3lfJH0vEQFykQ7pd7aDa6XUafB7Ow==}
 
   '@emnapi/core@1.11.1':
     resolution: {integrity: sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ==}
@@ -813,6 +819,12 @@ packages:
     hasBin: true
 
 snapshots:
+
+  '@composed-di/core@0.13.0': {}
+
+  '@composed-di/instrumentation-core@0.13.0':
+    dependencies:
+      '@composed-di/core': 0.13.0
 
   '@emnapi/core@1.11.1':
     dependencies:
