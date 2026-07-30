@@ -8,7 +8,10 @@ import {
   ServiceInstrumentation,
 } from '../src'
 
-type Entries = Parameters<ServiceInstrumentation['install']>[0]
+// Deliberately not derived via Parameters<install>: on an overloaded
+// method that resolves to the last overload (ServiceModule), while these
+// tests always install arrays of factories.
+type Entries = ServiceFactory[]
 
 interface RecordedEvent {
   type: 'initialize' | 'dispose' | 'call'
