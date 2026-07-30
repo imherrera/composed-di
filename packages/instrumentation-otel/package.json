@@ -41,8 +41,6 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@composed-di/core": "workspace:^",
-    "@composed-di/instrumentation-core": "workspace:^",
     "@opentelemetry/semantic-conventions": "^1.30.0"
   },
   "devDependencies": {
