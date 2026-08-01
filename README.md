@@ -59,7 +59,7 @@ const configFactory = ServiceFactory.singleton({
 
 const databaseFactory = ServiceFactory.singleton({
   provides: databaseKey,
-  dependsOn: [configKey] as const,
+  dependsOn: [configKey],
   initialize: (config) => connectToDatabase(config.dbUrl), // may be async
   dispose: (db) => db.close(),
 })
@@ -138,7 +138,7 @@ import { connectionKey } from '@myapp/data'
 export const usersModule = ServiceModule.from([
   ServiceFactory.singleton({
     provides: userRepositoryKey,
-    dependsOn: [connectionKey] as const,
+    dependsOn: [connectionKey],
     initialize: (connection) => new MongoUserRepository(connection),
   }),
 ])
@@ -192,7 +192,7 @@ class CheckoutService {
 
 const checkoutFactory = ServiceFactory.singleton({
   provides: checkoutKey,
-  dependsOn: [paymentSelectorKey] as const,
+  dependsOn: [paymentSelectorKey],
   initialize: (payments) => new CheckoutService(payments),
 })
 ```
