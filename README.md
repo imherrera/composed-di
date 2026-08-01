@@ -80,7 +80,7 @@ module.dispose()
 
 A `ServiceKey<T>` is a typed token backed by a unique `Symbol`, so two keys with the same name never collide.
 
-For services that are part of your application domain, prefer unique keys — `new ServiceKey(...)` — declared in the same package as the factories that provide them. Identity travels with the exported object, so no naming discipline is needed, and the package stays self-contained: it exports a single `ServiceModule` plus its keys, and consumers import both.
+Declare a key with `new ServiceKey(...)` in the same package as the factory that provides it. Identity travels with the exported object, so no naming discipline is needed, and the package stays self-contained: it exports a single `ServiceModule` plus its keys, and consumers import both.
 
 ```ts
 // @myapp/data — the whole package surface: one module + its keys.
@@ -111,15 +111,40 @@ const module = ServiceModule.from([dataModule, notificationsModule])
 const users = await module.get(userRepositoryKey)
 ```
 
-Reach for the global-registry variant — `ServiceKey.for` — only when a key cannot be shared as an import: across independent bundles or duplicated copies of a library, typically for third-party services. Registry keys are identified by their name string alone, so pick a clash-safe name: the package the service comes from, followed by the service itself.
+### Sharing infrastructure between packages
+
+Third-party resources — a database connection, a cache client, an SDK client — are shared the same way. Give the resource a home package that declares its key and provides it; every package that needs it imports that key.
 
 ```ts
-const secretsClientKey = ServiceKey.for<SecretsManagerClient>(
-  '@aws-sdk/client-secrets-manager/SecretsManagerClient',
-)
-const mongooseKey = ServiceKey.for<Connection>('mongoose/Connection')
-const redisKey = ServiceKey.for<Redis>('ioredis/Redis')
+// @myapp/data — owns the connection, and the token that identifies it.
+import type { Connection } from 'mongoose'
+
+export const connectionKey = new ServiceKey<Connection>('Connection')
+
+export const connectionModule = ServiceModule.from([
+  ServiceFactory.singleton({
+    provides: connectionKey,
+    initialize: () => createConnection(process.env.MONGO_URL!),
+    dispose: (connection) => connection.close(),
+  }),
+])
 ```
+
+```ts
+// @myapp/users and @myapp/billing both depend on it by import — one
+// connection, created once, shared by every consumer.
+import { connectionKey } from '@myapp/data'
+
+export const usersModule = ServiceModule.from([
+  ServiceFactory.singleton({
+    provides: userRepositoryKey,
+    dependsOn: [connectionKey] as const,
+    initialize: (connection) => new MongoUserRepository(connection),
+  }),
+])
+```
+
+A package can also declare a key it does not provide, leaving the application to supply the implementation. Export the key alongside the module and document it as required — composing the module without a factory for it fails at `ServiceModule.from()`, not at request time.
 
 ### Factories
 
@@ -224,6 +249,29 @@ const module = instrumentation.install(baseModule, {
 ### Custom backends
 
 To report to something other than OpenTelemetry, extend `ServiceInstrumentation` from `@composed-di/instrumentation-core` and implement two hooks (`lifecycleSpan`, `methodCallSpan`), each returning an `OperationSpan` that is notified when the operation finishes. See the [`@composed-di/instrumentation-core` README](packages/instrumentation-core/README.md) for the contract, and [`packages/instrumentation-otel`](packages/instrumentation-otel/src/otelServiceInstrumentation.ts) for a complete reference implementation.
+
+## Troubleshooting
+
+### `NoSuchFactoryError` for a key that is registered
+
+If a key is visibly provided by a module you composed and resolution still fails, the module that declares the key was probably evaluated twice. `new ServiceKey(...)` mints a fresh `Symbol` on every evaluation, so the two copies are different keys that print the same name. Usual causes:
+
+- the declaring package resolved to two copies in `node_modules` (check `npm ls` / `pnpm why`);
+- the package was loaded once as ESM and once as CJS;
+- a dev-server hot reload re-evaluated the key module while a longer-lived container kept the old key.
+
+The fix is to make the declaring module resolve once — dedupe the dependency, pick a single module format, or rebuild the container on reload.
+
+### Keys across separate module graphs
+
+When two bundles genuinely never share a module graph — module federation remotes, a plugin host loading independently built plugins — no import can carry a key between them. `ServiceKey.for` covers that case: it is backed by `Symbol.for`, so the same name resolves to the same key in every bundle in the realm.
+
+```ts
+// Declared identically in the host and in each plugin bundle.
+const authContextKey = ServiceKey.for<AuthContext>('@host/shell/AuthContext')
+```
+
+Two costs come with it, so prefer an imported `new ServiceKey(...)` anywhere an import is possible. The name is global to the realm, shared with every other library in the process — namespace it with the package it belongs to. And the type parameter is an unchecked assertion: two declarations of the same name with different `T` produce one key, and neither the compiler nor the runtime will object.
 
 ## Development
 
