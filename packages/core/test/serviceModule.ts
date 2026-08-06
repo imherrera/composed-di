@@ -281,6 +281,30 @@ describe('ServiceModule', () => {
       expect(counter).toBe(2)
     })
 
+    it('should not apply the warm-singleton fast path to one-shot factories', async () => {
+      const key1 = new ServiceKey<string>('Key1')
+      const key2 = new ServiceKey<{ id: number }>('Key2')
+
+      const factory1 = ServiceFactory.oneShot({
+        provides: key1,
+        initialize: () => 'value1',
+      })
+
+      let counter = 0
+      const factory2 = ServiceFactory.oneShot({
+        provides: key2,
+        dependsOn: [key1],
+        initialize: () => ({ id: ++counter }),
+      })
+
+      const module = ServiceModule.from([factory1, factory2])
+
+      // Each request must survive the fast-path check (one-shot factories
+      // have no getInstance) and produce a fresh instance
+      expect((await module.get(key2)).id).toBe(1)
+      expect((await module.get(key2)).id).toBe(2)
+    })
+
     it('should resolve SelectorKey', async () => {
       const key1 = new ServiceKey<string>('Key1')
       const key2 = new ServiceKey<string>('Key2')

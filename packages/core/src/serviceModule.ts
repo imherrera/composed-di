@@ -1,5 +1,5 @@
 import { ServiceKey, SelectorKey } from './serviceKey'
-import type { ServiceFactory } from './serviceFactory'
+import { type ServiceFactory } from './serviceFactory'
 import { Selector } from './serviceSelector'
 import { NoSuchFactoryError, ModuleValidationError } from './errors'
 
@@ -39,6 +39,12 @@ export class ServiceModule {
       throw new NoSuchFactoryError(
         `Could not find a suitable factory for ${key.name}`,
       )
+    }
+
+    // Check if the factory has an instance already
+    const instance = factory.getInstance()
+    if (instance) {
+      return instance.value as T
     }
 
     // Resolve all dependencies first

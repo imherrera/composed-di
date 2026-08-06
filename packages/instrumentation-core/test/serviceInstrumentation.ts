@@ -186,6 +186,7 @@ describe('install() lifetime dispatch', () => {
         provides: key,
         dependsOn: [],
         initialize: () => ({ x: 1 }),
+        getInstance: () => undefined,
         dispose: () => {},
       }
       const recorder = new RecordingListener()

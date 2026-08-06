@@ -48,6 +48,12 @@ export abstract class ServiceFactory<
   abstract initialize(...dependencies: DependencyTypes<D>): T | Promise<T>
 
   /**
+   * Returns the retained instance if this factory currently holds one, or
+   * `undefined` if no instance is retained.
+   */
+  abstract getInstance(): { readonly value: T } | undefined
+
+  /**
    * Tears down whatever {@link initialize} retained (if anything at all). A subsequent {@link initialize}
    * produces a fresh instance.
    *
@@ -81,7 +87,7 @@ export abstract class ServiceFactory<
     dependsOn = [] as unknown as D,
     initialize,
     dispose = () => {},
-  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn'> & {
+  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
     dispose?: (instance: T) => void
     dependsOn?: D
   }): ServiceFactory<T, D> {
@@ -109,7 +115,7 @@ export abstract class ServiceFactory<
     provides,
     dependsOn = [] as unknown as D,
     initialize,
-  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn'> & {
+  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
     dependsOn?: D
   }): ServiceFactory<T, D> {
     return new OneShotFactory(provides, dependsOn, initialize)
@@ -138,6 +144,10 @@ export class OneShotFactory<
 
   initialize(...dependencies: DependencyTypes<D>): T | Promise<T> {
     return this.onInitialize(...dependencies)
+  }
+
+  getInstance(): { readonly value: T } | undefined {
+    return undefined
   }
 
   dispose(): void {
@@ -170,6 +180,14 @@ export class SingletonFactory<
     readonly onDispose: ((instance: T) => void) | undefined,
   ) {
     super()
+  }
+
+  /**
+   * Returns the retained instance if the singleton is warm, or `undefined` if
+   * no instance is currently retained.
+   */
+  getInstance(): { readonly value: T } | undefined {
+    return this.retainedInstance
   }
 
   initialize(...dependencies: DependencyTypes<D>): Promise<T> | T {
