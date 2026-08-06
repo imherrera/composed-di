@@ -54,7 +54,7 @@ module.dispose()
 
 A typed token backed by a unique `Symbol`, so two keys with the same name never collide.
 
-For services that are part of your application domain, prefer unique keys — `new ServiceKey(...)` — declared in the same package as the factories that provide them, so the package stays self-contained: it exports a single `ServiceModule` plus its keys, and consumers import both.
+Declare keys in the same package as the factories that provide them, so the package stays self-contained: it exports a single `ServiceModule` plus its keys, and consumers import both.
 
 ```ts
 // @myapp/data — the whole package surface: one module + its keys.
@@ -68,15 +68,6 @@ export const dataModule = ServiceModule.from([
     initialize: () => new PostgresUserRepository(),
   }),
 ])
-```
-
-`ServiceKey.for<T>(name)` instead uses the global symbol registry, producing keys that identify the same service across independent bundles or duplicated copies of this library — typically for third-party services. Registry keys are identified by their name string alone, so pick a clash-safe name: the package the service comes from, followed by the service itself.
-
-```ts
-const secretsClientKey = ServiceKey.for<SecretsManagerClient>(
-  '@aws-sdk/client-secrets-manager/SecretsManagerClient',
-)
-const mongooseKey = ServiceKey.for<Connection>('mongoose/Connection')
 ```
 
 ### `ServiceFactory`

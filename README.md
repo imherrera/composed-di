@@ -165,7 +165,7 @@ Exporting a key is what makes a service substitutable. `connectionKey` is export
 
 A `ServiceModule` is always complete: `ServiceModule.from()` requires every `dependsOn` to be satisfied within the same call. That is usually easy to arrange — a package that needs configuration can read the environment itself, or depend on a config package that does and exports a module.
 
-It stops working when a package deliberately must *not* choose. A notifications package used by two applications, one sending through SES and the other through Twilio, cannot export a complete module, because completing it would mean picking one. Export a function that takes the missing module instead.
+It stops working when a package deliberately must _not_ choose. A notifications package used by two applications, one sending through SES and the other through Twilio, cannot export a complete module, because completing it would mean picking one. Export a function that takes the missing module instead.
 
 ```ts
 // @myapp/notifications — declares the contract, provides everything but the transport.
@@ -357,17 +357,6 @@ If a key is visibly provided by a module you composed and resolution still fails
 - a dev-server hot reload re-evaluated the key module while a longer-lived container kept the old key.
 
 The fix is to make the declaring module resolve once — dedupe the dependency, pick a single module format, or rebuild the container on reload.
-
-### Keys across separate module graphs
-
-When two bundles genuinely never share a module graph — module federation remotes, a plugin host loading independently built plugins — no import can carry a key between them. `ServiceKey.for` covers that case: it is backed by `Symbol.for`, so the same name resolves to the same key in every bundle in the realm.
-
-```ts
-// Declared identically in the host and in each plugin bundle.
-const authContextKey = ServiceKey.for<AuthContext>('@host/shell/AuthContext')
-```
-
-Two costs come with it, so prefer an imported `new ServiceKey(...)` anywhere an import is possible. The name is global to the realm, shared with every other library in the process — namespace it with the package it belongs to, and note that a registry key is reachable, and therefore overridable, by anyone who can guess the string, where an unexported `new ServiceKey(...)` cannot be named at all. And the type parameter is an unchecked assertion: two declarations of the same name with different `T` produce one key, and neither the compiler nor the runtime will object.
 
 ## Roadmap
 

@@ -44,46 +44,6 @@ export class ServiceKey<T> {
     public readonly name: string,
     public readonly symbol: symbol = Symbol(name),
   ) {}
-
-  /**
-   * Creates a `ServiceKey` backed by the global symbol registry, making it
-   * compatible with any other key created via `ServiceKey.for` with the same name.
-   *
-   * Key identity is determined by the underlying {@link symbol}, not by object
-   * reference. This method uses `Symbol.for(name)`, which searches the global
-   * symbol registry for a symbol registered under `name` and reuses it if found
-   * (registering it on first use). As a result, every `ServiceKey.for('X')` call
-   * — even across modules, bundles, or duplicated copies of this library —
-   * produces keys that identify the same service.
-   *
-   * This is the opposite guarantee of `new ServiceKey(name)`, which creates a
-   * fresh `Symbol(name)` each time and is therefore always unique, even when
-   * names collide.
-   *
-   * Because the registry is keyed only by the name string, choose names unlikely
-   * to collide (e.g., namespaced like `'my-app/Logger'`). Note that the type
-   * parameter `T` is not part of the identity: two `for` calls with the same
-   * name but different `T` silently alias the same service.
-   *
-   * @template T The type of service this key identifies.
-   * @param name The name used to look up (or register) the shared symbol in the
-   *             global symbol registry; also used in error messages and debugging.
-   * @return A `ServiceKey` whose symbol is `Symbol.for(name)`, interchangeable
-   *         with any other key created by this method with the same name.
-   *
-   * @example
-   * ```ts
-   * const keyA = ServiceKey.for<Logger>('Logger');
-   * const keyB = ServiceKey.for<Logger>('Logger');
-   * keyA.symbol === keyB.symbol; // true — both keys resolve the same service
-   *
-   * const keyC = new ServiceKey<Logger>('Logger');
-   * keyA.symbol === keyC.symbol; // false — the constructor always creates a unique key
-   * ```
-   */
-  static for<T>(name: string): ServiceKey<T> {
-    return new ServiceKey<T>(name, Symbol.for(name))
-  }
 }
 
 /**
