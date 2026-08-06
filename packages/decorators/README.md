@@ -198,7 +198,7 @@ class Garage {
 
 ## Full example
 
-The complete café — every feature above in one running file — lives at [`packages/example/src/cafeShop.ts`](../example/src/cafeShop.ts), with a decorator-free twin ([`cafeShopCore.ts`](../example/src/cafeShopCore.ts)) and a NestJS mirror for comparison.
+The complete café — every feature above in one running file — lives at [`packages/example/src/cafeShop.ts`](../example/src/cafeShop.ts), with a decorator-free twin ([`cafeShopCore.ts`](../example/src/cafeShopCore.ts)) for comparison.
 
 ## Errors
 
