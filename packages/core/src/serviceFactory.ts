@@ -156,7 +156,7 @@ export class OneShotFactory<
 }
 
 /**
- * A `SingletonServiceFactory` manages the lifecycle of a singleton service instance. It ensures
+ * A `SingletonFactory` manages the lifecycle of a singleton service instance. It ensures
  * that only one instance of the service is created and reuses that same instance across requests.
  *
  * It extends the `ServiceFactory` class to include additional behavior for managing singleton services.
