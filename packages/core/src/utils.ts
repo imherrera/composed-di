@@ -1,5 +1,6 @@
 import { ServiceModule } from './serviceModule'
-import { ServiceKey } from './serviceKey'
+import { ServiceKey, SelectorKey } from './serviceKey'
+import type { ServiceFactory } from './serviceFactory'
 
 export interface DotGraphOptions {
   /** Graph direction: 'TB' (top-bottom), 'LR' (left-right), 'BT' (bottom-top), 'RL' (right-left) */
@@ -19,6 +20,50 @@ export interface MermaidGraphOptions {
   highlightLeaves?: boolean
   /** Show nodes with no dependents in a different color */
   highlightRoots?: boolean
+}
+
+/**
+ * A factory's dependencies with every `SelectorKey` expanded to its grouped
+ * keys — the reachability the validators use.
+ */
+function expandedDependencies(factory: ServiceFactory): ServiceKey<unknown>[] {
+  return factory.dependsOn.flatMap((dependency) =>
+    dependency instanceof SelectorKey ? dependency.values : [dependency],
+  )
+}
+
+/**
+ * Orders factories so every dependent precedes its dependencies, breaking
+ * ties by registration order — the rendered graph does not depend on how the
+ * module was assembled.
+ */
+function topologicalFactories(factories: ServiceFactory[]): ServiceFactory[] {
+  const bySymbol = new Map<symbol, ServiceFactory>()
+  for (const factory of factories) {
+    bySymbol.set(factory.provides.symbol, factory)
+  }
+
+  const visited = new Set<symbol>()
+  const postOrder: ServiceFactory[] = []
+
+  function visit(factory: ServiceFactory): void {
+    if (visited.has(factory.provides.symbol)) {
+      return
+    }
+    visited.add(factory.provides.symbol)
+    for (const key of expandedDependencies(factory)) {
+      const dependency = bySymbol.get(key.symbol)
+      if (dependency) {
+        visit(dependency)
+      }
+    }
+    postOrder.push(factory)
+  }
+
+  for (const factory of factories) {
+    visit(factory)
+  }
+  return postOrder.reverse()
 }
 
 /**
@@ -56,7 +101,7 @@ export function createDotGraph(
     highlightRoots: true,
   },
 ): string {
-  const factories = module.factories
+  const factories = topologicalFactories(module.factories)
   const lines: string[] = []
 
   // Start the digraph
@@ -96,8 +141,8 @@ export function createDotGraph(
       hasDependencies.add(serviceName)
     }
 
-    factory.dependsOn.forEach((dependency: ServiceKey<unknown>) => {
-      hasDependents.add(dependency.name)
+    expandedDependencies(factory).forEach((key) => {
+      hasDependents.add(key.name)
     })
   })
 
@@ -126,6 +171,23 @@ export function createDotGraph(
     )
   })
 
+  // Selector keys become decision nodes of their own.
+  const selectors: SelectorKey<unknown>[] = []
+  factories.forEach((factory) => {
+    factory.dependsOn.forEach((dependency) => {
+      if (dependency instanceof SelectorKey && !nodeIds.has(dependency.name)) {
+        const nodeId = `node${nodeCounter++}`
+        nodeIds.set(dependency.name, nodeId)
+        selectors.push(dependency)
+        // Labeled by what it is, not what it groups — the dashed edges
+        // already show the implementations.
+        lines.push(
+          `  ${nodeId} [label="SelectorKey", shape=diamond, style="filled", fillcolor="#ede7f6", color="#5e35b1"];`,
+        )
+      }
+    })
+  })
+
   lines.push('')
 
   // Define edges (dependencies)
@@ -133,13 +195,24 @@ export function createDotGraph(
     const serviceName = factory.provides.name
     const serviceNodeId = nodeIds.get(serviceName)!
 
-    factory.dependsOn.forEach((dependency: ServiceKey<unknown>) => {
-      const depName = dependency.name
-      const depNodeId = nodeIds.get(depName)
+    factory.dependsOn.forEach((dependency) => {
+      const depNodeId = nodeIds.get(dependency.name)
 
       if (depNodeId) {
         // Arrow points from dependent to dependency (what needs it -> what provides it)
         lines.push(`  ${serviceNodeId} -> ${depNodeId};`)
+      }
+    })
+  })
+
+  // A selector's outgoing edges are dashed — a runtime choice among the
+  // grouped implementations, not a hard dependency on any one of them.
+  selectors.forEach((selector) => {
+    const selectorNodeId = nodeIds.get(selector.name)!
+    selector.values.forEach((value) => {
+      const valueNodeId = nodeIds.get(value.name)
+      if (valueNodeId) {
+        lines.push(`  ${selectorNodeId} -> ${valueNodeId} [style=dashed];`)
       }
     })
   })
@@ -185,7 +258,7 @@ export function createMermaidGraph(
     highlightRoots: true,
   },
 ): string {
-  const factories = module.factories
+  const factories = topologicalFactories(module.factories)
   const lines: string[] = []
 
   // Start the flowchart
@@ -202,8 +275,8 @@ export function createMermaidGraph(
       hasDependencies.add(serviceName)
     }
 
-    factory.dependsOn.forEach((dependency) => {
-      hasDependents.add(dependency.name)
+    expandedDependencies(factory).forEach((key) => {
+      hasDependents.add(key.name)
     })
   })
 
@@ -219,6 +292,21 @@ export function createMermaidGraph(
     lines.push(`  ${nodeId}["${escapeMermaidString(serviceName)}"]`)
   })
 
+  // Selector keys become decision nodes of their own.
+  const selectors: SelectorKey<unknown>[] = []
+  factories.forEach((factory) => {
+    factory.dependsOn.forEach((dependency) => {
+      if (dependency instanceof SelectorKey && !nodeIds.has(dependency.name)) {
+        const nodeId = `node${nodeCounter++}`
+        nodeIds.set(dependency.name, nodeId)
+        selectors.push(dependency)
+        // Labeled by what it is, not what it groups — the dashed edges
+        // already show the implementations.
+        lines.push(`  ${nodeId}{"SelectorKey"}`)
+      }
+    })
+  })
+
   lines.push('')
 
   // Define edges (dependencies)
@@ -227,12 +315,23 @@ export function createMermaidGraph(
     const serviceNodeId = nodeIds.get(serviceName)!
 
     factory.dependsOn.forEach((dependency) => {
-      const depName = dependency.name
-      const depNodeId = nodeIds.get(depName)
+      const depNodeId = nodeIds.get(dependency.name)
 
       if (depNodeId) {
         // Arrow points from dependent to dependency (what needs it -> what provides it)
         lines.push(`  ${serviceNodeId} --> ${depNodeId}`)
+      }
+    })
+  })
+
+  // A selector's outgoing edges are dashed — a runtime choice among the
+  // grouped implementations, not a hard dependency on any one of them.
+  selectors.forEach((selector) => {
+    const selectorNodeId = nodeIds.get(selector.name)!
+    selector.values.forEach((value) => {
+      const valueNodeId = nodeIds.get(value.name)
+      if (valueNodeId) {
+        lines.push(`  ${selectorNodeId} -.-> ${valueNodeId}`)
       }
     })
   })
@@ -255,6 +354,12 @@ export function createMermaidGraph(
       // Default style
       lines.push(`  style ${serviceNodeId} fill:#e1f5ff,stroke:#0288d1`)
     }
+  })
+
+  selectors.forEach((selector) => {
+    lines.push(
+      `  style ${nodeIds.get(selector.name)!} fill:#ede7f6,stroke:#5e35b1`,
+    )
   })
 
   return lines.join('\n')
