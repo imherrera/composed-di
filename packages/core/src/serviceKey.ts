@@ -32,7 +32,7 @@ export class ServiceKey<T> {
    * Exists only at the type level (`declare` emits no runtime code) and
    * prevents keys of different service types from being interchangeable.
    */
-  declare private readonly _type: T
+  declare protected readonly _type: T
 
   /**
    * Creates a new ServiceKey with the given name.
