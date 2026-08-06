@@ -1,0 +1,16 @@
+{
+  "name": "@composed-di/example",
+  "version": "0.14.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "start": "pnpm run build && node dist/cafeShop.js",
+    "start:core": "pnpm run build && node dist/cafeShopCore.js"
+  },
+  "dependencies": {
+    "@composed-di/core": "workspace:*",
+    "@composed-di/decorators": "workspace:*"
+  }
+}

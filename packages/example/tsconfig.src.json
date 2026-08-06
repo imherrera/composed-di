@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.src.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "tsBuildInfoFile": "build/tsconfig.src.tsbuildinfo",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../core/tsconfig.src.json" },
+    { "path": "../decorators/tsconfig.src.json" }
+  ]
+}
