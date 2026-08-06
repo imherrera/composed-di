@@ -499,6 +499,51 @@ describe('ServiceModule', () => {
       expect(dispose2).toHaveBeenCalled()
     })
 
+    it('should dispose factories in reverse-topological order', async () => {
+      const configKey = new ServiceKey<string>('Config')
+      const databaseKey = new ServiceKey<string>('Database')
+      const appKey = new ServiceKey<string>('App')
+      const disposalOrder: string[] = []
+
+      const configFactory = ServiceFactory.singleton({
+        provides: configKey,
+        initialize: () => 'config',
+        dispose: () => {
+          disposalOrder.push('Config')
+        },
+      })
+      const databaseFactory = ServiceFactory.singleton({
+        provides: databaseKey,
+        dependsOn: [configKey],
+        initialize: () => 'database',
+        dispose: () => {
+          disposalOrder.push('Database')
+        },
+      })
+      const appFactory = ServiceFactory.singleton({
+        provides: appKey,
+        dependsOn: [databaseKey],
+        initialize: () => 'app',
+        dispose: () => {
+          disposalOrder.push('App')
+        },
+      })
+
+      // Registration order matches topological order, the opposite of the
+      // order in which disposal must happen
+      const module = ServiceModule.from([
+        configFactory,
+        databaseFactory,
+        appFactory,
+      ])
+      await module.get(appKey)
+
+      module.dispose()
+
+      // Dependents must be disposed before their dependencies
+      expect(disposalOrder).toEqual(['App', 'Database', 'Config'])
+    })
+
     it('should not fail if factory has no dispose method', () => {
       const key1 = new ServiceKey<string>('Key1')
       const factory1 = ServiceFactory.oneShot({

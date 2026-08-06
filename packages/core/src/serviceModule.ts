@@ -74,15 +74,16 @@ export class ServiceModule {
   }
 
   /**
-   * Disposes of all service factories in this module.
-   *
-   * This method is useful for cleaning up resources and instances held by service factories,
-   * such as singleton factories, as they may hold database connections or other resources that need to be released.
+   * Disposes of all service factories in this module, releasing any resources
+   * or instances they hold. Factories are disposed in reverse-topological
+   * order, so dependents are disposed before the factories they depend on.
    *
    * @return No return value.
    */
   public dispose() {
-    this.factories.forEach((factory) => factory.dispose?.())
+    sortReverseTopologically(this.factories).forEach((factory) => {
+      factory.dispose?.()
+    })
   }
 
   /**
@@ -199,6 +200,57 @@ function checkMissingDependencies(factories: ServiceFactory[]) {
   if (issues.length > 0) {
     throw new ModuleValidationError(issues.join('\n\n'))
   }
+}
+
+/**
+ * Sorts factories in reverse-topological order, so every factory appears
+ * before the factories it depends on. Assumes the graph is acyclic, which
+ * module creation already guarantees.
+ *
+ * @param factories The list of factories to sort.
+ * @returns A new array with the factories in dependents-first order.
+ */
+function sortReverseTopologically(
+  factories: ServiceFactory[],
+): ServiceFactory[] {
+  const factoryMap = new Map<symbol, ServiceFactory>()
+  for (const f of factories) {
+    factoryMap.set(f.provides.symbol, f)
+  }
+
+  const visited = new Set<symbol>()
+  const sorted = new Array<ServiceFactory>(factories.length)
+  let nextSlot = factories.length
+
+  function walk(factory: ServiceFactory) {
+    const symbol = factory.provides.symbol
+    if (visited.has(symbol)) {
+      return
+    }
+    visited.add(symbol)
+
+    for (const depKey of factory.dependsOn) {
+      const keysToCheck =
+        depKey instanceof SelectorKey ? depKey.values : [depKey]
+
+      for (const key of keysToCheck) {
+        const depFactory = factoryMap.get(key.symbol)
+        if (depFactory) {
+          walk(depFactory)
+        }
+      }
+    }
+
+    // Post-order fills dependencies toward the back, leaving earlier slots
+    // for their dependents
+    sorted[--nextSlot] = factory
+  }
+
+  for (const factory of factories) {
+    walk(factory)
+  }
+
+  return sorted
 }
 
 /**
