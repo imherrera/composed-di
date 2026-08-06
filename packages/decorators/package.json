@@ -1,0 +1,47 @@
+{
+  "name": "@composed-di/decorators",
+  "version": "0.13.3",
+  "private": false,
+  "keywords": [
+    "decorators",
+    "dependency injection",
+    "di",
+    "lazy dependency injection"
+  ],
+  "license": "MIT",
+  "author": "Juan Herrera juanhr454@gmail.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/imherrera/composed-di.git",
+    "directory": "packages/decorators"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "commonjs",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@composed-di/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@composed-di/core": "^0.13.3"
+  }
+}

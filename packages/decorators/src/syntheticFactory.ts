@@ -1,0 +1,111 @@
+import { ServiceFactory, type ServiceKey } from '@composed-di/core'
+import { FieldInjectionError, MissingLifecycleError } from './errors'
+import { LifecycleRegistry } from './lifecycleRegistry'
+import type { Constructor } from './types'
+import {
+  runWithFieldStash,
+  type FieldInjection,
+  type FieldStash,
+} from './metadata'
+
+/**
+ * Creates a `ServiceFactory` for a class marked with `@Singleton` or
+ * `@OneShot`: the factory provides the class's stamped `ServiceKey`, follows
+ * the decorator's lifecycle, depends on the class's `@Inject` fields
+ * (including those of decorated base classes), and tears down through its
+ * `@OnDispose` method if it has one.
+ *
+ * Decorator-registered classes must have zero-arg constructors — dependencies
+ * are declared exclusively through `@Inject` fields.
+ *
+ * @example
+ * ```typescript
+ * @Singleton
+ * class Car {
+ *   @Inject(engineKey)
+ *   readonly engine!: Engine
+ * }
+ *
+ * const module = ServiceModule.from([syntheticFactory(Car)])
+ * ```
+ *
+ * @throws {MissingLifecycleError} If the class has no lifecycle decorator.
+ * @throws {TypeError} If the class declares required constructor parameters.
+ */
+export function syntheticFactory<C extends Constructor<object>>(
+  constructor: C,
+): ServiceFactory<InstanceType<C>> {
+  const registration = LifecycleRegistry.get(constructor)
+  if (!registration) {
+    throw new MissingLifecycleError(
+      `class ${constructor.name} has no lifecycle decorator — apply @Singleton or @OneShot to register it with syntheticFactory`,
+    )
+  }
+  if (constructor.length > 0) {
+    throw new TypeError(
+      `class ${constructor.name} declares required constructor parameters — decorator-registered classes take dependencies through @Inject fields only`,
+    )
+  }
+
+  const fields = collectFieldInjections(constructor)
+  const dependsOn = fields.map((field) => field.key)
+
+  const initialize = (...dependencies: unknown[]) => {
+    const stash: FieldStash = {
+      values: new Map(),
+      consumed: new Set(),
+    }
+    fields.forEach((field, index) => {
+      stash.values.set(field, dependencies[index])
+    })
+
+    const instance = runWithFieldStash(stash, () => new constructor())
+
+    if (stash.consumed.size !== stash.values.size) {
+      const missed = fields
+        .filter((field) => !stash.consumed.has(field))
+        .map((field) => String(field.name))
+      throw new FieldInjectionError(
+        `class ${constructor.name}: the @Inject fields [${missed.join(', ')}] were never initialized during construction — their metadata does not belong to this class (is a lifecycle decorator missing on another class that uses @Inject?)`,
+      )
+    }
+
+    return instance as InstanceType<C>
+  }
+
+  const provides = registration.key as ServiceKey<InstanceType<C>>
+
+  if (registration.lifecycle === 'oneShot') {
+    return ServiceFactory.oneShot({ provides, dependsOn, initialize })
+  }
+
+  return ServiceFactory.singleton({
+    provides,
+    dependsOn,
+    initialize,
+    dispose: registration.dispose?.invoke,
+  })
+}
+
+/**
+ * Collects the `@Inject` fields that will initialize during construction of
+ * `cls`: its own plus those of decorated base classes, base-first, mirroring
+ * the order JavaScript runs field initializers in.
+ *
+ * Only field metadata is inherited this way — the lifecycle decorator itself
+ * is not, so `syntheticFactory` still rejects an undecorated subclass.
+ */
+function collectFieldInjections(cls: Constructor<object>): FieldInjection[] {
+  const chain: FieldInjection[][] = []
+  for (
+    let current: object | null = cls;
+    current !== null;
+    current = Object.getPrototypeOf(current)
+  ) {
+    const registration = LifecycleRegistry.get(current as Constructor<object>)
+    if (registration) {
+      chain.unshift([...registration.fields])
+    }
+  }
+  return chain.flat()
+}
