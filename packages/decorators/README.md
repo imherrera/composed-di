@@ -24,7 +24,7 @@ import {
   Singleton,
   Inject,
   OnDispose,
-  syntheticFactory,
+  factoriesOf,
   keyOf,
 } from '@composed-di/decorators'
 
@@ -47,10 +47,7 @@ class Barista {
   clockOut() {}
 }
 
-const cafe = ServiceModule.from([
-  syntheticFactory(Barista),
-  syntheticFactory(EspressoMachine),
-])
+const cafe = ServiceModule.from([...factoriesOf(Barista, EspressoMachine)])
 
 // The barista is hired lazily, on the first order — and only one is hired.
 const barista = await cafe.get(keyOf(Barista))
@@ -118,20 +115,21 @@ class EspressoMachine {
 }
 ```
 
-### `syntheticFactory(Class)`
+### `factoryOf(Class)` and `factoriesOf(...Classes)`
 
-Turns a decorated class into an ordinary core `ServiceFactory`: the key from the decorator, the lifecycle from the decorator, the dependencies from the `@Inject` fields, the teardown from `@OnDispose`. Registration stays a composition decision — decoration marks the class, the module provides it:
+`factoryOf` turns a decorated class into an ordinary core `ServiceFactory`: the key from the decorator, the lifecycle from the decorator, the dependencies from the `@Inject` fields, the teardown from `@OnDispose`. Registration stays a composition decision — decoration marks the class, the module provides it. `factoriesOf` is the variadic form, for registering several classes in one entry — mixed compositions spread it next to explicit factories:
 
 ```ts
 const cafe = ServiceModule.from([
-  syntheticFactory(CafeShop),
-  syntheticFactory(Barista),
-  syntheticFactory(EspressoMachine),
-  syntheticFactory(ArabicaBeans),
+  ...factoriesOf(CafeShop, Barista, EspressoMachine, ArabicaBeans),
+  ServiceFactory.singleton({
+    provides: grinderKey,
+    initialize: () => new BurrGrinder(),
+  }),
 ])
 ```
 
-Every call creates a fresh factory, so singletons are scoped to the composition: two modules built from `syntheticFactory(Barista)` hold two independent baristas.
+Every call creates a fresh factory, so singletons are scoped to the composition: two modules built from `factoryOf(Barista)` hold two independent baristas.
 
 ### `keyOf(Class)`
 
@@ -182,7 +180,7 @@ afterEach(() => testCafe.dispose()) // fresh singletons per test
 
 ## When to use the explicit tier instead
 
-A class is decorated if and only if `syntheticFactory` registers it. Classes the tier rules out — required constructor parameters, several instances of one class, a lifecycle decided per module — stay undecorated and use a plain `ServiceKey` with a hand-written factory. The tiers meet at keys, in both directions:
+A class is decorated if and only if `factoryOf` registers it. Classes the tier rules out — required constructor parameters, several instances of one class, a lifecycle decided per module — stay undecorated and use a plain `ServiceKey` with a hand-written factory. The tiers meet at keys, in both directions:
 
 ```ts
 // Explicit tier: constructor injection, key-identified.

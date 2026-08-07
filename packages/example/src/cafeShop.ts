@@ -11,8 +11,8 @@ import {
   OnDispose,
   Singleton,
   keyOf,
+  factoriesOf,
   selectorOf,
-  syntheticFactory,
 } from '@composed-di/decorators'
 
 // Grinders come in many kinds — burr, blade, hand-crank — so the service is
@@ -124,18 +124,21 @@ class CafeShop {
 }
 
 const module = ServiceModule.from([
+  // Decorated classes register as themselves — lifecycle from the
+  // decorators, dependencies from the @Inject fields, teardown from
+  // @OnDispose: the class declaration says everything.
+  ...factoriesOf(
+    CafeShop,
+    Barista,
+    EspressoMachine,
+    ArabicaBeans,
+    RobustaBeans,
+  ),
   // Interface-typed services are still registered with an explicit factory.
   ServiceFactory.singleton({
     provides: grinderKey,
     initialize: () => new BurrGrinder(),
   }),
-  // Lifecycle comes from the decorators, dependencies from the @Inject
-  // fields, teardown from @OnDispose — the class declaration says everything.
-  syntheticFactory(CafeShop),
-  syntheticFactory(Barista),
-  syntheticFactory(EspressoMachine),
-  syntheticFactory(ArabicaBeans),
-  syntheticFactory(RobustaBeans),
 ])
 
 export async function main() {

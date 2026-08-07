@@ -1,5 +1,5 @@
 export { Singleton, OneShot, Inject, OnDispose } from './decorators'
-export { syntheticFactory } from './syntheticFactory'
+export { factoryOf, factoriesOf } from './factory'
 export { keyOf } from './keyOf'
 export { selectorOf } from './selectorOf'
 export type { Constructor, ServiceToken } from './types'

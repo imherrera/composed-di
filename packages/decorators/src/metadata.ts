@@ -46,9 +46,9 @@ export interface ClassRegistration {
 
 /**
  * The dependencies resolved for the class currently being constructed by
- * `syntheticFactory`, keyed by field — each `@Inject` field is its own
+ * `factoryOf`, keyed by field — each `@Inject` field is its own
  * request, so two fields of the same one-shot key hold distinct instances.
- * `consumed` lets `syntheticFactory` verify afterwards that every resolved
+ * `consumed` lets `factoryOf` verify afterwards that every resolved
  * value actually reached its field.
  */
 export interface FieldStash {

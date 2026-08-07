@@ -1,5 +1,5 @@
 /**
- * Error thrown by `syntheticFactory` when the given class has no lifecycle decorator.
+ * Error thrown by `factoryOf` when the given class has no lifecycle decorator.
  *
  * Only classes marked with `@Singleton` or `@OneShot` can be registered — the
  * decorator is what declares the lifecycle and mints the class's `ServiceKey`.

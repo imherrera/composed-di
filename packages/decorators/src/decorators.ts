@@ -7,7 +7,7 @@ import { activeFieldStash, type FieldInjection } from './metadata'
 
 /**
  * Declares a class as a **singleton** service: once registered with
- * `syntheticFactory`, the first request constructs the instance and every
+ * `factoryOf`, the first request constructs the instance and every
  * request thereafter shares it.
  *
  * The decorator also mints the class's `ServiceKey` and stamps it under
@@ -24,7 +24,7 @@ import { activeFieldStash, type FieldInjection } from './metadata'
  *   consume(): void {}
  * }
  *
- * const module = ServiceModule.from([syntheticFactory(GasolineTank)])
+ * const module = ServiceModule.from([factoryOf(GasolineTank)])
  * const tank = await module.get(GasolineTank)
  * ```
  */
@@ -37,7 +37,7 @@ export function Singleton<C extends Constructor<object>>(
 
 /**
  * Declares a class as a **one-shot** service: once registered with
- * `syntheticFactory`, every request constructs a fresh instance — no caching,
+ * `factoryOf`, every request constructs a fresh instance — no caching,
  * no deduplication, and no framework-managed disposal (cleanup belongs
  * entirely to whoever requested the instance).
  *

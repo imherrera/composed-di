@@ -26,19 +26,19 @@ import {
  *   readonly engine!: Engine
  * }
  *
- * const module = ServiceModule.from([syntheticFactory(Car)])
+ * const module = ServiceModule.from([factoryOf(Car)])
  * ```
  *
  * @throws {MissingLifecycleError} If the class has no lifecycle decorator.
  * @throws {TypeError} If the class declares required constructor parameters.
  */
-export function syntheticFactory<C extends Constructor<object>>(
+export function factoryOf<C extends Constructor<object>>(
   constructor: C,
 ): ServiceFactory<InstanceType<C>> {
   const registration = LifecycleRegistry.get(constructor)
   if (!registration) {
     throw new MissingLifecycleError(
-      `class ${constructor.name} has no lifecycle decorator — apply @Singleton or @OneShot to register it with syntheticFactory`,
+      `class ${constructor.name} has no lifecycle decorator — apply @Singleton or @OneShot to register it with factoryOf`,
     )
   }
   if (constructor.length > 0) {
@@ -88,12 +88,27 @@ export function syntheticFactory<C extends Constructor<object>>(
 }
 
 /**
+ * Creates a `ServiceFactory` for each of the given decorated classes, in
+ * order — the variadic companion of `factoryOf`, for registering
+ * several classes in one `ServiceModule.from` entry.
+ *
+ * @param constructors The classes to register; each must carry a lifecycle decorator.
+ * @return One factory per class.
+ * @throws {MissingLifecycleError} If any class has no lifecycle decorator.
+ */
+export function factoriesOf(
+  ...constructors: [Constructor<object>, ...Constructor<object>[]]
+): ServiceFactory[] {
+  return constructors.map((constructor) => factoryOf(constructor))
+}
+
+/**
  * Collects the `@Inject` fields that will initialize during construction of
  * `cls`: its own plus those of decorated base classes, base-first, mirroring
  * the order JavaScript runs field initializers in.
  *
  * Only field metadata is inherited this way — the lifecycle decorator itself
- * is not, so `syntheticFactory` still rejects an undecorated subclass.
+ * is not, so `factoryOf` still rejects an undecorated subclass.
  */
 function collectFieldInjections(cls: Constructor<object>): FieldInjection[] {
   const chain: FieldInjection[][] = []
