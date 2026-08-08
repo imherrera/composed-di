@@ -70,7 +70,7 @@ class ArabicaBeans implements Beans {
 }
 ```
 
-Decorated classes take **zero constructor arguments** — dependencies are declared as fields. A required parameter is a compile error on the decorator itself. The decorator also mints the class's `ServiceKey`, making the class usable as a token in `module.get`, `@Inject`, and `selectorOf`.
+Decorated classes take **zero constructor arguments** — dependencies are declared as fields. A required parameter is a compile error on the decorator itself. The decorator also mints the class's `ServiceKey`, making the class usable as a token in `@Inject`, `@Select`, and the `-Of` bridges — `module.get` is core API and takes the key, via `keyOf`.
 
 ### `@Inject`
 
@@ -140,6 +140,8 @@ const barista = await cafe.get(keyOf(Barista))
 ```
 
 Throws `MissingLifecycleError` for an undecorated class.
+
+`keyOf` is for crossing into core API — `module.get`, a factory's `provides` or `dependsOn`. Inside `@Inject` and `@Select`, pass the class directly: `@Inject(keyOf(Barista))` means the same as `@Inject(Barista)`, with an extra call standing in the way.
 
 ### `@Select`
 

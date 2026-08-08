@@ -112,7 +112,7 @@ class CafeShop {
   @Select<Beans>(ArabicaBeans, RobustaBeans)
   private readonly roasts!: Selector<Beans>
 
-  @Inject(keyOf(Barista))
+  @Inject(Barista)
   private readonly barista!: Barista
 
   async order(roast: 'arabica' | 'robusta'): Promise<CuppaCoffee> {
