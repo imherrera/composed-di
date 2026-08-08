@@ -9,10 +9,10 @@ import {
   Inject,
   OneShot,
   OnDispose,
+  Select,
   Singleton,
   keyOf,
   factoriesOf,
-  selectorOf,
 } from '@composed-di/decorators'
 
 // Grinders come in many kinds — burr, blade, hand-crank — so the service is
@@ -104,15 +104,15 @@ class Barista {
 
 @Singleton
 class CafeShop {
-  // selectorOf groups decorated classes of a shared type under one key — the
-  // menu of roasts. Injecting it yields a Selector: pick the implementation
-  // per call, at runtime. Unlike the beans themselves, the selector is safe
-  // in a singleton — it resolves a fresh one-shot on every call instead of
+  // @Select groups services of a shared type under one key — the menu of
+  // roasts. The field receives a Selector: pick the implementation per
+  // call, at runtime. Unlike the beans themselves, the selector is safe in
+  // a singleton — it resolves a fresh one-shot on every call instead of
   // capturing one.
-  @Inject(selectorOf<Beans>(ArabicaBeans, RobustaBeans))
+  @Select<Beans>(ArabicaBeans, RobustaBeans)
   private readonly roasts!: Selector<Beans>
 
-  @Inject(Barista)
+  @Inject(keyOf(Barista))
   private readonly barista!: Barista
 
   async order(roast: 'arabica' | 'robusta'): Promise<CuppaCoffee> {

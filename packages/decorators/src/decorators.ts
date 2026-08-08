@@ -1,4 +1,4 @@
-import { ServiceKey } from '@composed-di/core'
+import { SelectorKey, ServiceKey, type Selector } from '@composed-di/core'
 import { keyOf } from './keyOf'
 import { LifecycleRegistry } from './lifecycleRegistry'
 import type { Constructor, ServiceToken } from './types'
@@ -11,8 +11,9 @@ import { activeFieldStash, type FieldInjection } from './metadata'
  * request thereafter shares it.
  *
  * The decorator also mints the class's `ServiceKey` and stamps it under
- * `classKey`, making the class itself usable as a token — in
- * `module.get` and in `@Inject`.
+ * `classKey`, making the class itself usable as a token in `@Inject`,
+ * `@Select`, and the `-Of` bridges — `module.get` addresses it through
+ * `keyOf`.
  *
  * This is a standard TC39 class decorator: no `experimentalDecorators` or
  * metadata emission is required.
@@ -25,7 +26,7 @@ import { activeFieldStash, type FieldInjection } from './metadata'
  * }
  *
  * const module = ServiceModule.from([factoryOf(GasolineTank)])
- * const tank = await module.get(GasolineTank)
+ * const tank = await module.get(keyOf(GasolineTank))
  * ```
  */
 export function Singleton<C extends Constructor<object>>(
@@ -42,8 +43,9 @@ export function Singleton<C extends Constructor<object>>(
  * entirely to whoever requested the instance).
  *
  * The decorator also mints the class's `ServiceKey` and stamps it under
- * `classKey`, making the class itself usable as a token — in
- * `module.get` and in `@Inject`.
+ * `classKey`, making the class itself usable as a token in `@Inject`,
+ * `@Select`, and the `-Of` bridges — `module.get` addresses it through
+ * `keyOf`.
  *
  * This is a standard TC39 class decorator: no `experimentalDecorators` or
  * metadata emission is required.
@@ -129,32 +131,79 @@ export function Inject<T>(token: ServiceToken<T>) {
     _value: undefined,
     context: ClassFieldDecoratorContext<This, T>,
   ): (this: This, initial: T) => T {
-    if (context.static) {
+    return injectedField('Inject', key, context)
+  }
+}
+
+/**
+ * Declares that a field receives a `Selector` over the given services: the
+ * tokens' keys are grouped under one `SelectorKey`, and the field's value
+ * picks among them per call, at runtime.
+ *
+ * Tokens are `ServiceKey`s or decorated classes, mixed freely. Unlike a
+ * one-shot injected directly, the selector is safe in a singleton field — it
+ * resolves a fresh instance on every call instead of capturing one.
+ *
+ * This is a standard TC39 field decorator: no `experimentalDecorators` or
+ * metadata emission is required.
+ *
+ * @example
+ * ```typescript
+ * @Singleton
+ * class CafeShop {
+ *   @Select<Beans>(ArabicaBeans, RobustaBeans)
+ *   private readonly roasts!: Selector<Beans>
+ * }
+ * ```
+ */
+export function Select<T>(...tokens: [ServiceToken<T>, ...ServiceToken<T>[]]) {
+  const key = new SelectorKey<T>(
+    tokens.map((token) => (token instanceof ServiceKey ? token : keyOf(token))),
+  )
+
+  return function <This>(
+    _value: undefined,
+    context: ClassFieldDecoratorContext<This, Selector<T>>,
+  ): (this: This, initial: Selector<T>) => Selector<T> {
+    return injectedField('Select', key, context)
+  }
+}
+
+/**
+ * Registers `key` as a pending field injection for the class being defined
+ * and returns the field initializer that pulls the resolved instance from
+ * the active stash — the machinery shared by `@Inject` and `@Select`.
+ */
+function injectedField<This, T>(
+  decorator: string,
+  key: ServiceKey<T>,
+  context: ClassFieldDecoratorContext<This, T>,
+): (this: This, initial: T) => T {
+  if (context.static) {
+    throw new FieldInjectionError(
+      `@${decorator}(${key.name}) cannot be applied to the static field ${String(context.name)}`,
+    )
+  }
+  const field: FieldInjection = { name: context.name, key }
+  LifecycleRegistry.addPendingField(field)
+
+  return function (this: This, _initial: T): T {
+    const owner = (this as object).constructor.name
+    const label = `${owner}.${String(context.name)}`
+
+    const stash = activeFieldStash()
+    if (stash === undefined) {
       throw new FieldInjectionError(
-        `@Inject(${key.name}) cannot be applied to the static field ${String(context.name)}`,
+        `${label}: @${decorator} fields are resolved by a ServiceModule — retrieve ${owner} through the module instead of constructing it with new`,
       )
     }
-    const field: FieldInjection = { name: context.name, key }
-    LifecycleRegistry.addPendingField(field)
-
-    return function (this: This, _initial: T): T {
-      const owner = (this as object).constructor.name
-      const label = `${owner}.${String(context.name)}`
-
-      const stash = activeFieldStash()
-      if (stash === undefined) {
-        throw new FieldInjectionError(
-          `${label}: @Inject fields are resolved by a ServiceModule — retrieve ${owner} through the module instead of constructing it with new`,
-        )
-      }
-      if (!stash.values.has(field)) {
-        throw new FieldInjectionError(
-          `${label}: no resolved instance for ${key.name} — the field is not part of the class registration (is the class's lifecycle decorator missing?)`,
-        )
-      }
-
-      stash.consumed.add(field)
-      return stash.values.get(field) as T
+    if (!stash.values.has(field)) {
+      throw new FieldInjectionError(
+        `${label}: no resolved instance for ${key.name} — the field is not part of the class registration (is the class's lifecycle decorator missing?)`,
+      )
     }
+
+    stash.consumed.add(field)
+    return stash.values.get(field) as T
   }
 }

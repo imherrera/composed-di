@@ -141,15 +141,15 @@ const barista = await cafe.get(keyOf(Barista))
 
 Throws `MissingLifecycleError` for an undecorated class.
 
-### `selectorOf(...Classes)`
+### `@Select`
 
-Groups decorated classes of a shared type under one `SelectorKey` — injecting it yields a core `Selector`, for picking an implementation per call at runtime. Unlike the one-shots themselves, the selector is safe in a singleton: it resolves a fresh instance on every call instead of capturing one.
+Declares a field that receives a core `Selector` over several services — for picking an implementation per call at runtime. Tokens are decorated classes or `ServiceKey`s, mixed freely. Unlike the one-shots themselves, the selector is safe in a singleton: it resolves a fresh instance on every call instead of capturing one.
 
 ```ts
 @Singleton
 class CafeShop {
   // The menu of roasts.
-  @Inject(selectorOf<Beans>(ArabicaBeans, RobustaBeans))
+  @Select<Beans>(ArabicaBeans, RobustaBeans)
   private readonly roasts!: Selector<Beans>
 
   async order(roast: 'arabica' | 'robusta'): Promise<CuppaCoffee> {
@@ -160,6 +160,10 @@ class CafeShop {
   }
 }
 ```
+
+### `selectorOf(...Classes)`
+
+Mints the same grouping as a standalone `SelectorKey`, for core-tier composition — a hand-written factory's `dependsOn`, or anywhere key-shaped. `@Select(A, B)` is the field idiom; `selectorOf(A, B)` is the bridge (a `SelectorKey` is a `ServiceKey`, so `@Inject(selectorOf(...))` is equivalent, just less direct).
 
 ## Testing
 
