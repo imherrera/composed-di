@@ -1,4 +1,4 @@
-import { ServiceKey, SelectorKey } from './serviceKey'
+import { type ServiceKey, SelectorKey } from './serviceKey'
 import { type ServiceFactory } from './serviceFactory'
 import { Selector } from './serviceSelector'
 import { NoSuchFactoryError, ModuleValidationError } from './errors'
@@ -17,9 +17,9 @@ export class ServiceModule {
    *
    * @param factories An array of service factories that this module will manage.
    */
-  private constructor(readonly factories: ServiceFactory[]) {
-    checkCircularDependencies(this.factories)
+  private constructor(readonly factories: ReadonlyArray<ServiceFactory>) {
     checkMissingDependencies(this.factories)
+    checkCircularDependencies(this.factories)
   }
 
   /**
@@ -87,9 +87,9 @@ export class ServiceModule {
    * @return No return value.
    */
   public dispose() {
-    sortReverseTopologically(this.factories).forEach((factory) => {
-      factory.dispose?.()
-    })
+    sortReverseTopologically(this.factories)
+      // Dispose of factories in reverse-topological order
+      .forEach((e) => e.dispose?.())
   }
 
   /**
@@ -121,7 +121,7 @@ export class ServiceModule {
  * @param factories The list of factories to check for cycles.
  * @throws {ModuleValidationError} If a circular dependency is detected.
  */
-function checkCircularDependencies(factories: ServiceFactory[]) {
+function checkCircularDependencies(factories: ReadonlyArray<ServiceFactory>) {
   const factoryMap = new Map<symbol, ServiceFactory>()
   for (const f of factories) {
     factoryMap.set(f.provides.symbol, f)
@@ -177,7 +177,7 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
  * @param factories The list of available factories in the module.
  * @throws {ModuleValidationError} If any dependency is missing.
  */
-function checkMissingDependencies(factories: ServiceFactory[]) {
+function checkMissingDependencies(factories: ReadonlyArray<ServiceFactory>) {
   const issues = factories.reduce((acc, factory) => {
     const frames: string[] = []
 
@@ -217,7 +217,7 @@ function checkMissingDependencies(factories: ServiceFactory[]) {
  * @returns A new array with the factories in dependents-first order.
  */
 function sortReverseTopologically(
-  factories: ServiceFactory[],
+  factories: ReadonlyArray<ServiceFactory>,
 ): ServiceFactory[] {
   const factoryMap = new Map<symbol, ServiceFactory>()
   for (const f of factories) {
@@ -266,7 +266,10 @@ function sortReverseTopologically(
  * @param factories The list of factories to search in.
  * @returns True if a factory provides the given key, false otherwise.
  */
-function isRegistered(key: ServiceKey<unknown>, factories: ServiceFactory[]) {
+function isRegistered(
+  key: ServiceKey<unknown>,
+  factories: ReadonlyArray<ServiceFactory>,
+) {
   return factories.some((factory) => factory.provides?.symbol === key?.symbol)
 }
 
