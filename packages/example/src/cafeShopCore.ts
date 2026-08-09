@@ -9,7 +9,6 @@ import {
   ServiceKey,
   ServiceModule,
   type Selector,
-  printMermaidGraph,
 } from '@composed-di/core'
 
 interface Grinder {
@@ -147,7 +146,6 @@ export async function main() {
   console.log(
     `arabica: ${single.shot.volumeMl}ml | robusta: ${double.shot.volumeMl}ml`,
   )
-  printMermaidGraph(module)
 
   // At closing time the machine backflushes, the barista clocks out, and
   // the next order opens a fresh shift.

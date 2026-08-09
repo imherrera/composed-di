@@ -155,21 +155,6 @@ const cafeShopFactory = ServiceFactory.singleton({
 
 The selector resolves through the module, so lifetimes hold: a singleton key yields the shared instance, a one-shot key a fresh one per call — each order gets a fresh dose of beans, while the shop itself stays a singleton. That also makes a selector the safe way for a singleton to consume one-shots without capturing a single instance forever. `selector.get` accepts only the grouped keys, and every grouped key must be provided by the module for validation to pass.
 
-### Visualization
-
-`createMermaidGraph` / `printMermaidGraph` and `createDotGraph` / `printDotGraph` render the module's dependency graph for [Mermaid](https://mermaid.live/) or Graphviz viewers. Options control direction and highlighting of leaves and roots; `SelectorKey` dependencies render as decision nodes with dashed edges to their implementations.
-
-```ts
-printMermaidGraph(cafe, { direction: 'LR' })
-// flowchart LR
-//   node0["Barista"]
-//   node1["EspressoMachine"]
-//   node2["Grinder"]
-//
-//   node0 --> node2
-//   node0 --> node1
-```
-
 ### Errors
 
 `ModuleValidationError`, `NoSuchFactoryError`, `SingletonDisposedDuringInitError`, and `FactoryReentrancyError` — each is documented at its definition in [`src/errors.ts`](src/errors.ts).

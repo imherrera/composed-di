@@ -293,15 +293,6 @@ const checkoutFactory = ServiceFactory.singleton({
 })
 ```
 
-### Visualizing the graph
-
-```ts
-import { printMermaidGraph, printDotGraph } from '@composed-di/core'
-
-printMermaidGraph(module) // paste into https://mermaid.live/
-printDotGraph(module) // paste into a Graphviz viewer
-```
-
 ## Observability
 
 ### OpenTelemetry
