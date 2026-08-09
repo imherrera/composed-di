@@ -51,10 +51,6 @@ importers:
         version: link:../core
 
   packages/instrumentation-otel:
-    dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.30.0
-        version: 1.42.0
     devDependencies:
       '@composed-di/core':
         specifier: workspace:*

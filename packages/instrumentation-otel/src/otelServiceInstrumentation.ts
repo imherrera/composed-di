@@ -6,11 +6,6 @@ import {
   Tracer,
 } from '@opentelemetry/api'
 import {
-  ATTR_CODE_FUNCTION_NAME,
-  ATTR_ERROR_TYPE,
-  ERROR_TYPE_VALUE_OTHER,
-} from '@opentelemetry/semantic-conventions'
-import {
   LifecycleContext,
   OperationOutcome,
   OperationSpan,
@@ -20,14 +15,15 @@ import {
 } from '@composed-di/instrumentation-core'
 import { ServiceKey } from '@composed-di/core'
 import {
+  ATTR_CODE_FUNCTION_NAME,
   ATTR_COMPOSED_DI_SERVICE_EVENT,
   ATTR_COMPOSED_DI_SERVICE_FUNCTION_ARGUMENTS,
   ATTR_COMPOSED_DI_SERVICE_FUNCTION_RESULT,
   ATTR_COMPOSED_DI_SERVICE_KEY,
+  ATTR_ERROR_TYPE,
+  ERROR_TYPE_VALUE_OTHER,
 } from './attributes'
 import * as pkg from '../package.json'
-
-export interface OTELInstrumentationOptions {}
 
 /**
  * A ServiceInstrumentation that records service events as OTEL spans.
@@ -44,7 +40,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
       methodName,
     })
     const spanName = context.key
-      ? `${className}[${context.key.name}].${methodName}`
+      ? `${className}<${context.key.name}>.${methodName}`
       : `${className}.${methodName}`
     return this.buildSpan(spanName, attributes)
   }

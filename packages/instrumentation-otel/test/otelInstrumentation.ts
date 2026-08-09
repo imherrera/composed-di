@@ -58,7 +58,7 @@ describe('OTELInstrumentation', () => {
     const svc = await module.get(key)
     svc.greet()
 
-    const init = byName('ServiceFactory[svc].initialize')
+    const init = byName('ServiceFactory<svc>.initialize')
     expect(init.attributes).toMatchObject({
       'code.function.name': 'ServiceFactory.initialize',
       'composed_di.service.key': 'svc',
@@ -110,7 +110,7 @@ describe('OTELInstrumentation', () => {
 
     await module.get(key)
     module.dispose()
-    expect(byName('ServiceFactory[svc].dispose').attributes).toMatchObject({
+    expect(byName('ServiceFactory<svc>.dispose').attributes).toMatchObject({
       'composed_di.service.event': 'factory_dispose',
     })
   })

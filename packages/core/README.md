@@ -4,6 +4,8 @@
 
 A lightweight, lazy, and type-safe dependency injection container for TypeScript — no decorators, no reflection metadata, no framework lock-in. Services are described as plain factories, composed into modules, and created only when they are actually requested.
 
+Class-based registration is available separately, in [`@composed-di/decorators`](../decorators).
+
 ## Installation
 
 ```sh

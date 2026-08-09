@@ -3,13 +3,16 @@
 [![npm version](https://img.shields.io/npm/v/%40composed-di%2Fcore)](https://www.npmjs.com/package/@composed-di/core)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 
-A lightweight, lazy, and type-safe dependency injection library for TypeScript — no decorators, no reflection metadata, no framework lock-in. Services are described as plain factories, composed into modules, and created only when they are actually requested, so a Lambda invocation or an app launch pays only for the subgraph it touches.
+A lightweight, lazy, and type-safe dependency injection library for TypeScript — no reflection metadata, no framework lock-in. Services are described as plain factories, composed into modules, and created only when they are actually requested, so a Lambda invocation or an app launch pays only for the subgraph it touches.
+
+Prefer to declare services as classes? [`@composed-di/decorators`](packages/decorators) adds class-based registration on standard TC39 decorators — still no `reflect-metadata`, still no `experimentalDecorators`.
 
 ## Packages
 
 | Package                                                              | Description                                                                                    |
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| [`@composed-di/core`](packages/core)                                 | The DI container: keys, factories, modules, selectors, and graph visualization.                |
+| [`@composed-di/core`](packages/core)                                 | The DI container: keys, factories, modules, and selectors.                                     |
+| [`@composed-di/decorators`](packages/decorators)                     | Class-based registration on standard TC39 decorators: lifecycle, injection, and teardown.      |
 | [`@composed-di/instrumentation-core`](packages/instrumentation-core) | Framework-agnostic observability hooks for service initialization, disposal, and method calls. |
 | [`@composed-di/instrumentation-otel`](packages/instrumentation-otel) | OpenTelemetry implementation that records service events as spans.                             |
 
@@ -22,7 +25,7 @@ A lightweight, lazy, and type-safe dependency injection library for TypeScript �
 - **Explicit lifecycles** — lazily-created singletons with deterministic `dispose()`, and one-shot (transient) factories.
 - **Async-native** — `initialize` may return a promise; concurrent requests for an in-flight singleton share the same initialization.
 - **Runtime selection** — `SelectorKey` groups multiple implementations of an interface so a service can pick one at runtime.
-- **Visualization** — generate [Mermaid](https://mermaid.live/) or Graphviz DOT diagrams of your dependency graph.
+- **Classes, if you want them** — an optional package registers classes directly, with the lifecycle, dependencies, and teardown declared on the class. Standard decorators only, so nothing depends on `reflect-metadata` or `experimentalDecorators`.
 
 ## Getting started
 
@@ -30,6 +33,8 @@ A lightweight, lazy, and type-safe dependency injection library for TypeScript �
 
 ```sh
 npm install @composed-di/core
+# optional, to register classes instead of writing factories by hand:
+npm install @composed-di/decorators
 # optional, for OpenTelemetry tracing of your services:
 npm install @composed-di/instrumentation-otel @opentelemetry/api
 ```
@@ -292,6 +297,51 @@ const checkoutFactory = ServiceFactory.singleton({
   initialize: (payments) => new CheckoutService(payments),
 })
 ```
+
+### Class-based registration
+
+Everything above is plain factories, and core stays that way. When services are already classes, [`@composed-di/decorators`](packages/decorators) moves the same three decisions — lifetime, dependencies, teardown — onto the class declaration, and `factoriesOf` turns the result back into ordinary core factories:
+
+```ts
+import { ServiceModule } from '@composed-di/core'
+import {
+  Singleton,
+  Inject,
+  OnDispose,
+  factoriesOf,
+  keyOf,
+} from '@composed-di/decorators'
+
+@Singleton
+class EspressoMachine {
+  pullShot(): void {}
+}
+
+@Singleton
+class Barista {
+  // A decorated class is its own token — no ServiceKey needed.
+  @Inject(EspressoMachine)
+  private readonly machine!: EspressoMachine
+
+  serveEspresso() {
+    this.machine.pullShot()
+  }
+
+  @OnDispose
+  clockOut() {}
+}
+
+const cafe = ServiceModule.from([...factoriesOf(Barista, EspressoMachine)])
+
+const barista = await cafe.get(keyOf(Barista))
+barista.serveEspresso()
+
+cafe.dispose() // clockOut() runs
+```
+
+Decorated classes take zero constructor arguments — dependencies are fields, and a required parameter is a compile error on the decorator itself. Registration stays a composition decision: decorating a class marks it, the module still has to provide it.
+
+This is stage-3 decorators, so it needs TypeScript ≥ 5.0 with `experimentalDecorators` **off** — legacy mode changes the runtime calling convention and breaks at runtime rather than at compile time. See the [package README](packages/decorators/README.md) for `@OneShot`, `@Select`, and the rest of the API.
 
 ## Observability
 
