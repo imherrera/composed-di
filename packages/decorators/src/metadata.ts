@@ -14,8 +14,8 @@ export const classKey = Symbol.for('__service_key__')
 export type Lifecycle = 'singleton' | 'oneShot'
 
 /**
- * A single `@Inject` field: the property it decorates and the key that
- * resolves it.
+ * A single `@Inject` field. Pairs the property it decorates with the key
+ * that resolves it.
  */
 export interface FieldInjection {
   readonly name: string | symbol
@@ -23,8 +23,8 @@ export interface FieldInjection {
 }
 
 /**
- * An `@OnDispose` teardown hook: the method it decorates and an invoker that
- * calls it on an instance.
+ * An `@OnDispose` teardown hook. Pairs the method it decorates with an
+ * invoker that calls it on an instance.
  */
 export interface DisposeHook {
   readonly name: string | symbol
@@ -33,7 +33,7 @@ export interface DisposeHook {
 }
 
 /**
- * Everything a lifecycle decorator records about a class: the declared
+ * Everything a lifecycle decorator records about a class. Holds the declared
  * lifecycle, the `ServiceKey` minted for the class, its `@Inject` fields,
  * and its `@OnDispose` hook if it has one.
  */
@@ -46,7 +46,7 @@ export interface ClassRegistration {
 
 /**
  * The dependencies resolved for the class currently being constructed by
- * `factoryOf`, keyed by field — each `@Inject` field is its own
+ * `factoryOf`, keyed by field. Each `@Inject` field is its own
  * request, so two fields of the same one-shot key hold distinct instances.
  * `consumed` lets `factoryOf` verify afterwards that every resolved
  * value actually reached its field.

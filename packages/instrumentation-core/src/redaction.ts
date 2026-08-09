@@ -9,9 +9,9 @@ export const REDACTED_VALUE = '[REDACTED]'
 /**
  * Custom masking for one included property, narrowed to the exact
  * method named when {@link RedactionRuleBuilder.redact} is called.
- * Omitting a side fully blanks it with {@link REDACTED_VALUE}; providing
+ * Omitting a side fully blanks it with {@link REDACTED_VALUE}. Providing
  * one lets you report a partial mask instead (e.g. the last 4 digits of
- * a card number) — both always return a `string`, the masked
+ * a card number). Both always return a `string`, the masked
  * representation to report in place of the real value.
  */
 export type Mask<T, K extends Extract<keyof T, string>> = T[K] extends (
@@ -26,7 +26,7 @@ export type Mask<T, K extends Extract<keyof T, string>> = T[K] extends (
 /**
  * Per-property override, layered on top of a rule's `redactAll` default.
  * `redacted: true` (from {@link RedactionRuleBuilder.redact}) redacts
- * that property, optionally with a custom mask; `redacted: false` (from
+ * that property, optionally with a custom mask. `redacted: false` (from
  * {@link RedactionRuleBuilder.exclude}) forces it to be left untouched
  * regardless of `redactAll`.
  */
@@ -37,14 +37,14 @@ interface PropertyOverride {
 }
 
 /**
- * Marks a service — or specific properties of it — as sensitive, so the
+ * Marks a service (or specific properties of it) as sensitive, so the
  * values flowing through its events are redacted. Passed to
  * {@link ServiceInstrumentation.install} via the capture options' `redact` list and applied
- * centrally, after the capture flags: values a rule matches are scrubbed
+ * centrally, after the capture flags. Values a rule matches are scrubbed
  * before the instrumentation ever sees them, and when capture is off
  * there is nothing to redact. Returned by
  * {@link RedactionRuleBuilder.build}, which is the only way to construct
- * one — the `redactAll`/per-property merge logic lives entirely inside
+ * one. The `redactAll`/per-property merge logic lives entirely inside
  * `maskArgs`/`maskResult`, so callers never need to know how a rule
  * reached its decision, only what to do with it.
  */
@@ -52,13 +52,13 @@ export interface RedactionRule<T> {
   readonly key: ServiceKey<T>
 
   /**
-   * The args to report for a call to `methodName`: unchanged if not
+   * The args to report for a call to `methodName`. Unchanged if not
    * redacted, otherwise blanked or run through a custom `maskArgs`.
    */
   maskArgs(methodName: string, args: readonly unknown[]): readonly unknown[]
 
   /**
-   * The value to report for a method call's success outcome: unchanged
+   * The value to report for a method call's success outcome. Unchanged
    * if not redacted, otherwise blanked or run through a custom
    * `maskResult`.
    */
@@ -67,8 +67,8 @@ export interface RedactionRule<T> {
 
 /**
  * Fluent, single-key rule builder returned by {@link redactionRule}.
- * `redactAll`, `redact`, and `exclude` all merge into the same rule —
- * call them in any combination, in any order; the more specific
+ * `redactAll`, `redact`, and `exclude` all merge into the same rule.
+ * Call them in any combination, in any order. The more specific
  * per-property calls (`redact`/`exclude`) always win over the blanket
  * `redactAll` default for the properties they name.
  *
@@ -86,7 +86,7 @@ export interface RedactionRule<T> {
  *   redactionRule(VaultKey)
  *     .redact('getSecret')
  *     .build(), // only this call, nothing else
- * ];
+ * ]
  * ```
  */
 export class RedactionRuleBuilder<T> {
@@ -126,12 +126,12 @@ export class RedactionRuleBuilder<T> {
   }
 
   build(): RedactionRule<any> {
-    // `exclude` alone never redacts anything — at least one call to
+    // `exclude` alone never redacts anything. At least one call to
     // `redactAll`/`redact` is required for this rule to have any effect.
     if (!this.hasRedact) {
       throw new Error(
-        `redactionRule(${this.key.name}) has no effect: call .redactAll() and/or .redact(...) ` +
-          'before .build() — .exclude() alone never redacts anything.',
+        `redactionRule(${this.key.name}) has no effect. Call .redactAll() and/or .redact(...) ` +
+          'before .build(), because .exclude() alone never redacts anything.',
       )
     }
 

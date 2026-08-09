@@ -1,8 +1,8 @@
-// The same café as ./cafeShop.ts, written with the core package alone — no
-// decorators anywhere. Every service is a plain class wired by an explicit
+// The same café as ./cafeShop.ts, written with the core package alone and
+// no decorators anywhere. Every service is a plain class wired by an explicit
 // factory. This tier is always available, and it is the escape hatch for
-// everything the decorator tier rules out: constructor parameters, multiple
-// instances of one class, lifecycles decided per module.
+// everything the decorator tier rules out, such as constructor parameters,
+// multiple instances of one class, or lifecycles decided per module.
 import {
   SelectorKey,
   ServiceFactory,
@@ -20,9 +20,8 @@ interface Beans {
   readonly grams: number
 }
 
-// One key per service: with no decorators to mint identities, they are
-// declared by hand — and typed, so a factory providing the wrong shape does
-// not compile.
+// One key per service. Without decorators, keys are declared by hand and
+// typed, so a factory providing the wrong shape does not compile.
 const grinderKey = new ServiceKey<Grinder>('Grinder')
 const machineKey = new ServiceKey<EspressoMachine>('EspressoMachine')
 const baristaKey = new ServiceKey<Barista>('Barista')
@@ -45,8 +44,8 @@ class RobustaBeans implements Beans {
   readonly grams = 16
 }
 
-// Values are plain in every tier: created by the domain with `new`, never
-// resolved from the container.
+// Values are plain in every tier, created by the domain with `new` and
+// never resolved from the container.
 class Grounds {
   constructor(readonly grams: number) {}
 }
@@ -60,19 +59,19 @@ class CuppaCoffee {
 }
 
 class EspressoMachine {
-  // A 1:2 brew ratio: 18 grams in, 36 millilitres out.
+  // A 1:2 brew ratio, 18 grams in and 36 millilitres out.
   pullShot(grounds: Grounds): EspressoShot {
     return new EspressoShot(grounds.grams * 2)
   }
 
-  // A plain method — the factory below wires it up as the dispose hook.
+  // A plain method. The factory below wires it up as the dispose hook.
   backflush() {}
 }
 
 class Barista {
-  // Constructor injection: without decorators the class is completely
-  // framework-free — a test can `new Barista(fakeGrinder, fakeMachine)`
-  // directly, no container required.
+  // Constructor injection keeps the class completely framework-free. A test
+  // can `new Barista(fakeGrinder, fakeMachine)` directly, no container
+  // required.
   constructor(
     private readonly grinder: Grinder,
     private readonly machine: EspressoMachine,
@@ -101,9 +100,9 @@ class CafeShop {
   }
 }
 
-// All wiring lives here, and nowhere else: what each service needs, how it
-// is built, and how it is torn down. `dependsOn` is compile-checked against
-// `initialize`'s parameters — wrong keys or arity do not compile.
+// Every service's needs, construction, and teardown are wired here, and
+// nowhere else. `dependsOn` is compile-checked against
+// `initialize`'s parameters. Wrong keys or arity do not compile.
 const module = ServiceModule.from([
   ServiceFactory.singleton({
     provides: grinderKey,
@@ -136,11 +135,11 @@ const module = ServiceModule.from([
 ])
 
 export async function main() {
-  // The shop opens lazily, on the first order — staff and equipment come up
+  // The shop opens lazily, on the first order. Staff and equipment come up
   // with it, exactly once.
   const shop = await module.get(cafeShopKey)
 
-  // Each order picks a roast at runtime; the Selector resolves a fresh
+  // Each order picks a roast at runtime. The Selector resolves a fresh
   // one-shot dose per call, while the staff singletons stay the same.
   const single = await shop.order('arabica')
   const double = await shop.order('robusta')
@@ -150,8 +149,8 @@ export async function main() {
   )
   printMermaidGraph(module)
 
-  // Closing time: the machine backflushes, the barista clocks out, and the
-  // next order opens a fresh shift.
+  // At closing time the machine backflushes, the barista clocks out, and
+  // the next order opens a fresh shift.
   module.dispose()
 }
 

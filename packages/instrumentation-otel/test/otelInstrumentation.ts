@@ -22,7 +22,7 @@ beforeEach(() => {
   provider = new BasicTracerProvider({
     spanProcessors: [new SimpleSpanProcessor(exporter)],
   })
-  // The instrumentation resolves its tracer from the global provider;
+  // The instrumentation resolves its tracer from the global provider, so
   // re-register per test (the API keeps the first global otherwise).
   trace.disable()
   trace.setGlobalTracerProvider(provider)
@@ -116,7 +116,7 @@ describe('OTELInstrumentation', () => {
   })
 
   it('should fall back to the global tracer provider when no tracer is given', async () => {
-    // Re-register per test: the API keeps the first global otherwise.
+    // Re-register per test, since the API keeps the first global otherwise.
     trace.disable()
     trace.setGlobalTracerProvider(provider)
     try {

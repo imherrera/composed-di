@@ -16,14 +16,14 @@ import type { Selector } from './serviceSelector'
  * }
  *
  * // Unique key definition
- * const loggerKey = new ServiceKey<Logger>('Logger');
+ * const loggerKey = new ServiceKey<Logger>('Logger')
  * const loggerFactory = ServiceFactory.singleton({
  *   provides: loggerKey,
  *   initialize: () => console,
- * });
+ * })
  *
- * const module = ServiceModule.from([loggerFactory]);
- * const logger = await module.get(loggerKey);
+ * const module = ServiceModule.from([loggerFactory])
+ * const logger = await module.get(loggerKey)
  * ```
  */
 export class ServiceKey<T> {
@@ -59,28 +59,28 @@ export class ServiceKey<T> {
  * @example
  * ```ts
  * interface Logger {
- *   log: (msg: string) => void;
+ *   log: (msg: string) => void
  * }
  *
- * const consoleLoggerKey = new ServiceKey<Logger>('ConsoleLogger');
- * const fileLoggerKey = new ServiceKey<Logger>('FileLogger');
+ * const consoleLoggerKey = new ServiceKey<Logger>('ConsoleLogger')
+ * const fileLoggerKey = new ServiceKey<Logger>('FileLogger')
  *
  * // Group multiple logger implementations under one selector
  * const loggerSelectorKey = new SelectorKey<Logger>([
  *   consoleLoggerKey,
  *   fileLoggerKey,
- * ]);
+ * ])
  *
  * // Use in a factory's dependsOn array
- * const appKey = new ServiceKey<App>('App');
+ * const appKey = new ServiceKey<App>('App')
  * const appFactory = ServiceFactory.singleton({
  *   provides: appKey,
  *   dependsOn: [loggerSelectorKey] as const,
  *   initialize: (loggerSelector: Selector<Logger>) => {
  *     // loggerSelector.get(consoleLoggerKey) or loggerSelector.get(fileLoggerKey)
- *     return new App(loggerSelector);
+ *     return new App(loggerSelector)
  *   },
- * });
+ * })
  * ```
  */
 export class SelectorKey<T> extends ServiceKey<Selector<T>> {

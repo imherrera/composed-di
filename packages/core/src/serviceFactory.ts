@@ -43,7 +43,7 @@ export abstract class ServiceFactory<
   /**
    * Creates the service instance.
    *
-   * Called by the `ServiceModule` with dependencies resolved per {@link dependsOn};
+   * Called by the `ServiceModule` with dependencies resolved per {@link dependsOn}.
    */
   abstract initialize(...dependencies: DependencyTypes<D>): T | Promise<T>
 
@@ -57,14 +57,14 @@ export abstract class ServiceFactory<
    * Tears down whatever {@link initialize} retained (if anything at all). A subsequent {@link initialize}
    * produces a fresh instance.
    *
-   * Synchronous by design: the container does not await teardown, so asynchronous
+   * Synchronous by design. The container does not await teardown, so asynchronous
    * cleanup must be scheduled fire-and-forget from here.
    */
   abstract dispose(): void
 
   /**
-   * Creates a lazily initialized singleton: `initialize` runs on the first request and
-   * the instance is shared by every request thereafter; a failed `initialize` is never
+   * Creates a lazily initialized singleton. `initialize` runs on the first request and
+   * the instance is shared by every request thereafter. A failed `initialize` is never
    * cached, and after `dispose()` the next request initializes a fresh instance.
    *
    * @example
@@ -95,11 +95,11 @@ export abstract class ServiceFactory<
   }
 
   /**
-   * Creates a factory that builds a **fresh instance on every request** — no caching
-   * and no deduplication.
+   * Creates a factory that builds a **fresh instance on every request**, with no
+   * caching and no deduplication.
    *
-   * One-shot services have no framework-managed lifecycle: `dispose` is a no-op, so
-   * instances are untouched by `module.dispose(...)` — cleanup belongs entirely to
+   * One-shot services have no framework-managed lifecycle. `dispose` is a no-op, so
+   * instances are untouched by `module.dispose(...)`. Cleanup belongs entirely to
    * whoever requested the instance.
    *
    * @example
@@ -124,8 +124,8 @@ export abstract class ServiceFactory<
 
 /**
  * A `OneShotFactory` builds a fresh instance on every request and retains none of
- * them, so it has no lifecycle of its own: `dispose` is a no-op — the caller of
- * each request owns that instance's cleanup entirely.
+ * them, so it has no lifecycle of its own. `dispose` is a no-op, and the caller
+ * of each request owns that instance's cleanup entirely.
  *
  * @template T - The type of the service instances built by this factory.
  * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
@@ -206,7 +206,7 @@ export class SingletonFactory<
 
     const generation = this.generation
 
-    // Invoke synchronously: if onInitialize throws right away, the error
+    // Invoke synchronously. If onInitialize throws right away, the error
     // escapes before anything is cached, and the next call retries.
     this.isRunningHook = true
     let pending: Promise<T> | T
@@ -239,8 +239,8 @@ export class SingletonFactory<
         this.retainedInstance = { value: newInstance }
         return newInstance
       } finally {
-        // Only clear the slot if we still belong to the current generation —
-        // a dispose/revive may have installed a newer init's promise here.
+        // Only clear the slot if we still belong to the current generation.
+        // A dispose/revive may have installed a newer init's promise here.
         if (this.generation === generation) {
           this.promisedInstance = undefined
         }

@@ -14,8 +14,8 @@ export class Selector<T> {
   /**
    * Creates a new Selector instance.
    *
-   * Note: Selector instances are created automatically by ServiceModule
-   * when resolving dependencies. You typically don't need to create them manually.
+   * Selector instances are created automatically by ServiceModule when
+   * resolving dependencies. You typically don't need to create them manually.
    *
    * @param module The ServiceModule used to resolve the selected service.
    * @param keys The ServiceKeys that can be selected through this selector.
@@ -39,9 +39,9 @@ export class Selector<T> {
    * ```ts
    * // `loggers: Selector<Logger>` is injected into factories that declare
    * // `dependsOn: [loggerSelectorKey]`
-   * const key = loggers.keys.find((k) => k.name === 'FileLogger')!;
-   * const logger = await loggers.get(key);
-   * logger.log('Resolved by name at runtime');
+   * const key = loggers.keys.find((k) => k.name === 'FileLogger')!
+   * const logger = await loggers.get(key)
+   * logger.log('Resolved by name at runtime')
    * ```
    */
   get(key: ServiceKey<T>): Promise<T> {

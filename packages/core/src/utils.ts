@@ -24,7 +24,7 @@ export interface MermaidGraphOptions {
 
 /**
  * A factory's dependencies with every `SelectorKey` expanded to its grouped
- * keys — the reachability the validators use.
+ * keys. This is the reachability the validators use.
  */
 function expandedDependencies(factory: ServiceFactory): ServiceKey<unknown>[] {
   return factory.dependsOn.flatMap((dependency) =>
@@ -34,7 +34,7 @@ function expandedDependencies(factory: ServiceFactory): ServiceKey<unknown>[] {
 
 /**
  * Orders factories so every dependent precedes its dependencies, breaking
- * ties by registration order — the rendered graph does not depend on how the
+ * ties by registration order, so the rendered graph does not depend on how the
  * module was assembled.
  */
 function topologicalFactories(factories: ServiceFactory[]): ServiceFactory[] {
@@ -179,7 +179,7 @@ export function createDotGraph(
         const nodeId = `node${nodeCounter++}`
         nodeIds.set(dependency.name, nodeId)
         selectors.push(dependency)
-        // Labeled by what it is, not what it groups — the dashed edges
+        // Labeled by what it is, not what it groups. The dashed edges
         // already show the implementations.
         lines.push(
           `  ${nodeId} [label="SelectorKey", shape=diamond, style="filled", fillcolor="#ede7f6", color="#5e35b1"];`,
@@ -205,8 +205,8 @@ export function createDotGraph(
     })
   })
 
-  // A selector's outgoing edges are dashed — a runtime choice among the
-  // grouped implementations, not a hard dependency on any one of them.
+  // A selector's outgoing edges are dashed because they are a runtime choice
+  // among the grouped implementations, not a hard dependency on any one of them.
   selectors.forEach((selector) => {
     const selectorNodeId = nodeIds.get(selector.name)!
     selector.values.forEach((value) => {
@@ -300,7 +300,7 @@ export function createMermaidGraph(
         const nodeId = `node${nodeCounter++}`
         nodeIds.set(dependency.name, nodeId)
         selectors.push(dependency)
-        // Labeled by what it is, not what it groups — the dashed edges
+        // Labeled by what it is, not what it groups. The dashed edges
         // already show the implementations.
         lines.push(`  ${nodeId}{"SelectorKey"}`)
       }
@@ -324,8 +324,8 @@ export function createMermaidGraph(
     })
   })
 
-  // A selector's outgoing edges are dashed — a runtime choice among the
-  // grouped implementations, not a hard dependency on any one of them.
+  // A selector's outgoing edges are dashed because they are a runtime choice
+  // among the grouped implementations, not a hard dependency on any one of them.
   selectors.forEach((selector) => {
     const selectorNodeId = nodeIds.get(selector.name)!
     selector.values.forEach((value) => {

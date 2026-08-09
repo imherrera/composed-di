@@ -10,12 +10,12 @@ import {
 
 /**
  * Creates a `ServiceFactory` for a class marked with `@Singleton` or
- * `@OneShot`: the factory provides the class's stamped `ServiceKey`, follows
+ * `@OneShot`. The factory provides the class's `ServiceKey`, follows
  * the decorator's lifecycle, depends on the class's `@Inject` fields
  * (including those of decorated base classes), and tears down through its
  * `@OnDispose` method if it has one.
  *
- * Decorator-registered classes must have zero-arg constructors — dependencies
+ * Decorator-registered classes must have zero-arg constructors. Dependencies
  * are declared exclusively through `@Inject` fields.
  *
  * @example
@@ -38,12 +38,12 @@ export function factoryOf<C extends Constructor<object>>(
   const registration = LifecycleRegistry.get(constructor)
   if (!registration) {
     throw new MissingLifecycleError(
-      `class ${constructor.name} has no lifecycle decorator — apply @Singleton or @OneShot to register it with factoryOf`,
+      `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @OneShot to register it with factoryOf`,
     )
   }
   if (constructor.length > 0) {
     throw new TypeError(
-      `class ${constructor.name} declares required constructor parameters — decorator-registered classes take dependencies through @Inject fields only`,
+      `class ${constructor.name} declares required constructor parameters. Decorator-registered classes take dependencies through @Inject fields only`,
     )
   }
 
@@ -66,7 +66,7 @@ export function factoryOf<C extends Constructor<object>>(
         .filter((field) => !stash.consumed.has(field))
         .map((field) => String(field.name))
       throw new FieldInjectionError(
-        `class ${constructor.name}: the @Inject fields [${missed.join(', ')}] were never initialized during construction — their metadata does not belong to this class (is a lifecycle decorator missing on another class that uses @Inject?)`,
+        `class ${constructor.name}: the @Inject fields [${missed.join(', ')}] were never initialized during construction. Their metadata does not belong to this class (is a lifecycle decorator missing on another class that uses @Inject?)`,
       )
     }
 
@@ -89,10 +89,10 @@ export function factoryOf<C extends Constructor<object>>(
 
 /**
  * Creates a `ServiceFactory` for each of the given decorated classes, in
- * order — the variadic companion of `factoryOf`, for registering
+ * order. The variadic companion of `factoryOf`, for registering
  * several classes in one `ServiceModule.from` entry.
  *
- * @param constructors The classes to register; each must carry a lifecycle decorator.
+ * @param constructors The classes to register. Each must carry a lifecycle decorator.
  * @return One factory per class.
  * @throws {MissingLifecycleError} If any class has no lifecycle decorator.
  */
@@ -104,10 +104,10 @@ export function factoriesOf(
 
 /**
  * Collects the `@Inject` fields that will initialize during construction of
- * `cls`: its own plus those of decorated base classes, base-first, mirroring
- * the order JavaScript runs field initializers in.
+ * `cls`. The class's own fields follow those of decorated base classes,
+ * base-first, mirroring the order JavaScript runs field initializers in.
  *
- * Only field metadata is inherited this way — the lifecycle decorator itself
+ * Only field metadata is inherited this way. The lifecycle decorator itself
  * is not, so `factoryOf` still rejects an undecorated subclass.
  */
 function collectFieldInjections(cls: Constructor<object>): FieldInjection[] {

@@ -1,9 +1,9 @@
 /**
  * Error thrown by `ServiceModule.from` when the given factories cannot form a valid
- * module: the dependency graph contains a cycle, or a factory depends on a key that
- * no factory in the module provides.
+ * module. Either the dependency graph contains a cycle, or a factory depends on a
+ * key that no factory in the module provides.
  *
- * Always indicates a bug in the module composition — fix the factory graph rather
+ * Always indicates a bug in the module composition. Fix the factory graph rather
  * than catching this at runtime.
  */
 export class ModuleValidationError extends Error {
@@ -14,7 +14,7 @@ export class ModuleValidationError extends Error {
  * Error thrown by `ServiceModule.get` when no factory in the module provides the
  * requested key.
  *
- * Catch this to treat a service as optional — or use `ServiceModule.getOrNull`,
+ * Catch this to treat a service as optional, or use `ServiceModule.getOrNull`,
  * which catches it for you and returns `null` instead.
  */
 export class NoSuchFactoryError extends Error {
@@ -25,7 +25,7 @@ export class NoSuchFactoryError extends Error {
  * Error thrown by `Selector.get` when the requested key is not among the keys
  * grouped by the selector's `SelectorKey`.
  *
- * Always indicates a bug in the caller — `Selector.keys` lists what can be requested.
+ * Always indicates a bug in the caller. `Selector.keys` lists what can be requested.
  */
 export class NoSuchKeyError extends Error {
   name = 'NoSuchKeyError'
@@ -33,13 +33,13 @@ export class NoSuchKeyError extends Error {
 
 /**
  * Error thrown by a singleton factory when `dispose()` is called while the instance
- * is still being initialized: the pending `initialize()` promise rejects with this
+ * is still being initialized. The pending `initialize()` promise rejects with this
  * error, and the abandoned instance is passed to the factory's `dispose` callback so
  * nothing leaks.
  *
- * This is a race, not necessarily a bug — disposing a module during shutdown can
+ * This is a race, not necessarily a bug. Disposing a module during shutdown can
  * legitimately interrupt an in-flight `get()`. Callers may treat it as a cancellation
- * signal; a later `initialize()` starts fresh.
+ * signal. A later `initialize()` starts fresh.
  */
 export class SingletonDisposedDuringInitError extends Error {
   name = 'SingletonDisposedDuringInitError'

@@ -4,7 +4,7 @@ import { classKey } from './metadata'
 import type { Constructor } from './types'
 
 /**
- * Returns the `ServiceKey` minted for a decorated class, for use with
+ * Returns the `ServiceKey` of a decorated class, for use with
  * `ServiceModule.get` or as a factory's `provides`. Reads the class's own
  * key only, so a subclass never inherits its parent's.
  *
@@ -16,7 +16,7 @@ export function keyOf<T>(constructor: Constructor<T>): ServiceKey<T> {
   const key = Object.getOwnPropertyDescriptor(constructor, classKey)?.value
   if (!(key instanceof ServiceKey)) {
     throw new MissingLifecycleError(
-      `class ${constructor.name} has no lifecycle decorator — apply @Singleton or @OneShot before using it as a token`,
+      `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @OneShot before using it as a token`,
     )
   }
   return key as ServiceKey<T>

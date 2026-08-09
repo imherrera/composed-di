@@ -15,11 +15,11 @@ import type { Constructor } from './types'
 
 /**
  * Owns every class registration made by the lifecycle decorators. Static
- * only — never instantiated.
+ * only, never instantiated.
  */
 export class LifecycleRegistry {
   /**
-   * Registrations by class, keyed by the exact class object — subclasses are
+   * Registrations by class, keyed by the exact class object. Subclasses are
    * never looked up through their parents.
    */
   private static readonly registrations = new WeakMap<
@@ -40,7 +40,7 @@ export class LifecycleRegistry {
    *
    * Field decorators cannot see their class, but the decorator standard
    * applies all member decorators before the class decorator of the same
-   * class definition — so `@Inject` parks each field here and `register`
+   * class definition, so `@Inject` parks each field here and `register`
    * drains the list synchronously, before any other class definition can
    * interleave.
    */
@@ -100,7 +100,7 @@ export class LifecycleRegistry {
   }
 
   /**
-   * Records a class's lifecycle: claims the pending `@Inject` fields and
+   * Records a class's lifecycle. Claims the pending `@Inject` fields and
    * `@OnDispose` hook, validates them, mints the class's `ServiceKey`, and
    * stamps it under `classKey`.
    */
@@ -113,7 +113,7 @@ export class LifecycleRegistry {
 
     if (LifecycleRegistry.has(constructor)) {
       throw new DuplicateLifecycleError(
-        `class ${className} already has a lifecycle decorator — apply exactly one of @Singleton or @OneShot`,
+        `class ${className} already has a lifecycle decorator. Apply exactly one of @Singleton or @OneShot`,
       )
     }
 
@@ -140,7 +140,7 @@ export class LifecycleRegistry {
         LifecycleRegistry.lifecycleByKeySymbol.get(symbol) === 'singleton'
       ) {
         throw new FieldInjectionError(
-          `class ${className}: the fields [${names.map(String).join(', ')}] inject the same @Singleton class — they would all share one instance; declare a single field`,
+          `class ${className}: the fields [${names.map(String).join(', ')}] inject the same @Singleton class. They would all share one instance, so declare a single field`,
         )
       }
     }
@@ -148,14 +148,14 @@ export class LifecycleRegistry {
     const disposes = LifecycleRegistry.drainPendingDisposes()
     if (disposes.length > 1) {
       throw new DisposeHookError(
-        `class ${className} has more than one @OnDispose method — a class has exactly one teardown`,
+        `class ${className} has more than one @OnDispose method. A class has exactly one teardown`,
       )
     }
     const dispose = disposes[0]
     if (dispose !== undefined) {
       if (lifecycle === 'oneShot') {
         throw new DisposeHookError(
-          `class ${className} is @OneShot — one-shot instances are owned by their requester, so @OnDispose is not allowed`,
+          `class ${className} is @OneShot. One-shot instances are owned by their requester, so @OnDispose is not allowed`,
         )
       }
       const method = dispose.isPrivate
@@ -164,7 +164,7 @@ export class LifecycleRegistry {
             ?.value
       if (!dispose.isPrivate && typeof method !== 'function') {
         throw new DisposeHookError(
-          `@OnDispose method ${String(dispose.name)} does not belong to class ${className} — is a lifecycle decorator missing on another class?`,
+          `@OnDispose method ${String(dispose.name)} does not belong to class ${className}. Is a lifecycle decorator missing on another class?`,
         )
       }
     }

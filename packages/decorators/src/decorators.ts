@@ -6,17 +6,12 @@ import { DisposeHookError, FieldInjectionError } from './errors'
 import { activeFieldStash, type FieldInjection } from './metadata'
 
 /**
- * Declares a class as a **singleton** service: once registered with
+ * Declares a class as a **singleton** service. Once registered with
  * `factoryOf`, the first request constructs the instance and every
  * request thereafter shares it.
  *
- * The decorator also mints the class's `ServiceKey` and stamps it under
- * `classKey`, making the class itself usable as a token in `@Inject`,
- * `@Select`, and the `-Of` bridges — `module.get` addresses it through
- * `keyOf`.
- *
- * This is a standard TC39 class decorator: no `experimentalDecorators` or
- * metadata emission is required.
+ * A decorated class is itself usable as a token in `@Inject`, `@Select`,
+ * and `selectorOf`. `keyOf` returns its `ServiceKey` for `ServiceModule.get`.
  *
  * @example
  * ```typescript
@@ -37,18 +32,13 @@ export function Singleton<C extends Constructor<object>>(
 }
 
 /**
- * Declares a class as a **one-shot** service: once registered with
- * `factoryOf`, every request constructs a fresh instance — no caching,
+ * Declares a class as a **one-shot** service. Once registered with
+ * `factoryOf`, every request constructs a fresh instance, with no caching,
  * no deduplication, and no framework-managed disposal (cleanup belongs
  * entirely to whoever requested the instance).
  *
- * The decorator also mints the class's `ServiceKey` and stamps it under
- * `classKey`, making the class itself usable as a token in `@Inject`,
- * `@Select`, and the `-Of` bridges — `module.get` addresses it through
- * `keyOf`.
- *
- * This is a standard TC39 class decorator: no `experimentalDecorators` or
- * metadata emission is required.
+ * A decorated class is itself usable as a token in `@Inject`, `@Select`,
+ * and `selectorOf`. `keyOf` returns its `ServiceKey` for `ServiceModule.get`.
  */
 export function OneShot<C extends Constructor<object>>(
   constructor: C,
@@ -58,10 +48,10 @@ export function OneShot<C extends Constructor<object>>(
 }
 
 /**
- * Marks a method as the class's teardown: when the module disposes the
+ * Marks a method as the class's teardown. When the module disposes the
  * singleton, this method is called on the retained instance. Exactly one per
- * class, instance methods only, and only on `@Singleton` classes — one-shot
- * instances are never disposed by the container.
+ * class, instance methods only, and only on `@Singleton` classes, since
+ * one-shot instances are never disposed by the container.
  *
  * @example
  * ```typescript
@@ -93,7 +83,7 @@ export function OnDispose<This>(
 }
 
 /**
- * Declares that a field receives a service resolved from the module: the
+ * Declares that a field receives a service resolved from the module. The
  * token's service becomes the field's value during construction, before the
  * constructor body runs, so it is already usable there.
  *
@@ -103,17 +93,14 @@ export function OnDispose<This>(
  * lifecycle decorator.
  *
  * A class with `@Inject` fields is constructible only through a
- * `ServiceModule`: constructing it manually with `new` throws
+ * `ServiceModule`. Constructing it manually with `new` throws
  * {@link FieldInjectionError}. It must also carry `@Singleton` or `@OneShot`,
  * which is what claims the fields recorded here.
  *
- * Each field is its own request: two fields injecting the same `@OneShot`
+ * Each field is its own request. Two fields injecting the same `@OneShot`
  * class receive distinct instances, owned by the injecting class. Two fields
- * injecting the same `@Singleton` class are a definition-time error — they
- * could only share one instance.
- *
- * This is a standard TC39 field decorator: no `experimentalDecorators` or
- * metadata emission is required.
+ * injecting the same `@Singleton` class are a definition-time error, because
+ * they could only share one instance.
  *
  * @example
  * ```typescript
@@ -136,16 +123,13 @@ export function Inject<T>(token: ServiceToken<T>) {
 }
 
 /**
- * Declares that a field receives a `Selector` over the given services: the
+ * Declares that a field receives a `Selector` over the given services. The
  * tokens' keys are grouped under one `SelectorKey`, and the field's value
  * picks among them per call, at runtime.
  *
  * Tokens are `ServiceKey`s or decorated classes, mixed freely. Unlike a
- * one-shot injected directly, the selector is safe in a singleton field — it
+ * one-shot injected directly, the selector is safe in a singleton field. It
  * resolves a fresh instance on every call instead of capturing one.
- *
- * This is a standard TC39 field decorator: no `experimentalDecorators` or
- * metadata emission is required.
  *
  * @example
  * ```typescript
@@ -172,7 +156,7 @@ export function Select<T>(...tokens: [ServiceToken<T>, ...ServiceToken<T>[]]) {
 /**
  * Registers `key` as a pending field injection for the class being defined
  * and returns the field initializer that pulls the resolved instance from
- * the active stash — the machinery shared by `@Inject` and `@Select`.
+ * the active stash. This is the machinery shared by `@Inject` and `@Select`.
  */
 function injectedField<This, T>(
   decorator: string,
@@ -194,12 +178,12 @@ function injectedField<This, T>(
     const stash = activeFieldStash()
     if (stash === undefined) {
       throw new FieldInjectionError(
-        `${label}: @${decorator} fields are resolved by a ServiceModule — retrieve ${owner} through the module instead of constructing it with new`,
+        `${label}: @${decorator} fields are resolved by a ServiceModule. Retrieve ${owner} through the module instead of constructing it with new`,
       )
     }
     if (!stash.values.has(field)) {
       throw new FieldInjectionError(
-        `${label}: no resolved instance for ${key.name} — the field is not part of the class registration (is the class's lifecycle decorator missing?)`,
+        `${label}: no resolved instance for ${key.name}. The field is not part of the class registration (is the class's lifecycle decorator missing?)`,
       )
     }
 

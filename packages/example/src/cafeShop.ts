@@ -15,7 +15,7 @@ import {
   factoriesOf,
 } from '@composed-di/decorators'
 
-// Grinders come in many kinds — burr, blade, hand-crank — so the service is
+// Grinders come in many kinds (burr, blade, hand-crank), so the service is
 // interface-typed. Interfaces erase at runtime, so it can only be identified
 // by a ServiceKey.
 interface Grinder {
@@ -34,8 +34,8 @@ interface Beans {
   readonly grams: number
 }
 
-// One-shot services are built fresh on every request and never cached —
-// beans are consumed, not kept. The requester owns the instance, so one-shot
+// One-shot services are built fresh on every request and never cached.
+// Beans are consumed, not kept. The requester owns the instance, so one-shot
 // classes cannot have @OnDispose.
 @OneShot
 class ArabicaBeans implements Beans {
@@ -49,8 +49,8 @@ class RobustaBeans implements Beans {
   readonly grams = 16
 }
 
-// Everything the ingredients pass through is a plain value, not a service:
-// values are created by the domain with `new`, never resolved from the
+// Everything the ingredients pass through is a plain value, not a service.
+// Values are created by the domain with `new`, never resolved from the
 // container. Only the equipment and staff live in the module.
 class Grounds {
   constructor(readonly grams: number) {}
@@ -66,13 +66,13 @@ class CuppaCoffee {
 
 @Singleton
 class EspressoMachine {
-  // A 1:2 brew ratio: 18 grams in, 36 millilitres out. The spent grounds go
-  // to the knock box — only the coffee leaves the machine.
+  // A 1:2 brew ratio, 18 grams in and 36 millilitres out. The spent grounds go
+  // to the knock box. Only the coffee leaves the machine.
   pullShot(grounds: Grounds): EspressoShot {
     return new EspressoShot(grounds.grams * 2)
   }
 
-  // Teardown: called on the retained instance when the module disposes.
+  // Teardown, called on the retained instance when the module disposes.
   // Backflush the group head at closing.
   @OnDispose
   backflush() {}
@@ -80,17 +80,17 @@ class EspressoMachine {
 
 @Singleton
 class Barista {
-  // Interface-typed dependency: injected by key. The key's service type is
+  // An interface-typed dependency, injected by key. The key's service type is
   // checked against the field's type at compile time.
   @Inject(grinderKey)
   private readonly grinder!: Grinder
 
-  // Class-typed dependency: EspressoMachine is its own token because it has
-  // a lifecycle decorator — no ServiceKey needed.
+  // A class-typed dependency. EspressoMachine is its own token because it
+  // has a lifecycle decorator, so no ServiceKey is needed.
   @Inject(EspressoMachine)
   private readonly machine!: EspressoMachine
 
-  // Beans arrive with the order, not as an @Inject field: a singleton
+  // Beans arrive with the order, not as an @Inject field. A singleton
   // injecting a one-shot would capture a single dose forever.
   serveEspresso(beans: Beans): CuppaCoffee {
     const grounds = this.grinder.grind(beans)
@@ -104,10 +104,10 @@ class Barista {
 
 @Singleton
 class CafeShop {
-  // @Select groups services of a shared type under one key — the menu of
-  // roasts. The field receives a Selector: pick the implementation per
+  // @Select groups services of a shared type under one key, here the menu
+  // of roasts. The field receives a Selector to pick the implementation per
   // call, at runtime. Unlike the beans themselves, the selector is safe in
-  // a singleton — it resolves a fresh one-shot on every call instead of
+  // a singleton. It resolves a fresh one-shot on every call instead of
   // capturing one.
   @Select<Beans>(ArabicaBeans, RobustaBeans)
   private readonly roasts!: Selector<Beans>
@@ -124,9 +124,9 @@ class CafeShop {
 }
 
 const module = ServiceModule.from([
-  // Decorated classes register as themselves — lifecycle from the
-  // decorators, dependencies from the @Inject fields, teardown from
-  // @OnDispose: the class declaration says everything.
+  // Decorated classes register as themselves. Lifecycle comes from the
+  // decorators, dependencies from the @Inject fields, and teardown from
+  // @OnDispose. The class declaration says everything.
   ...factoriesOf(
     CafeShop,
     Barista,
@@ -142,11 +142,11 @@ const module = ServiceModule.from([
 ])
 
 export async function main() {
-  // The shop opens lazily, on the first order — staff and equipment come up
+  // The shop opens lazily, on the first order. Staff and equipment come up
   // with it, exactly once.
   const shop = await module.get(keyOf(CafeShop))
 
-  // Each order picks a roast at runtime; the Selector resolves a fresh
+  // Each order picks a roast at runtime. The Selector resolves a fresh
   // one-shot dose per call, while the staff singletons stay the same.
   const single = await shop.order('arabica')
   const double = await shop.order('robusta')
@@ -156,8 +156,8 @@ export async function main() {
   )
   printMermaidGraph(module)
 
-  // Closing time: the machine backflushes, the barista clocks out, and the
-  // next order opens a fresh shift.
+  // At closing time the machine backflushes, the barista clocks out, and
+  // the next order opens a fresh shift.
   module.dispose()
 }
 

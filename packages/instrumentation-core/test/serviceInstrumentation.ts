@@ -72,7 +72,7 @@ describe('install() lifetime dispatch', () => {
       expect(a).toBe(b)
       expect(counter).toBe(1)
       // Repeat gets are cache hits inside the delegate, not
-      // initializations — they must not be reported as one.
+      // initializations, so they must not be reported as one.
       expect(recorder.count('singleton.factory_initialize:start')).toBe(1)
     })
 
@@ -132,7 +132,7 @@ describe('install() lifetime dispatch', () => {
       const a = await module.get(key)
       const b = await module.get(key)
       // install() must not impose singleton semantics on a one-shot
-      // delegate: each get() produces (and reports) a fresh instance.
+      // delegate. Each get() produces (and reports) a fresh instance.
       expect(a).not.toBe(b)
       expect(a.id()).toBe(1)
       expect(b.id()).toBe(2)
@@ -152,8 +152,8 @@ describe('install() lifetime dispatch', () => {
       const once = recorder.install([factory])
       const twice = recorder.install(once)
 
-      // The second install must not wrap again: same factory, and every
-      // operation reported exactly once.
+      // The second install must not wrap again. The factory stays the same,
+      // and every operation is reported exactly once.
       expect(twice[0]).toBe(once[0])
       const module = ServiceModule.from(twice)
       const svc = await module.get(key)
@@ -279,7 +279,7 @@ describe('install() overload shapes', () => {
     observed.ping()
     const eventsSoFar = recorder.events.length
 
-    // install() never mutates its input: the original module still hands
+    // install() never mutates its input. The original module still hands
     // out the raw instance, and using it reports nothing.
     const raw = await original.get(key)
     expect(raw.ping()).toBe('pong')
@@ -299,8 +299,8 @@ describe('install() overload shapes', () => {
     const once = recorder.install(original)
     const twice = recorder.install(once)
 
-    // A new module is built, but around the same wrappers — no double
-    // wrapping, every operation reported exactly once.
+    // A new module is built, but around the same wrappers. There is no double
+    // wrapping, and every operation is reported exactly once.
     expect(twice.factories[0]).toBe(once.factories[0])
     const svc = await twice.get(key)
     svc.ping()
@@ -358,7 +358,7 @@ describe('install() initialization outcomes', () => {
       error: new Error('connection refused'),
     })
 
-    // The failure was rethrown, not cached: the next get() retries and is
+    // The failure was rethrown, not cached. The next get() retries and is
     // reported as a fresh initialization.
     const svc = await module.get(key)
     expect(svc.id).toBe(2)
@@ -408,7 +408,7 @@ describe('install() initialization outcomes', () => {
     await expect(pending).rejects.toThrow(SingletonDisposedDuringInitError)
 
     // The initialization itself succeeded, and the orphaned instance was
-    // immediately torn down; both operations are reported.
+    // immediately torn down. Both operations are reported.
     expect(disposed).toBe(true)
     expect(recorder.count('svc.factory_initialize:end')).toBe(1)
     expect(recorder.count('svc.factory_dispose:start')).toBe(1)

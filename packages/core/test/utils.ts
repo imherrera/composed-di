@@ -28,7 +28,7 @@ describe('utils', () => {
       expect(dot).toContain('label="Service Dependency Graph";')
       expect(dot).toContain('ServiceA')
       expect(dot).toContain('ServiceB')
-      // Arrow points from dependent to dependency: ServiceA -> ServiceB
+      // Arrow points from dependent to dependency, as in ServiceA -> ServiceB
       expect(dot).toMatch(/node\d+ -> node\d+/)
     })
   })
@@ -55,7 +55,7 @@ describe('utils', () => {
       expect(mermaid).toContain('flowchart TB')
       expect(mermaid).toContain('node0["ServiceA"]')
       expect(mermaid).toContain('node1["ServiceB"]')
-      // Arrow points from dependent to dependency: ServiceA --> ServiceB
+      // Arrow points from dependent to dependency, as in ServiceA --> ServiceB
       expect(mermaid).toMatch(/node\d+ --> node\d+/)
       expect(mermaid).toContain('style node0')
       expect(mermaid).toContain('style node1')

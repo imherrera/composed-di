@@ -84,7 +84,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
           })
         } else if ('value' in outcome) {
           // Present exactly when result capture is enabled in the
-          // InstrumentOptions; the value arrives already redacted.
+          // InstrumentOptions. The value arrives already redacted.
           span.setAttribute(
             ATTR_COMPOSED_DI_SERVICE_FUNCTION_RESULT,
             serialize(outcome.value),
@@ -113,7 +113,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
     }
 
     // Present exactly when argument capture is enabled in the
-    // InstrumentOptions; the args arrive already redacted.
+    // InstrumentOptions. The args arrive already redacted.
     if (params.args) {
       attributes[ATTR_COMPOSED_DI_SERVICE_FUNCTION_ARGUMENTS] = serialize(
         params.args,

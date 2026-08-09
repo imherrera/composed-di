@@ -8,7 +8,7 @@ import {
 
 /**
  * Test-controlled promise. Every interleaving in this suite is driven
- * deterministically: the test decides exactly when an initialization settles
+ * deterministically. The test decides exactly when an initialization settles
  * relative to dispose() calls and to other initialize() calls. No timers,
  * nothing races the scheduler.
  */
@@ -50,7 +50,7 @@ describe('SingletonServiceFactory', () => {
       const p1 = factory.initialize()
       const p2 = factory.initialize()
 
-      // Identical reference: the second caller joined the in-flight slot.
+      // Identical reference. The second caller joined the in-flight slot.
       expect(p2).toBe(p1)
       expect(calls).toBe(1)
 
@@ -59,9 +59,9 @@ describe('SingletonServiceFactory', () => {
       await expect(p1).resolves.toBe(instance)
     })
 
-    // Pins the ordering guarantee that makes the hoisted-pending design safe:
-    // the async wrapper's first operation is `await pending`, which always
-    // suspends to a microtask — so the slot is claimed before the wrapper can
+    // Pins the ordering guarantee that makes the hoisted-pending design safe.
+    // The async wrapper's first operation is `await pending`, which always
+    // suspends to a microtask, so the slot is claimed before the wrapper can
     // possibly settle, even for a plain synchronous return value.
     it('dedups within the same tick even for a synchronous initializer', async () => {
       const key = new ServiceKey<string>('Key')
@@ -82,8 +82,8 @@ describe('SingletonServiceFactory', () => {
       await expect(p1).resolves.toBe('value')
     })
 
-    // Documented dedup semantics: concurrent callers may pass different
-    // dependencies; only the first caller wins, silently.
+    // Documented dedup semantics. Concurrent callers may pass different
+    // dependencies, and only the first caller wins, silently.
     it('ignores dependencies from later concurrent callers (first caller wins)', async () => {
       const depKey = new ServiceKey<number>('Dep')
       const key = new ServiceKey<string>('Key')
@@ -122,17 +122,17 @@ describe('SingletonServiceFactory', () => {
       const first = await factory.initialize()
 
       const second = factory.initialize()
-      // The retained fast path returns T itself — not a promise — and does
+      // The retained fast path returns T itself, not a promise, and does
       // not re-invoke the initializer.
       expect(second).not.toBeInstanceOf(Promise)
       expect(second).toBe(first)
       expect(calls).toBe(1)
     })
 
-    // Regression: the retained guard once checked the raw value (truthiness /
-    // `!== undefined`), so falsy instances silently broke the singleton
-    // contract and were re-created on every call. The { value } box is the
-    // fix; these cases pin it, `undefined` being the nastiest.
+    // Regression coverage. The retained guard once checked the raw value
+    // (truthiness / `!== undefined`), so falsy instances silently broke the
+    // singleton contract and were re-created on every call. The { value } box
+    // is the fix, and these cases pin it, `undefined` being the nastiest.
     it.each([undefined, null, 0, '', false])(
       'retains falsy instance (%j) without re-initializing, and disposes it',
       async (falsy) => {
@@ -156,15 +156,15 @@ describe('SingletonServiceFactory', () => {
         factory.dispose()
         expect(disposed).toEqual([falsy])
 
-        // dispose really cleared the box: the next call re-creates.
+        // dispose really cleared the box. The next call re-creates.
         expect(await factory.initialize()).toBe(falsy)
         expect(calls).toBe(2)
       },
     )
 
-    // Regression: a synchronous onInitialize throw once sequenced an internal
-    // `finally` BEFORE the slot assignment, permanently caching the rejected
-    // promise — every later call served it without re-running the
+    // Regression coverage. A synchronous onInitialize throw once sequenced an
+    // internal `finally` BEFORE the slot assignment, permanently caching the
+    // rejected promise, and every later call served it without re-running the
     // initializer. The hoisted `pending` call means the throw now escapes
     // with nothing cached. This test fails against every pre-hoist iteration.
     it('a synchronous onInitialize throw escapes synchronously and does not poison the slot', async () => {
@@ -230,7 +230,7 @@ describe('SingletonServiceFactory', () => {
       expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
       expect(attempts).toBe(1)
 
-      // Nothing cached, guard disengaged: the retry contract holds.
+      // Nothing cached, guard disengaged. The retry contract holds.
       expect(await factory.initialize()).toBe('value')
       expect(attempts).toBe(2)
     })
@@ -275,18 +275,18 @@ describe('SingletonServiceFactory', () => {
       expect(() => factory.dispose()).not.toThrow()
     })
 
-    // Skipped — and the gap is narrower than it looks. Post-await reentry
-    // cannot corrupt state: by the time the initializer's continuation runs,
+    // Skipped, and the gap is narrower than it looks. Post-await reentry
+    // cannot corrupt state. By the time the initializer's continuation runs,
     // the in-flight slot is already claimed, so an inner initialize() simply
     // joins that promise via dedup (one instance either way). The residual
-    // risk is an initializer that AWAITS its own promise — a silent
+    // risk is an initializer that AWAITS its own promise. That is a silent
     // self-deadlock, annoying but not corrupting. Catching it means tracking
     // the hook's async continuation (AsyncLocalStorage), which ties core to
     // Node and breaks bundling on runtimes like React Native. If the deadlock
-    // ever bites, the path is a pluggable tracker: no-op default in core, ALS
-    // implementation behind a Node-only subpath export — and this test
+    // ever bites, the path is a pluggable tracker (no-op default in core, ALS
+    // implementation behind a Node-only subpath export), and this test
     // un-skips in the Node suite. The assertion below is the correct tier-2
-    // semantics: the reentry happens BEFORE the init promise settles, so a
+    // semantics. The reentry happens BEFORE the init promise settles, so a
     // settled-marker ALS guard would still flag it as inside-the-hook.
     it.skip('throws FactoryReentrancyError when onInitialize calls initialize() after an await', async () => {
       const key = new ServiceKey<string>('Key')
@@ -349,8 +349,8 @@ describe('SingletonServiceFactory', () => {
       expect(disposed).toEqual(['value'])
     })
 
-    // Regression: dispose once ran onDispose BEFORE clearing state, so a
-    // throwing teardown left the dead instance retained — and every later
+    // Regression coverage. dispose once ran onDispose BEFORE clearing state,
+    // so a throwing teardown left the dead instance retained and every later
     // initialize() re-served the corpse. Clear-then-call is the contract.
     it('a throwing onDispose cannot re-serve the disposed instance', async () => {
       const key = new ServiceKey<{ id: number }>('Key')
@@ -369,8 +369,8 @@ describe('SingletonServiceFactory', () => {
       const first = await factory.initialize()
       expect(() => factory.dispose()).toThrow('teardown failed')
 
-      // State was cleared before the callback ran: fresh instance, not the
-      // one whose teardown already (half-)executed.
+      // State was cleared before the callback ran, so this is a fresh
+      // instance, not the one whose teardown already (half-)executed.
       const second = await factory.initialize()
       expect(second).not.toBe(first)
       expect(second).toEqual({ id: 2 })
@@ -394,8 +394,8 @@ describe('SingletonServiceFactory', () => {
       const inFlight = factory.initialize()
 
       factory.dispose()
-      // Nothing was retained yet: onDispose must not fire during dispose
-      // itself — only when the orphan actually arrives.
+      // Nothing was retained yet, so onDispose must not fire during dispose
+      // itself. It fires only when the orphan actually arrives.
       expect(disposed).toEqual([])
 
       const orphan = { id: 1 }
@@ -404,17 +404,17 @@ describe('SingletonServiceFactory', () => {
       await expect(inFlight).rejects.toBeInstanceOf(
         SingletonDisposedDuringInitError,
       )
-      // The late-arriving instance was handed to onDispose — not leaked.
+      // The late-arriving instance was handed to onDispose, not leaked.
       expect(disposed).toEqual([orphan])
 
-      // And the factory is clean: the next call starts a fresh generation.
+      // And the factory is clean. The next call starts a fresh generation.
       expect(await factory.initialize()).toEqual({ id: 99 })
       expect(calls).toBe(2)
     })
 
-    // Regression: the wrapper's finally once cleared the slot
+    // Regression coverage. The wrapper's finally once cleared the slot
     // unconditionally, so a STALE generation settling evicted a REVIVED
-    // generation's in-flight promise — a third caller then started a second
+    // generation's in-flight promise. A third caller then started a second
     // concurrent initialization and the singleton split (two live instances,
     // one orphaned undisposed). The generation-guarded finally pins the fix.
     it('a stale generation settling cannot evict a revived generation in-flight promise', async () => {
@@ -474,8 +474,8 @@ describe('SingletonServiceFactory', () => {
       factory.dispose()
       d.reject(new Error('init failed'))
 
-      // No instance ever existed: waiters see the initializer's own error —
-      // not a disposal error — and nothing needs orphan teardown.
+      // No instance ever existed, so waiters see the initializer's own error
+      // (not a disposal error) and nothing needs orphan teardown.
       await expect(inFlight).rejects.toThrow('init failed')
 
       expect(await factory.initialize()).toBe('recovered')
@@ -565,11 +565,11 @@ describe('SingletonServiceFactory', () => {
 
     // Replaces a formerly-skipped test that asserted the OPPOSITE semantics.
     // Under the framework's temporal rule, work *scheduled* during a hook
-    // becomes ordinary app code once the hook settles — so a dispose() from
-    // that continuation is not illegal reentry; it is a plain double dispose
-    // (benign: nothing retained, onDispose does not re-fire). Any future
-    // AsyncLocalStorage-based guard must preserve this via a settled marker;
-    // pure causal tainting would wrongly poison timers and reconnect loops
+    // becomes ordinary app code once the hook settles, so a dispose() from
+    // that continuation is not illegal reentry. It is a plain double dispose
+    // (benign, nothing retained, onDispose does not re-fire). Any future
+    // AsyncLocalStorage-based guard must preserve this via a settled marker.
+    // Pure causal tainting would wrongly poison timers and reconnect loops
     // scheduled during hooks. This test also proves the dispose-side guard
     // flag is released before dispose() returns.
     it('a dispose() from work scheduled during onDispose is a benign double dispose once the hook settles', async () => {
@@ -599,7 +599,7 @@ describe('SingletonServiceFactory', () => {
       expect(await reentrantAttempt).toBeUndefined()
       expect(disposed).toEqual(['value']) // teardown ran exactly once
 
-      // And the factory is still healthy: revival works after the dance.
+      // And the factory is still healthy. Revival works after the dance.
       expect(await factory.initialize()).toBe('value')
     })
   })
