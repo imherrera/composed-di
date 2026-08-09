@@ -52,7 +52,7 @@ export class ServiceModule {
       factory.dependsOn.map((dependencyKey) => {
         // If the dependency is a SelectorKey, create a Selector instance
         if (dependencyKey instanceof SelectorKey) {
-          return new Selector(this, dependencyKey)
+          return new Selector(this, dependencyKey.values)
         }
         return this.get(dependencyKey)
       }),

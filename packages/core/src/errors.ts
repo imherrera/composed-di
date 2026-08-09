@@ -22,6 +22,16 @@ export class NoSuchFactoryError extends Error {
 }
 
 /**
+ * Error thrown by `Selector.get` when the requested key is not among the keys
+ * grouped by the selector's `SelectorKey`.
+ *
+ * Always indicates a bug in the caller — `Selector.keys` lists what can be requested.
+ */
+export class NoSuchKeyError extends Error {
+  name = 'NoSuchKeyError'
+}
+
+/**
  * Error thrown by a singleton factory when `dispose()` is called while the instance
  * is still being initialized: the pending `initialize()` promise rejects with this
  * error, and the abandoned instance is passed to the factory's `dispose` callback so
