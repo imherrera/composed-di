@@ -93,7 +93,7 @@ export abstract class ServiceInstrumentation {
    * @returns A new array of instrumented factories.
    */
   install(
-    factories: ServiceFactory[],
+    factories: ReadonlyArray<ServiceFactory>,
     options?: InstrumentOptions,
   ): ServiceFactory[]
   /**
@@ -116,7 +116,7 @@ export abstract class ServiceInstrumentation {
    */
   install(module: ServiceModule, options?: InstrumentOptions): ServiceModule
   install(
-    input: ServiceModule | ServiceFactory | ServiceFactory[],
+    input: ServiceModule | ServiceFactory | ReadonlyArray<ServiceFactory>,
     options: InstrumentOptions = {},
   ): ServiceModule | ServiceFactory | ServiceFactory[] {
     if (input instanceof ServiceModule) {
@@ -124,7 +124,9 @@ export abstract class ServiceInstrumentation {
       return instrumentServiceModule(this, module)
     }
 
-    if (Array.isArray(input)) {
+    const isFactories = (arg: any): arg is ReadonlyArray<ServiceFactory> =>
+      Array.isArray(arg)
+    if (isFactories(input)) {
       return input.map((factory) => this.install(factory, options))
     }
 
