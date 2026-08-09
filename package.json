@@ -22,11 +22,11 @@
     "prepare": "pnpm build"
   },
   "devDependencies": {
-    "@tsconfig/recommended": "^1.0.10",
-    "@types/node": "24.0.10",
-    "oxfmt": "^0.59.0",
-    "oxlint": "^1.74.0",
-    "typescript": "^5.2.2",
-    "vitest": "^4.0.16"
+    "@tsconfig/recommended": "^1.0.13",
+    "@types/node": "26.2.0",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }

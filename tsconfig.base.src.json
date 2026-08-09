@@ -3,8 +3,9 @@
   "compilerOptions": {
     "composite": true,
     "noEmit": false,
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "lib": ["es2020"],
+    "module": "node16",
+    "moduleResolution": "node16",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
