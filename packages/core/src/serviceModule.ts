@@ -36,9 +36,7 @@ export class ServiceModule {
 
     // Check if a factory to supply the requested key was not found
     if (!factory) {
-      throw new NoSuchFactoryError(
-        `Could not find a suitable factory for ${key.name}`,
-      )
+      throw new NoSuchFactoryError(`No such factory provides ${key.name}`)
     }
 
     // Check if the factory has an instance already
