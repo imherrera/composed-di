@@ -1,11 +1,11 @@
-import { ServiceKey, SelectorKey } from './serviceKey'
+import type { ServiceKey, SelectorKey } from './serviceKey'
 import {
   SingletonDisposedDuringInitError,
   FactoryReentrancyError,
 } from './errors'
 import type { Selector } from './serviceSelector'
 
-type ServiceType<T> =
+type DependencyType<T> =
   T extends SelectorKey<infer U>
     ? Selector<U>
     : T extends ServiceKey<infer U>
@@ -14,7 +14,7 @@ type ServiceType<T> =
 
 // Helper types to convert an array/tuple of ServiceKey to tuple of their types
 type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
-  [K in keyof T]: ServiceType<T[K]>
+  [K in keyof T]: DependencyType<T[K]>
 }
 
 /**
