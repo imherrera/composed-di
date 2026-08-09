@@ -23,10 +23,10 @@ export class ServiceModule {
   }
 
   /**
-   * Retrieves an instance for the given ServiceKey.
+   * Retrieves an instance for the given key.
    *
-   * @param key - The key of the service to retrieve.
-   * @return A promise that resolves to the service instance.
+   * @param key The key of the instance to retrieve.
+   * @return A promise that resolves to the instance.
    * @throws {NoSuchFactoryError} If no suitable factory is found for the given key.
    */
   public async get<T>(key: ServiceKey<T>): Promise<T> {
@@ -80,11 +80,9 @@ export class ServiceModule {
   }
 
   /**
-   * Disposes of all service factories in this module, releasing any resources
+   * Disposes of all factories in this module, releasing any resources
    * or instances they hold. Factories are disposed in reverse-topological
    * order, so dependents are disposed before the factories they depend on.
-   *
-   * @return No return value.
    */
   public dispose() {
     sortReverseTopologically(this.factories)
@@ -93,11 +91,12 @@ export class ServiceModule {
   }
 
   /**
-   * Creates a new `ServiceModule` instance by merging an array of `ServiceModule` or `ServiceFactory` entries.
-   * If multiple factories provide the same `ServiceKey`, the last factory encountered in the list will take precedence.
+   * Creates a new module instance by merging an array of module or factory entries.
+   * If more than one factory provides the same key, the last factory that provides the key will take precedence.
    *
-   * @param entries An array of `ServiceModule` or `erviceFactory` instances to be merged.
-   * @return A new `ServiceModule` containing the merged factories, with duplicates resolved in a last-wins manner.
+   * @param entries An array of modules or factories to be merged.
+   * @return A new module containing the merged factories, with duplicates resolved in a last-wins manner.
+   * @throws {ModuleValidationError} If there are circular or missing dependencies among the provided factories.
    */
   static from(entries: (ServiceModule | ServiceFactory)[]): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
