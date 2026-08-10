@@ -17,16 +17,16 @@
     "directory": "packages/instrumentation-core"
   },
   "files": [
-    "dist",
+    "dist/src",
     "src"
   ],
   "type": "module",
   "sideEffects": false,
-  "types": "./dist/index.d.ts",
+  "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     }
   },
   "publishConfig": {

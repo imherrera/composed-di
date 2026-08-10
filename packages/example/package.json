@@ -6,8 +6,8 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "start": "pnpm run build && node dist/cafeShop.js",
-    "start:core": "pnpm run build && node dist/cafeShopCore.js"
+    "start": "pnpm run build && node dist/src/cafeShop.js",
+    "start:core": "pnpm run build && node dist/src/cafeShopCore.js"
   },
   "dependencies": {
     "@composed-di/core": "workspace:*",

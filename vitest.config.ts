@@ -3,12 +3,9 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     globals: true,
-    include: ['packages/*/test/**/*.ts'],
-  },
-  resolve: {
-    // Tests read as `src` imports but execute the compiled output, so what is
-    // verified is what is published. `dist` mirrors `src` file for file, so
-    // unexported internals stay reachable.
-    alias: [{ find: /^\.\.\/src\/(.*)$/, replacement: '../dist/$1' }],
+    // Run the tsc-compiled tests, not their sources. `pnpm build` emits these
+    // next to the compiled library, so `../src/*.js` resolves to `dist/src`
+    // at runtime and vitest performs no TypeScript transformation of its own.
+    include: ['packages/*/dist/test/**/*.js'],
   },
 })

@@ -7,7 +7,12 @@
   "plugins": ["import"],
   "jsPlugins": ["./lint/custom_rules.mjs"],
   "rules": {
-    "unicorn/filename-case": ["error", { "case": "camelCase" }],
+    "unicorn/filename-case": [
+      "error",
+      {
+        "case": "camelCase"
+      }
+    ],
     "unicorn/prefer-module": "error",
     "unicorn/prefer-node-protocol": "error",
     "import/no-cycle": "error",
