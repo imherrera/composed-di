@@ -1,7 +1,7 @@
-import { ServiceKey, SelectorKey } from './serviceKey'
-import type { ServiceFactory } from './serviceFactory'
-import { Selector } from './serviceSelector'
-import { NoSuchFactoryError, ModuleValidationError } from './errors'
+import { type ServiceKey, SelectorKey } from './serviceKey.js'
+import { type ServiceFactory } from './serviceFactory.js'
+import { Selector } from './serviceSelector.js'
+import { NoSuchFactoryError, ModuleValidationError } from './errors.js'
 
 /**
  * ServiceModule is a container for service factories and manages dependency resolution.
@@ -17,16 +17,16 @@ export class ServiceModule {
    *
    * @param factories An array of service factories that this module will manage.
    */
-  private constructor(readonly factories: ServiceFactory[]) {
-    checkCircularDependencies(this.factories)
+  private constructor(readonly factories: ReadonlyArray<ServiceFactory>) {
     checkMissingDependencies(this.factories)
+    checkCircularDependencies(this.factories)
   }
 
   /**
-   * Retrieves an instance for the given ServiceKey.
+   * Retrieves an instance for the given key.
    *
-   * @param key - The key of the service to retrieve.
-   * @return A promise that resolves to the service instance.
+   * @param key The key of the instance to retrieve.
+   * @return A promise that resolves to the instance.
    * @throws {NoSuchFactoryError} If no suitable factory is found for the given key.
    */
   public async get<T>(key: ServiceKey<T>): Promise<T> {
@@ -36,9 +36,13 @@ export class ServiceModule {
 
     // Check if a factory to supply the requested key was not found
     if (!factory) {
-      throw new NoSuchFactoryError(
-        `Could not find a suitable factory for ${key.name}`,
-      )
+      throw new NoSuchFactoryError(`No factory provides "${key.name}"`)
+    }
+
+    // Check if the factory has an instance already
+    const instance = factory.getInstance()
+    if (instance) {
+      return instance.value as T
     }
 
     // Resolve all dependencies first
@@ -46,7 +50,7 @@ export class ServiceModule {
       factory.dependsOn.map((dependencyKey) => {
         // If the dependency is a SelectorKey, create a Selector instance
         if (dependencyKey instanceof SelectorKey) {
-          return new Selector(this, dependencyKey)
+          return new Selector(this, dependencyKey.values)
         }
         return this.get(dependencyKey)
       }),
@@ -74,23 +78,23 @@ export class ServiceModule {
   }
 
   /**
-   * Disposes of all service factories in this module.
-   *
-   * This method is useful for cleaning up resources and instances held by service factories,
-   * such as singleton factories, as they may hold database connections or other resources that need to be released.
-   *
-   * @return No return value.
+   * Disposes of all factories in this module, releasing any resources
+   * or instances they hold. Factories are disposed in reverse-topological
+   * order, so dependents are disposed before the factories they depend on.
    */
   public dispose() {
-    this.factories.forEach((factory) => factory.dispose?.())
+    sortReverseTopologically(this.factories)
+      // Dispose of factories in reverse-topological order
+      .forEach((e) => e.dispose?.())
   }
 
   /**
-   * Creates a new `ServiceModule` instance by merging an array of `ServiceModule` or `ServiceFactory` entries.
-   * If multiple factories provide the same `ServiceKey`, the last factory encountered in the list will take precedence.
+   * Creates a new module instance by merging an array of module or factory entries.
+   * If more than one factory provides the same key, the last factory that provides the key will take precedence.
    *
-   * @param entries An array of `ServiceModule` or `erviceFactory` instances to be merged.
-   * @return A new `ServiceModule` containing the merged factories, with duplicates resolved in a last-wins manner.
+   * @param entries An array of modules or factories to be merged.
+   * @return A new module containing the merged factories, with duplicates resolved in a last-wins manner.
+   * @throws {ModuleValidationError} If there are circular or missing dependencies among the provided factories.
    */
   static from(entries: (ServiceModule | ServiceFactory)[]): ServiceModule {
     // Flatten entries and keep only the last factory for each ServiceKey
@@ -114,7 +118,7 @@ export class ServiceModule {
  * @param factories The list of factories to check for cycles.
  * @throws {ModuleValidationError} If a circular dependency is detected.
  */
-function checkCircularDependencies(factories: ServiceFactory[]) {
+function checkCircularDependencies(factories: ReadonlyArray<ServiceFactory>) {
   const factoryMap = new Map<symbol, ServiceFactory>()
   for (const f of factories) {
     factoryMap.set(f.provides.symbol, f)
@@ -129,8 +133,8 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
     if (stack.has(symbol)) {
       const cycle = [...path, factory.provides.name]
       const frames = cycle.slice(0, -1).map((name, index) => {
-        const edge = `${name} factory depends on ${cycle[index + 1]}`
-        return index === cycle.length - 2 ? `${edge} (circular)` : edge
+        const edge = `"${name}" factory depends on "${cycle[index + 1]}"`
+        return index === cycle.length - 2 ? `${edge} <- circular` : edge
       })
       throw new ModuleValidationError(
         `Circular dependency detected:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
@@ -170,7 +174,7 @@ function checkCircularDependencies(factories: ServiceFactory[]) {
  * @param factories The list of available factories in the module.
  * @throws {ModuleValidationError} If any dependency is missing.
  */
-function checkMissingDependencies(factories: ServiceFactory[]) {
+function checkMissingDependencies(factories: ReadonlyArray<ServiceFactory>) {
   const issues = factories.reduce((acc, factory) => {
     const frames: string[] = []
 
@@ -189,7 +193,7 @@ function checkMissingDependencies(factories: ServiceFactory[]) {
 
     if (frames.length !== 0) {
       acc.push(
-        `${factory.provides.name} factory will fail to initialize because it depends on service keys that no factory provides:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
+        `The "${factory.provides.name}" factory will fail to initialize because it depends on service keys that no factory provides:\n${frames.map((frame) => `    "${frame}"`).join('\n')}`,
       )
     }
 
@@ -202,13 +206,67 @@ function checkMissingDependencies(factories: ServiceFactory[]) {
 }
 
 /**
+ * Sorts factories in reverse-topological order, so every factory appears
+ * before the factories it depends on. Assumes the graph is acyclic, which
+ * module creation already guarantees.
+ *
+ * @param factories The list of factories to sort.
+ * @returns A new array with the factories in dependents-first order.
+ */
+function sortReverseTopologically(
+  factories: ReadonlyArray<ServiceFactory>,
+): ServiceFactory[] {
+  const factoryMap = new Map<symbol, ServiceFactory>()
+  for (const f of factories) {
+    factoryMap.set(f.provides.symbol, f)
+  }
+
+  const visited = new Set<symbol>()
+  const sorted = new Array<ServiceFactory>(factories.length)
+  let nextSlot = factories.length
+
+  function walk(factory: ServiceFactory) {
+    const symbol = factory.provides.symbol
+    if (visited.has(symbol)) {
+      return
+    }
+    visited.add(symbol)
+
+    for (const depKey of factory.dependsOn) {
+      const keysToCheck =
+        depKey instanceof SelectorKey ? depKey.values : [depKey]
+
+      for (const key of keysToCheck) {
+        const depFactory = factoryMap.get(key.symbol)
+        if (depFactory) {
+          walk(depFactory)
+        }
+      }
+    }
+
+    // Post-order fills dependencies toward the back, leaving earlier slots
+    // for their dependents
+    sorted[--nextSlot] = factory
+  }
+
+  for (const factory of factories) {
+    walk(factory)
+  }
+
+  return sorted
+}
+
+/**
  * Checks if a ServiceKey is registered among the provided factories.
  *
  * @param key The ServiceKey to look for.
  * @param factories The list of factories to search in.
  * @returns True if a factory provides the given key, false otherwise.
  */
-function isRegistered(key: ServiceKey<unknown>, factories: ServiceFactory[]) {
+function isRegistered(
+  key: ServiceKey<unknown>,
+  factories: ReadonlyArray<ServiceFactory>,
+) {
   return factories.some((factory) => factory.provides?.symbol === key?.symbol)
 }
 

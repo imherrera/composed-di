@@ -1,39 +1,38 @@
 import {
-  Attributes,
+  type Attributes,
   context as otelContext,
   SpanStatusCode,
   trace,
-  Tracer,
+  type Tracer,
 } from '@opentelemetry/api'
 import {
-  ATTR_CODE_FUNCTION_NAME,
-  ATTR_ERROR_TYPE,
-  ERROR_TYPE_VALUE_OTHER,
-} from '@opentelemetry/semantic-conventions'
-import {
-  LifecycleContext,
-  OperationOutcome,
-  OperationSpan,
-  MethodCallContext,
+  type LifecycleContext,
+  type OperationOutcome,
+  type OperationSpan,
+  type MethodCallContext,
   ServiceInstrumentation,
-  ServiceLifecycleEvent,
+  type ServiceLifecycleEvent,
 } from '@composed-di/instrumentation-core'
 import { ServiceKey } from '@composed-di/core'
 import {
+  ATTR_CODE_FUNCTION_NAME,
   ATTR_COMPOSED_DI_SERVICE_EVENT,
   ATTR_COMPOSED_DI_SERVICE_FUNCTION_ARGUMENTS,
   ATTR_COMPOSED_DI_SERVICE_FUNCTION_RESULT,
   ATTR_COMPOSED_DI_SERVICE_KEY,
-} from './attributes'
-import * as pkg from '../package.json'
+  ATTR_ERROR_TYPE,
+  ERROR_TYPE_VALUE_OTHER,
+} from './attributes.js'
 
-export interface OTELInstrumentationOptions {}
+// Instrumentation scope reported on every span. Keep in sync with package.json.
+const SCOPE_NAME = '@composed-di/instrumentation-otel'
+const SCOPE_VERSION = '0.14.0'
 
 /**
  * A ServiceInstrumentation that records service events as OTEL spans.
  */
 export class OTELServiceInstrumentation extends ServiceInstrumentation {
-  private readonly tracer: Tracer = trace.getTracer(pkg.name, pkg.version)
+  private readonly tracer: Tracer = trace.getTracer(SCOPE_NAME, SCOPE_VERSION)
 
   lifecycleSpan(context: LifecycleContext): OperationSpan {
     const { className, methodName } = LIFECYCLE_TARGETS[context.event]
@@ -44,7 +43,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
       methodName,
     })
     const spanName = context.key
-      ? `${className}[${context.key.name}].${methodName}`
+      ? `${className}<${context.key.name}>.${methodName}`
       : `${className}.${methodName}`
     return this.buildSpan(spanName, attributes)
   }
@@ -57,7 +56,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
       methodName: context.methodName,
       args: context.args,
     })
-    const spanName = attributes[ATTR_CODE_FUNCTION_NAME]
+    const spanName = `${context.className ?? context.key.name}.${context.methodName}`
     return this.buildSpan(spanName, attributes)
   }
 
@@ -84,7 +83,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
           })
         } else if ('value' in outcome) {
           // Present exactly when result capture is enabled in the
-          // InstrumentOptions; the value arrives already redacted.
+          // InstrumentOptions. The value arrives already redacted.
           span.setAttribute(
             ATTR_COMPOSED_DI_SERVICE_FUNCTION_RESULT,
             serialize(outcome.value),
@@ -96,11 +95,11 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
   }
 
   private buildAttributes(params: {
-    key?: ServiceKey<unknown>
+    key?: ServiceKey<unknown> | undefined
     event: ServiceLifecycleEvent | 'call'
-    className?: string
+    className?: string | undefined
     methodName: string
-    args?: readonly unknown[]
+    args?: readonly unknown[] | undefined
   }) {
     const attributes: { [key: string]: string } = {
       [ATTR_CODE_FUNCTION_NAME]: `${params.className ?? params.key?.name}.${params.methodName}`,
@@ -113,7 +112,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
     }
 
     // Present exactly when argument capture is enabled in the
-    // InstrumentOptions; the args arrive already redacted.
+    // InstrumentOptions. The args arrive already redacted.
     if (params.args) {
       attributes[ATTR_COMPOSED_DI_SERVICE_FUNCTION_ARGUMENTS] = serialize(
         params.args,

@@ -1,6 +1,6 @@
 {
   "name": "composed-di-monorepo",
-  "version": "0.13.3",
+  "version": "0.14.0",
   "private": true,
   "license": "MIT",
   "author": "Juan Herrera juanhr454@gmail.com",
@@ -8,11 +8,12 @@
     "type": "git",
     "url": "git+https://github.com/imherrera/composed-di.git"
   },
+  "type": "module",
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "pnpm build && vitest run",
+    "test:watch": "pnpm build && vitest",
     "test:types": "tsc --build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
@@ -22,11 +23,11 @@
     "prepare": "pnpm build"
   },
   "devDependencies": {
-    "@tsconfig/recommended": "^1.0.10",
-    "@types/node": "24.0.10",
-    "oxfmt": "^0.59.0",
-    "oxlint": "^1.74.0",
-    "typescript": "^5.2.2",
-    "vitest": "^4.0.16"
+    "@tsconfig/strictest": "^2.0.8",
+    "@types/node": "26.2.0",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }

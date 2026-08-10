@@ -1,3 +1,3 @@
-export * from './serviceInstrumentation'
-export * from './redaction'
-export * from './types'
+export * from './serviceInstrumentation.js'
+export * from './redaction.js'
+export * from './types.js'

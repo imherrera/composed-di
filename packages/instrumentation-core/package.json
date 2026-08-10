@@ -1,6 +1,6 @@
 {
   "name": "@composed-di/instrumentation-core",
-  "version": "0.13.3",
+  "version": "0.14.0",
   "private": false,
   "keywords": [
     "dependency injection",
@@ -17,18 +17,16 @@
     "directory": "packages/instrumentation-core"
   },
   "files": [
-    "dist",
+    "dist/src",
     "src"
   ],
-  "type": "commonjs",
+  "type": "module",
   "sideEffects": false,
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     }
   },
   "publishConfig": {
@@ -43,6 +41,6 @@
     "@composed-di/core": "workspace:^"
   },
   "peerDependencies": {
-    "@composed-di/core": "^0.13.0"
+    "@composed-di/core": "^0.14.0"
   }
 }

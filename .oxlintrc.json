@@ -5,11 +5,20 @@
     "suspicious": "warn"
   },
   "plugins": ["import"],
-  "jsPlugins": ["./lint/composedDiPlugin.mjs"],
+  "jsPlugins": ["./lint/custom_rules.mjs"],
   "rules": {
-    "unicorn/filename-case": ["error", { "case": "camelCase" }],
+    "unicorn/filename-case": [
+      "error",
+      {
+        "case": "camelCase"
+      }
+    ],
+    "unicorn/prefer-module": "error",
+    "unicorn/prefer-node-protocol": "error",
     "import/no-cycle": "error",
-    "composed-di/instance-naming": "error"
+    "import/extensions": ["error", "ignorePackages"],
+    "composed-di/instance-naming": "error",
+    "composed-di/manifest-constants": "error"
   },
   "overrides": [
     {

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   BasicTracerProvider,
   InMemorySpanExporter,
-  ReadableSpan,
+  type ReadableSpan,
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base'
 import {
@@ -12,7 +12,7 @@ import {
 } from '@opentelemetry/api'
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
-import { OTELServiceInstrumentation } from '../src/otelServiceInstrumentation'
+import { OTELServiceInstrumentation } from '../src/otelServiceInstrumentation.js'
 
 let exporter: InMemorySpanExporter
 let provider: BasicTracerProvider
@@ -22,7 +22,7 @@ beforeEach(() => {
   provider = new BasicTracerProvider({
     spanProcessors: [new SimpleSpanProcessor(exporter)],
   })
-  // The instrumentation resolves its tracer from the global provider;
+  // The instrumentation resolves its tracer from the global provider, so
   // re-register per test (the API keeps the first global otherwise).
   trace.disable()
   trace.setGlobalTracerProvider(provider)
@@ -58,7 +58,7 @@ describe('OTELInstrumentation', () => {
     const svc = await module.get(key)
     svc.greet()
 
-    const init = byName('ServiceFactory[svc].initialize')
+    const init = byName('ServiceFactory<svc>.initialize')
     expect(init.attributes).toMatchObject({
       'code.function.name': 'ServiceFactory.initialize',
       'composed_di.service.key': 'svc',
@@ -110,13 +110,13 @@ describe('OTELInstrumentation', () => {
 
     await module.get(key)
     module.dispose()
-    expect(byName('ServiceFactory[svc].dispose').attributes).toMatchObject({
+    expect(byName('ServiceFactory<svc>.dispose').attributes).toMatchObject({
       'composed_di.service.event': 'factory_dispose',
     })
   })
 
   it('should fall back to the global tracer provider when no tracer is given', async () => {
-    // Re-register per test: the API keeps the first global otherwise.
+    // Re-register per test, since the API keeps the first global otherwise.
     trace.disable()
     trace.setGlobalTracerProvider(provider)
     try {

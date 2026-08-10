@@ -10,7 +10,9 @@
 npm install @composed-di/instrumentation-otel @opentelemetry/api
 ```
 
-`@opentelemetry/api` (^1.9.0) is a peer dependency. Spans are created through the global tracer provider — the one `NodeSDK` (or `@opentelemetry/auto-instrumentations-node`) registers on startup — so no wiring is needed beyond having an OTEL SDK configured.
+This package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c). It cannot be `require()`d from CommonJS on Node.js < 22.
+
+`@opentelemetry/api` (^1.9.1) is a peer dependency. Spans are created through the global tracer provider — the one `NodeSDK` (or `@opentelemetry/auto-instrumentations-node`) registers on startup — so no wiring is needed beyond having an OTEL SDK configured.
 
 ## Usage
 
@@ -24,8 +26,8 @@ const module = instrumentation.install(
   ServiceModule.from([configFactory, databaseFactory]),
 )
 
-// Traced end to end: a ServiceModule[Database].get span, with a child
-// ServiceFactory[Database].initialize span on first resolution.
+// Traced end to end: a ServiceModule<Database>.get span, with a child
+// ServiceFactory<Database>.initialize span on first resolution.
 const db = await module.get(databaseKey)
 
 // Each method call on a resolved service is a span too, e.g. DbClient.query.
@@ -34,11 +36,11 @@ await db.query('SELECT 1')
 
 `install()` also accepts a single factory or an array of factories — see [`@composed-di/instrumentation-core`](../instrumentation-core) for the wrapping semantics.
 
-Because each span's `initialize` runs inside its parent's context, nested resolutions form the hierarchy you'd expect: `ServiceModule[Database].get` → `ServiceFactory[Database].initialize` → `ServiceFactory[Config].initialize`.
+Because each span's `initialize` runs inside its parent's context, nested resolutions form the hierarchy you'd expect: `ServiceModule<Database>.get` → `ServiceFactory<Database>.initialize` → `ServiceFactory<Config>.initialize`.
 
 ## Spans and attributes
 
-Span names follow the operation: `ServiceModule[<key>].get` / `.getOrNull`, `ServiceModule.dispose`, `ServiceFactory[<key>].initialize` / `.dispose`, and `<ClassName>.<method>` for method calls (falling back to the key name for services that aren't named class instances).
+Span names follow the operation: `ServiceModule<key>.get` / `.getOrNull`, `ServiceModule.dispose`, `ServiceFactory<key>.initialize` / `.dispose`, and `<ClassName>.<method>` for method calls (falling back to the key name for services that aren't named class instances).
 
 Every span carries:
 

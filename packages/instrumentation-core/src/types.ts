@@ -1,5 +1,5 @@
 import { ServiceKey } from '@composed-di/core'
-import { RedactionRule } from './redaction'
+import type { RedactionRule } from './redaction.js'
 
 /**
  * A handle representing a single in-flight operation (initialization,
@@ -16,7 +16,7 @@ export interface OperationSpan {
    * Wrapper around the operation itself. The instrumented factory invokes
    * the operation as `run(() => operation())`, so the instrumentation can
    * establish ambient state that the operation body and its async
-   * continuations inherit — this is what lets spans of nested service
+   * continuations inherit. This is what lets spans of nested service
    * calls form a parent-child hierarchy.
    *
    * Implementations must invoke `fn` exactly once, synchronously, and
@@ -34,8 +34,8 @@ export interface OperationSpan {
    * promise settles, not when the method returns. On failure, the error is
    * rethrown to the caller after this is invoked.
    *
-   * Whether to retain or log the outcome is the implementation's choice;
-   * values are passed by reference, so implementations must not mutate them.
+   * Whether to retain or log the outcome is the implementation's choice.
+   * Values are passed by reference, so implementations must not mutate them.
    *
    * @param outcome - How the operation finished, and its value or error.
    * @return void
@@ -44,18 +44,18 @@ export interface OperationSpan {
 }
 
 /**
- * How an operation finished, delivered to OperationSpan.end: `success` may
+ * How an operation finished, delivered to OperationSpan.end. `success` may
  * carry the return or resolved value of a method call (initialize and
- * dispose outcomes never carry one); `failure` carries the error that was
+ * dispose outcomes never carry one). `failure` carries the error that was
  * thrown or rejected.
  *
  * Whether `value` is present is decided by {@link ServiceInstrumentation.install},
- * not by the implementation: it is absent unless result capture is enabled
+ * not by the implementation. It is absent unless result capture is enabled
  * in the InstrumentOptions, and holds the redacted value when a redaction
  * rule matches. Implementations must record the value exactly when it is
- * present (`'value' in outcome` — a captured `undefined` return is
- * delivered as a present `value: undefined`) and must not record any
- * result when it is absent.
+ * present (`'value' in outcome`) and must not record any result when it
+ * is absent. A captured `undefined` return is delivered as a present
+ * `value: undefined`.
  */
 export type OperationOutcome =
   | { type: 'success'; value?: unknown }
@@ -63,7 +63,7 @@ export type OperationOutcome =
 
 /**
  * The lifecycle operations reported to
- * {@link ServiceInstrumentation.lifecycleSpan}: `factory_*` events are the
+ * {@link ServiceInstrumentation.lifecycleSpan}. `factory_*` events are the
  * operations of an instrumented factory on its one service, `module_*`
  * events are the public entry points of an instrumented ServiceModule.
  */
@@ -116,7 +116,7 @@ export interface MethodCallContext {
    * services that are not instances of a named class, such as plain
    * object literals.
    */
-  className?: string
+  className?: string | undefined
 
   /**
    * The name of the method that is being called.
@@ -124,21 +124,21 @@ export interface MethodCallContext {
   methodName: string
 
   /**
-   * The arguments to report for this call, passed by reference;
-   * implementations must not mutate them.
+   * The arguments to report for this call, passed by reference.
+   * Implementations must not mutate them.
    *
    * Whether they are present is decided by {@link ServiceInstrumentation.install},
-   * not by the implementation: absent unless argument capture is enabled in
+   * not by the implementation. Absent unless argument capture is enabled in
    * the InstrumentOptions, and already redacted when a redaction rule
    * matches. Implementations must record the arguments exactly when present
    * and must not record any arguments when absent.
    */
-  args?: readonly unknown[]
+  args?: readonly unknown[] | undefined
 }
 
 /**
  * What runtime values are delivered to the instrumentation, and how they
- * are scrubbed first. Nothing is captured by default: values may be large
+ * are scrubbed first. Nothing is captured by default. Values may be large
  * or contain secrets, and they end up wherever the instrumentation
  * exports them.
  */
@@ -154,16 +154,16 @@ export interface CaptureOptions {
    * Deliver method call return / resolved values to the instrumentation
    * (as the success outcome's `value`). When off, the instrumentation
    * never sees the values at all. Initialize and dispose outcomes never
-   * carry a value: the service instance is not useful information to
+   * carry a value. The service instance is not useful information to
    * report.
    */
   results?: boolean
 
   /**
    * Per-service redaction applied to whatever the capture flags let
-   * through: matched arguments and success values are blanked (or run
+   * through. Matched arguments and success values are blanked (or run
    * through the rule's custom mask) before the instrumentation sees them.
-   * The capture flags are the primary gate — when capture is off there is
+   * The capture flags are the primary gate. When capture is off there is
    * nothing to redact, and rules cannot re-enable delivery.
    */
   redactionRules?: readonly RedactionRule<any>[]
@@ -171,7 +171,7 @@ export interface CaptureOptions {
 
 /**
  * Configuration for {@link ServiceInstrumentation.install}. Capture
- * policy lives here, not in the ServiceInstrumentation subclasses: what a
+ * policy lives here, not in the ServiceInstrumentation subclasses. What a
  * subclass receives is exactly what it is allowed to record, so no
  * subclass carries its own capture flags or redaction logic.
  */

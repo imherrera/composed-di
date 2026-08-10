@@ -1,11 +1,8 @@
-import { ServiceKey, SelectorKey } from './serviceKey'
-import {
-  SingletonDisposedDuringInitError,
-  FactoryReentrancyError,
-} from './errors'
-import type { Selector } from './serviceSelector'
+import type { ServiceKey, SelectorKey } from './serviceKey.js'
+import { InitializationAbortedError } from './errors.js'
+import type { Selector } from './serviceSelector.js'
 
-type ServiceType<T> =
+type DependencyType<T> =
   T extends SelectorKey<infer U>
     ? Selector<U>
     : T extends ServiceKey<infer U>
@@ -14,7 +11,7 @@ type ServiceType<T> =
 
 // Helper types to convert an array/tuple of ServiceKey to tuple of their types
 type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
-  [K in keyof T]: ServiceType<T[K]>
+  [K in keyof T]: DependencyType<T[K]>
 }
 
 /**
@@ -43,22 +40,28 @@ export abstract class ServiceFactory<
   /**
    * Creates the service instance.
    *
-   * Called by the `ServiceModule` with dependencies resolved per {@link dependsOn};
+   * Called by the `ServiceModule` with dependencies resolved per {@link dependsOn}.
    */
   abstract initialize(...dependencies: DependencyTypes<D>): T | Promise<T>
+
+  /**
+   * Returns the retained instance if this factory currently holds one, or
+   * `undefined` if no instance is retained.
+   */
+  abstract getInstance(): { readonly value: T } | undefined
 
   /**
    * Tears down whatever {@link initialize} retained (if anything at all). A subsequent {@link initialize}
    * produces a fresh instance.
    *
-   * Synchronous by design: the container does not await teardown, so asynchronous
+   * Synchronous by design. The container does not await teardown, so asynchronous
    * cleanup must be scheduled fire-and-forget from here.
    */
   abstract dispose(): void
 
   /**
-   * Creates a lazily initialized singleton: `initialize` runs on the first request and
-   * the instance is shared by every request thereafter; a failed `initialize` is never
+   * Creates a lazily initialized singleton. `initialize` runs on the first request and
+   * the instance is shared by every request thereafter. A failed `initialize` is never
    * cached, and after `dispose()` the next request initializes a fresh instance.
    *
    * @example
@@ -81,19 +84,19 @@ export abstract class ServiceFactory<
     dependsOn = [] as unknown as D,
     initialize,
     dispose = () => {},
-  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn'> & {
-    dispose?: (instance: T) => void
+  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
+    dispose?: ((instance: T) => void) | undefined
     dependsOn?: D
   }): ServiceFactory<T, D> {
     return new SingletonFactory(provides, dependsOn, initialize, dispose)
   }
 
   /**
-   * Creates a factory that builds a **fresh instance on every request** — no caching
-   * and no deduplication.
+   * Creates a factory that builds a **fresh instance on every request**, with no
+   * caching and no deduplication.
    *
-   * One-shot services have no framework-managed lifecycle: `dispose` is a no-op, so
-   * instances are untouched by `module.dispose(...)` — cleanup belongs entirely to
+   * One-shot services have no framework-managed lifecycle. `dispose` is a no-op, so
+   * instances are untouched by `module.dispose(...)`. Cleanup belongs entirely to
    * whoever requested the instance.
    *
    * @example
@@ -109,7 +112,7 @@ export abstract class ServiceFactory<
     provides,
     dependsOn = [] as unknown as D,
     initialize,
-  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn'> & {
+  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
     dependsOn?: D
   }): ServiceFactory<T, D> {
     return new OneShotFactory(provides, dependsOn, initialize)
@@ -118,8 +121,8 @@ export abstract class ServiceFactory<
 
 /**
  * A `OneShotFactory` builds a fresh instance on every request and retains none of
- * them, so it has no lifecycle of its own: `dispose` is a no-op — the caller of
- * each request owns that instance's cleanup entirely.
+ * them, so it has no lifecycle of its own. `dispose` is a no-op, and the caller
+ * of each request owns that instance's cleanup entirely.
  *
  * @template T - The type of the service instances built by this factory.
  * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
@@ -140,13 +143,17 @@ export class OneShotFactory<
     return this.onInitialize(...dependencies)
   }
 
+  getInstance(): { readonly value: T } | undefined {
+    return undefined
+  }
+
   dispose(): void {
     // Nothing retained, nothing to tear down.
   }
 }
 
 /**
- * A `SingletonServiceFactory` manages the lifecycle of a singleton service instance. It ensures
+ * A `SingletonFactory` manages the lifecycle of a singleton service instance. It ensures
  * that only one instance of the service is created and reuses that same instance across requests.
  *
  * It extends the `ServiceFactory` class to include additional behavior for managing singleton services.
@@ -172,6 +179,14 @@ export class SingletonFactory<
     super()
   }
 
+  /**
+   * Returns the retained instance if the singleton is warm, or `undefined` if
+   * no instance is currently retained.
+   */
+  getInstance(): { readonly value: T } | undefined {
+    return this.retainedInstance
+  }
+
   initialize(...dependencies: DependencyTypes<D>): Promise<T> | T {
     if (this.retainedInstance !== undefined) {
       return this.retainedInstance.value
@@ -181,14 +196,14 @@ export class SingletonFactory<
     }
 
     if (this.isRunningHook) {
-      throw new FactoryReentrancyError(
-        `SingletonServiceFactory(provides=${this.provides.name}): initialize() cannot be called re-entrantly from onInitialize or onDispose`,
+      throw new Error(
+        `The "${this.provides.name}" factory initialize method cannot be called re-entrantly from onInitialize or onDispose`,
       )
     }
 
     const generation = this.generation
 
-    // Invoke synchronously: if onInitialize throws right away, the error
+    // Invoke synchronously. If onInitialize throws right away, the error
     // escapes before anything is cached, and the next call retries.
     this.isRunningHook = true
     let pending: Promise<T> | T
@@ -213,16 +228,16 @@ export class SingletonFactory<
           } finally {
             this.isRunningHook = false
           }
-          throw new SingletonDisposedDuringInitError(
-            `SingletonServiceFactory[provides=${this.provides.name}]: disposed during initialization`,
+          throw new InitializationAbortedError(
+            `The "${this.provides.name}" factory was disposed during initialization`,
           )
         }
 
         this.retainedInstance = { value: newInstance }
         return newInstance
       } finally {
-        // Only clear the slot if we still belong to the current generation —
-        // a dispose/revive may have installed a newer init's promise here.
+        // Only clear the slot if we still belong to the current generation.
+        // A dispose/revive may have installed a newer init's promise here.
         if (this.generation === generation) {
           this.promisedInstance = undefined
         }
@@ -234,8 +249,8 @@ export class SingletonFactory<
 
   dispose(): void {
     if (this.isRunningHook) {
-      throw new FactoryReentrancyError(
-        `SingletonServiceFactory(provides=${this.provides.name}): dispose() cannot be called re-entrantly from onInitialize or onDispose`,
+      throw new Error(
+        `The "${this.provides.name}" factory dispose method cannot be called re-entrantly from onInitialize or onDispose`,
       )
     }
 

@@ -1,25 +1,25 @@
 import { describe, it, expect } from 'vitest'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
 import {
-  CaptureOptions,
+  type CaptureOptions,
   redactionRule,
-  LifecycleContext,
-  OperationOutcome,
-  MethodCallContext,
+  type LifecycleContext,
+  type OperationOutcome,
+  type MethodCallContext,
   ServiceInstrumentation,
-  ServiceLifecycleEvent,
-} from '../src'
+  type ServiceLifecycleEvent,
+} from '../src/index.js'
 
-// Deliberately not derived via Parameters<install>: on an overloaded
-// method that resolves to the last overload (ServiceModule), while these
+// Deliberately not derived via Parameters<install>. On an overloaded method,
+// Parameters resolves to the last overload (ServiceModule), while these
 // tests always install arrays of factories.
 type Entries = ServiceFactory[]
 
 interface RecordedEvent {
   type: ServiceLifecycleEvent | 'call'
-  key?: ServiceKey<unknown>
-  methodName?: string
-  args?: readonly unknown[]
+  key?: ServiceKey<unknown> | undefined
+  methodName?: string | undefined
+  args?: readonly unknown[] | undefined
   outcome?: OperationOutcome
   ranWithin?: boolean
 }
@@ -221,14 +221,14 @@ describe('redaction through instrument()', () => {
     svc.getSecret('db-password')
     svc.listSecretNames()
 
-    // getSecret: overridden with a custom arg mask; result still fully
-    // blanked since no maskResult was given.
+    // getSecret is overridden with a custom arg mask, and its result is
+    // still fully blanked since no maskResult was given.
     expect(recorder.find('call', 'getSecret').args).toEqual(['masked:11'])
     expect(recorder.find('call', 'getSecret').outcome).toEqual({
       type: 'success',
       value: '[REDACTED]',
     })
-    // listSecretNames: excluded, so left untouched despite redactAll.
+    // listSecretNames is excluded, so left untouched despite redactAll.
     expect(recorder.find('call', 'listSecretNames').outcome).toEqual({
       type: 'success',
       value: ['db-password'],
@@ -399,7 +399,7 @@ describe('redaction through instrument()', () => {
       const module = ServiceModule.from(
         recorder.install([secretFactory()], {
           capture: {
-            // Rules cannot re-enable delivery: there is nothing to redact.
+            // Rules cannot re-enable delivery. There is nothing to redact.
             redactionRules: [
               redactionRule(secretKey)
                 .redactAll()

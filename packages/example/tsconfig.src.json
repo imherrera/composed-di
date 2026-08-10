@@ -3,7 +3,8 @@
   "compilerOptions": {
     "outDir": "dist/src",
     "rootDir": "src",
-    "tsBuildInfoFile": "dist/tsconfig.src.tsbuildinfo"
+    "tsBuildInfoFile": "dist/tsconfig.src.tsbuildinfo",
+    "types": ["node"]
   },
   "include": ["src"],
   "references": [
@@ -11,7 +12,7 @@
       "path": "../core/tsconfig.src.json"
     },
     {
-      "path": "../instrumentation-core/tsconfig.src.json"
+      "path": "../decorators/tsconfig.src.json"
     }
   ]
 }

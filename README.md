@@ -3,13 +3,16 @@
 [![npm version](https://img.shields.io/npm/v/%40composed-di%2Fcore)](https://www.npmjs.com/package/@composed-di/core)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 
-A lightweight, lazy, and type-safe dependency injection library for TypeScript — no decorators, no reflection metadata, no framework lock-in. Services are described as plain factories, composed into modules, and created only when they are actually requested, so a Lambda invocation or an app launch pays only for the subgraph it touches.
+A lightweight, lazy, and type-safe dependency injection library for TypeScript — no reflection metadata, no framework lock-in. Services are described as plain factories, composed into modules, and created only when they are actually requested, so a Lambda invocation or an app launch pays only for the subgraph it touches.
+
+Prefer to declare services as classes? [`@composed-di/decorators`](packages/decorators) adds class-based registration on standard TC39 decorators — still no `reflect-metadata`, still no `experimentalDecorators`.
 
 ## Packages
 
 | Package                                                              | Description                                                                                    |
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| [`@composed-di/core`](packages/core)                                 | The DI container: keys, factories, modules, selectors, and graph visualization.                |
+| [`@composed-di/core`](packages/core)                                 | The DI container: keys, factories, modules, and selectors.                                     |
+| [`@composed-di/decorators`](packages/decorators)                     | Class-based registration on standard TC39 decorators: lifecycle, injection, and teardown.      |
 | [`@composed-di/instrumentation-core`](packages/instrumentation-core) | Framework-agnostic observability hooks for service initialization, disposal, and method calls. |
 | [`@composed-di/instrumentation-otel`](packages/instrumentation-otel) | OpenTelemetry implementation that records service events as spans.                             |
 
@@ -22,7 +25,7 @@ A lightweight, lazy, and type-safe dependency injection library for TypeScript �
 - **Explicit lifecycles** — lazily-created singletons with deterministic `dispose()`, and one-shot (transient) factories.
 - **Async-native** — `initialize` may return a promise; concurrent requests for an in-flight singleton share the same initialization.
 - **Runtime selection** — `SelectorKey` groups multiple implementations of an interface so a service can pick one at runtime.
-- **Visualization** — generate [Mermaid](https://mermaid.live/) or Graphviz DOT diagrams of your dependency graph.
+- **Classes, if you want them** — an optional package registers classes directly, with the lifecycle, dependencies, and teardown declared on the class. Standard decorators only, so nothing depends on `reflect-metadata` or `experimentalDecorators`.
 
 ## Getting started
 
@@ -30,9 +33,13 @@ A lightweight, lazy, and type-safe dependency injection library for TypeScript �
 
 ```sh
 npm install @composed-di/core
+# optional, to register classes instead of writing factories by hand:
+npm install @composed-di/decorators
 # optional, for OpenTelemetry tracing of your services:
 npm install @composed-di/instrumentation-otel @opentelemetry/api
 ```
+
+Every package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c). They cannot be `require()`d from CommonJS on Node.js < 22.
 
 ### Quick start
 
@@ -165,7 +172,7 @@ Exporting a key is what makes a service substitutable. `connectionKey` is export
 
 A `ServiceModule` is always complete: `ServiceModule.from()` requires every `dependsOn` to be satisfied within the same call. That is usually easy to arrange — a package that needs configuration can read the environment itself, or depend on a config package that does and exports a module.
 
-It stops working when a package deliberately must *not* choose. A notifications package used by two applications, one sending through SES and the other through Twilio, cannot export a complete module, because completing it would mean picking one. Export a function that takes the missing module instead.
+It stops working when a package deliberately must _not_ choose. A notifications package used by two applications, one sending through SES and the other through Twilio, cannot export a complete module, because completing it would mean picking one. Export a function that takes the missing module instead.
 
 ```ts
 // @myapp/notifications — declares the contract, provides everything but the transport.
@@ -293,14 +300,124 @@ const checkoutFactory = ServiceFactory.singleton({
 })
 ```
 
-### Visualizing the graph
+### Class-based registration
+
+Everything above is plain factories, and core stays that way. When services are already classes, [`@composed-di/decorators`](packages/decorators) moves the same three decisions — lifetime, dependencies, teardown — onto the class declaration, and `factoriesOf` turns the result back into ordinary core factories. Here is the [Quick start](#quick-start) again, keys and factories gone:
 
 ```ts
-import { printMermaidGraph, printDotGraph } from '@composed-di/core'
+import { ServiceModule } from '@composed-di/core'
+import {
+  Singleton,
+  Inject,
+  Dispose,
+  factoriesOf,
+  keyOf,
+} from '@composed-di/decorators'
 
-printMermaidGraph(module) // paste into https://mermaid.live/
-printDotGraph(module) // paste into a Graphviz viewer
+@Singleton
+class Config {
+  readonly dbUrl = process.env.DB_URL!
+}
+
+@Singleton
+class Database {
+  // A decorated class is its own token — no ServiceKey needed.
+  @Inject(Config)
+  private readonly config!: Config
+
+  // Injected fields are resolved before the rest of construction runs.
+  private readonly client = createClient(this.config.dbUrl)
+
+  query(sql: string): Promise<unknown[]> {
+    return this.client.query(sql)
+  }
+
+  @Dispose
+  close() {
+    this.client.close()
+  }
+}
+
+const module = ServiceModule.from([...factoriesOf(Config, Database)])
+
+// Config is created first — lazily, exactly once, as before.
+const db = await module.get(keyOf(Database))
+
+module.dispose() // close() runs
 ```
+
+Decorated classes take zero constructor arguments — dependencies are fields, and a required parameter is a compile error on the decorator itself. Registration stays a composition decision: decorating a class marks it, the module still has to provide it.
+
+`@OneShot` is the other lifetime: a fresh instance on every request, owned by the requester and never disposed by the container, so `@Dispose` is `@Singleton`-only. Here is the request-id [factory](#factories) as a class:
+
+```ts
+@OneShot
+class RequestId {
+  readonly value = crypto.randomUUID() // new value per request
+}
+```
+
+The capture caveat applies unchanged — an `@Inject` field on a singleton would hold one `RequestId` for the singleton's entire lifetime. Per-call values arrive as method arguments, or through `@Select`: [runtime selection](#runtime-selection) as a field. The selector resolves through the module on every call, so singleton members stay shared and one-shot members come fresh, which makes it the safe way for a singleton to reach one-shots. With `StripeGateway` and `PaypalGateway` decorated, each class is its own token, and checkout reads as it did with keys:
+
+```ts
+@Singleton
+class CheckoutService {
+  @Select<PaymentGateway>(StripeGateway, PaypalGateway)
+  private readonly payments!: Selector<PaymentGateway>
+
+  async pay(order: Order) {
+    const gateway = await this.payments.get(
+      order.method === 'paypal' ? keyOf(PaypalGateway) : keyOf(StripeGateway),
+    )
+    return gateway.charge(order)
+  }
+}
+```
+
+The tiers mix freely, and the [`@myapp/data` package from Keys](#keys) shows where that matters: the `pg` `Pool` is third-party code, impossible to decorate, so it keeps its hand-written key and factory, while the repositories become decorated classes (replacing their exported keys as the package's surface). `@Inject` accepts a `ServiceKey` as readily as a class, with the key's service type checked against the field's type at compile time, and `factoriesOf` spreads next to explicit factories:
+
+```ts
+// @myapp/data — the Keys example, repositories decorated.
+import type { Pool } from 'pg'
+
+export const connectionKey = new ServiceKey<Pool>('Connection')
+
+@Singleton
+export class UserRepository {
+  @Inject(connectionKey)
+  private readonly pool!: Pool
+}
+
+@Singleton
+export class InvoiceRepository {
+  @Inject(connectionKey)
+  private readonly pool!: Pool
+}
+
+export const dataModule = ServiceModule.from([
+  ...factoriesOf(UserRepository, InvoiceRepository),
+  ServiceFactory.singleton({
+    provides: connectionKey,
+    initialize: () => new Pool({ connectionString: process.env.DB_URL }),
+    dispose: (pool) => pool.end(),
+  }),
+])
+```
+
+Crossing the other way, `keyOf(Class)` returns the `ServiceKey` the lifecycle decorator minted, for anything core-shaped: `module.get` above, a hand-written factory's `dependsOn`, or the fake-database override from [Modules](#modules) — substitution is last-wins at the key, exactly as for explicit factories. (`selectorOf(StripeGateway, PaypalGateway)` is the same bridge for `@Select`'s grouping.)
+
+```ts
+const testModule = ServiceModule.from([
+  module,
+  // Replace the database at its own key.
+  ServiceFactory.singleton({
+    provides: keyOf(Database),
+    initialize: () => fakeDatabase,
+  }),
+])
+```
+
+This is stage-3 decorators, so it needs TypeScript ≥ 5.0 with `experimentalDecorators` **off** — legacy mode changes the runtime calling convention and breaks at runtime rather than at compile time. See the [package README](packages/decorators/README.md) for the full API, and the example package for one app written both ways: [`cafeShop.ts`](packages/example/src/cafeShop.ts) with decorators, [`cafeShopCore.ts`](packages/example/src/cafeShopCore.ts) with factories alone.
 
 ## Observability
 
@@ -357,17 +474,6 @@ If a key is visibly provided by a module you composed and resolution still fails
 - a dev-server hot reload re-evaluated the key module while a longer-lived container kept the old key.
 
 The fix is to make the declaring module resolve once — dedupe the dependency, pick a single module format, or rebuild the container on reload.
-
-### Keys across separate module graphs
-
-When two bundles genuinely never share a module graph — module federation remotes, a plugin host loading independently built plugins — no import can carry a key between them. `ServiceKey.for` covers that case: it is backed by `Symbol.for`, so the same name resolves to the same key in every bundle in the realm.
-
-```ts
-// Declared identically in the host and in each plugin bundle.
-const authContextKey = ServiceKey.for<AuthContext>('@host/shell/AuthContext')
-```
-
-Two costs come with it, so prefer an imported `new ServiceKey(...)` anywhere an import is possible. The name is global to the realm, shared with every other library in the process — namespace it with the package it belongs to, and note that a registry key is reachable, and therefore overridable, by anyone who can guess the string, where an unexported `new ServiceKey(...)` cannot be named at all. And the type parameter is an unchecked assertion: two declarations of the same name with different `T` produce one key, and neither the compiler nor the runtime will object.
 
 ## Roadmap
 

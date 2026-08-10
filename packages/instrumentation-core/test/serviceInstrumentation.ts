@@ -3,15 +3,15 @@ import {
   ServiceFactory,
   ServiceKey,
   ServiceModule,
-  SingletonDisposedDuringInitError,
+  InitializationAbortedError,
 } from '@composed-di/core'
 import {
-  LifecycleContext,
-  MethodCallContext,
-  OperationOutcome,
-  OperationSpan,
+  type LifecycleContext,
+  type MethodCallContext,
+  type OperationOutcome,
+  type OperationSpan,
   ServiceInstrumentation,
-} from '../src'
+} from '../src/index.js'
 
 /**
  * Records every event as `<service>.<operation>:<phase>` so tests can
@@ -72,7 +72,7 @@ describe('install() lifetime dispatch', () => {
       expect(a).toBe(b)
       expect(counter).toBe(1)
       // Repeat gets are cache hits inside the delegate, not
-      // initializations — they must not be reported as one.
+      // initializations, so they must not be reported as one.
       expect(recorder.count('singleton.factory_initialize:start')).toBe(1)
     })
 
@@ -132,7 +132,7 @@ describe('install() lifetime dispatch', () => {
       const a = await module.get(key)
       const b = await module.get(key)
       // install() must not impose singleton semantics on a one-shot
-      // delegate: each get() produces (and reports) a fresh instance.
+      // delegate. Each get() produces (and reports) a fresh instance.
       expect(a).not.toBe(b)
       expect(a.id()).toBe(1)
       expect(b.id()).toBe(2)
@@ -152,8 +152,8 @@ describe('install() lifetime dispatch', () => {
       const once = recorder.install([factory])
       const twice = recorder.install(once)
 
-      // The second install must not wrap again: same factory, and every
-      // operation reported exactly once.
+      // The second install must not wrap again. The factory stays the same,
+      // and every operation is reported exactly once.
       expect(twice[0]).toBe(once[0])
       const module = ServiceModule.from(twice)
       const svc = await module.get(key)
@@ -186,6 +186,7 @@ describe('install() lifetime dispatch', () => {
         provides: key,
         dependsOn: [],
         initialize: () => ({ x: 1 }),
+        getInstance: () => undefined,
         dispose: () => {},
       }
       const recorder = new RecordingListener()
@@ -237,8 +238,8 @@ describe('install() overload shapes', () => {
 
     expect(instrumented).not.toBe(originals)
     expect(instrumented).toHaveLength(2)
-    expect(instrumented[0].provides).toBe(aKey)
-    expect(instrumented[1].provides).toBe(bKey)
+    expect(instrumented[0]!.provides).toBe(aKey)
+    expect(instrumented[1]!.provides).toBe(bKey)
     expect(instrumented[0]).not.toBe(originals[0])
     expect(instrumented[1]).not.toBe(originals[1])
   })
@@ -278,7 +279,7 @@ describe('install() overload shapes', () => {
     observed.ping()
     const eventsSoFar = recorder.events.length
 
-    // install() never mutates its input: the original module still hands
+    // install() never mutates its input. The original module still hands
     // out the raw instance, and using it reports nothing.
     const raw = await original.get(key)
     expect(raw.ping()).toBe('pong')
@@ -298,8 +299,8 @@ describe('install() overload shapes', () => {
     const once = recorder.install(original)
     const twice = recorder.install(once)
 
-    // A new module is built, but around the same wrappers — no double
-    // wrapping, every operation reported exactly once.
+    // A new module is built, but around the same wrappers. There is no double
+    // wrapping, and every operation is reported exactly once.
     expect(twice.factories[0]).toBe(once.factories[0])
     const svc = await twice.get(key)
     svc.ping()
@@ -357,7 +358,7 @@ describe('install() initialization outcomes', () => {
       error: new Error('connection refused'),
     })
 
-    // The failure was rethrown, not cached: the next get() retries and is
+    // The failure was rethrown, not cached. The next get() retries and is
     // reported as a fresh initialization.
     const svc = await module.get(key)
     expect(svc.id).toBe(2)
@@ -404,10 +405,10 @@ describe('install() initialization outcomes', () => {
     module.dispose()
 
     resolveInit({ x: 1 })
-    await expect(pending).rejects.toThrow(SingletonDisposedDuringInitError)
+    await expect(pending).rejects.toThrow(InitializationAbortedError)
 
     // The initialization itself succeeded, and the orphaned instance was
-    // immediately torn down; both operations are reported.
+    // immediately torn down. Both operations are reported.
     expect(disposed).toBe(true)
     expect(recorder.count('svc.factory_initialize:end')).toBe(1)
     expect(recorder.count('svc.factory_dispose:start')).toBe(1)
@@ -483,7 +484,7 @@ describe('install() contract preservation', () => {
         initialize: (config) => ({ connectedTo: () => config.url }),
       }),
     ])
-    expect(instrumented[1].dependsOn).toEqual([configKey])
+    expect(instrumented[1]!.dependsOn).toEqual([configKey])
 
     const module = ServiceModule.from(instrumented)
     const db = await module.get(dbKey)
@@ -521,7 +522,8 @@ describe('install() contract preservation', () => {
     const literal = await module.get(literalKey)
     literal.charge()
 
-    const [fromClass, fromLiteral] = recorder.methodContexts
+    const fromClass = recorder.methodContexts[0]!
+    const fromLiteral = recorder.methodContexts[1]!
     expect(fromClass.className).toBe('PaymentGateway')
     expect(fromLiteral.className).toBeUndefined()
     // No options were given, so no arguments are delivered either.

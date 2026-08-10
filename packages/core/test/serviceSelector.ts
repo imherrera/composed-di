@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceKey, SelectorKey } from '../src/serviceKey'
-import { ServiceFactory } from '../src/serviceFactory'
-import { ServiceModule } from '../src/serviceModule'
-import { Selector } from '../src/serviceSelector'
-import { ModuleValidationError } from '../src'
+import { ServiceKey, SelectorKey } from '../src/serviceKey.js'
+import { ServiceFactory } from '../src/serviceFactory.js'
+import { ServiceModule } from '../src/serviceModule.js'
+import { Selector } from '../src/serviceSelector.js'
+import { ModuleValidationError } from '../src/index.js'
 
 interface Logger {
   type: string

@@ -1,21 +1,19 @@
 {
-  "name": "@composed-di/instrumentation-otel",
+  "name": "@composed-di/decorators",
   "version": "0.14.0",
   "private": false,
   "keywords": [
+    "decorators",
     "dependency injection",
     "di",
-    "observability",
-    "opentelemetry",
-    "otel",
-    "tracing"
+    "lazy dependency injection"
   ],
   "license": "MIT",
   "author": "Juan Herrera juanhr454@gmail.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/imherrera/composed-di.git",
-    "directory": "packages/instrumentation-otel"
+    "directory": "packages/decorators"
   },
   "files": [
     "dist/src",
@@ -39,15 +37,9 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@composed-di/core": "workspace:*",
-    "@composed-di/instrumentation-core": "workspace:*",
-    "@opentelemetry/api": "1.9.1",
-    "@opentelemetry/context-async-hooks": "^2.9.0",
-    "@opentelemetry/sdk-trace-base": "^2.9.0"
+    "@composed-di/core": "workspace:*"
   },
   "peerDependencies": {
-    "@composed-di/core": "^0.14.0",
-    "@composed-di/instrumentation-core": "^0.14.0",
-    "@opentelemetry/api": "^1.9.1"
+    "@composed-di/core": "^0.14.0"
   }
 }

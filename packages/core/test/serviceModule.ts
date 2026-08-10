@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ServiceModule } from '../src/serviceModule'
-import { ServiceKey, SelectorKey } from '../src/serviceKey'
-import { ServiceFactory } from '../src/serviceFactory'
-import { NoSuchFactoryError, ModuleValidationError } from '../src/errors'
+import { ServiceModule } from '../src/serviceModule.js'
+import { ServiceKey, SelectorKey } from '../src/serviceKey.js'
+import { ServiceFactory } from '../src/serviceFactory.js'
+import { NoSuchFactoryError, ModuleValidationError } from '../src/errors.js'
 
 function captureValidationError(create: () => ServiceModule) {
   try {
@@ -281,6 +281,30 @@ describe('ServiceModule', () => {
       expect(counter).toBe(2)
     })
 
+    it('should not apply the warm-singleton fast path to one-shot factories', async () => {
+      const key1 = new ServiceKey<string>('Key1')
+      const key2 = new ServiceKey<{ id: number }>('Key2')
+
+      const factory1 = ServiceFactory.oneShot({
+        provides: key1,
+        initialize: () => 'value1',
+      })
+
+      let counter = 0
+      const factory2 = ServiceFactory.oneShot({
+        provides: key2,
+        dependsOn: [key1],
+        initialize: () => ({ id: ++counter }),
+      })
+
+      const module = ServiceModule.from([factory1, factory2])
+
+      // Each request must survive the fast-path check (one-shot factories
+      // have no getInstance) and produce a fresh instance
+      expect((await module.get(key2)).id).toBe(1)
+      expect((await module.get(key2)).id).toBe(2)
+    })
+
     it('should resolve SelectorKey', async () => {
       const key1 = new ServiceKey<string>('Key1')
       const key2 = new ServiceKey<string>('Key2')
@@ -376,9 +400,9 @@ describe('ServiceModule', () => {
 
       expect(error.message).toEqual(
         'Circular dependency detected:\n' +
-          '    UserService factory depends on Database\n' +
-          '    Database factory depends on Config\n' +
-          '    Config factory depends on Database (circular)',
+          '    "UserService" factory depends on "Database"\n' +
+          '    "Database" factory depends on "Config"\n' +
+          '    "Config" factory depends on "Database" <- circular',
       )
     })
 
@@ -424,12 +448,12 @@ describe('ServiceModule', () => {
       )
 
       expect(error.message).toEqual(
-        'UserService factory will fail to initialize because it depends on service keys that no factory provides:\n' +
-          '    Database\n' +
-          '    FileLogger\n' +
+        'The "UserService" factory will fail to initialize because it depends on service keys that no factory provides:\n' +
+          '    "Database"\n' +
+          '    "FileLogger"\n' +
           '\n' +
-          'AuthService factory will fail to initialize because it depends on service keys that no factory provides:\n' +
-          '    AuthConfig',
+          'The "AuthService" factory will fail to initialize because it depends on service keys that no factory provides:\n' +
+          '    "AuthConfig"',
       )
     })
   })
@@ -497,6 +521,51 @@ describe('ServiceModule', () => {
 
       expect(dispose1).toHaveBeenCalled()
       expect(dispose2).toHaveBeenCalled()
+    })
+
+    it('should dispose factories in reverse-topological order', async () => {
+      const configKey = new ServiceKey<string>('Config')
+      const databaseKey = new ServiceKey<string>('Database')
+      const appKey = new ServiceKey<string>('App')
+      const disposalOrder: string[] = []
+
+      const configFactory = ServiceFactory.singleton({
+        provides: configKey,
+        initialize: () => 'config',
+        dispose: () => {
+          disposalOrder.push('Config')
+        },
+      })
+      const databaseFactory = ServiceFactory.singleton({
+        provides: databaseKey,
+        dependsOn: [configKey],
+        initialize: () => 'database',
+        dispose: () => {
+          disposalOrder.push('Database')
+        },
+      })
+      const appFactory = ServiceFactory.singleton({
+        provides: appKey,
+        dependsOn: [databaseKey],
+        initialize: () => 'app',
+        dispose: () => {
+          disposalOrder.push('App')
+        },
+      })
+
+      // Registration order matches topological order, the opposite of the
+      // order in which disposal must happen
+      const module = ServiceModule.from([
+        configFactory,
+        databaseFactory,
+        appFactory,
+      ])
+      await module.get(appKey)
+
+      module.dispose()
+
+      // Dependents must be disposed before their dependencies
+      expect(disposalOrder).toEqual(['App', 'Database', 'Config'])
     })
 
     it('should not fail if factory has no dispose method', () => {

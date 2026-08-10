@@ -1,2 +1,2 @@
-export * from './attributes'
-export * from './otelServiceInstrumentation'
+export * from './attributes.js'
+export * from './otelServiceInstrumentation.js'

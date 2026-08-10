@@ -1,5 +1,6 @@
-import { ServiceKey, SelectorKey } from './serviceKey'
-import type { ServiceModule } from './serviceModule'
+import { NoSuchKeyError } from './errors.js'
+import { ServiceKey } from './serviceKey.js'
+import type { ServiceModule } from './serviceModule.js'
 
 /**
  * A runtime selector that provides access to multiple service implementations of the same type.
@@ -8,43 +9,20 @@ import type { ServiceModule } from './serviceModule'
  * `SelectorKey<T>`. It allows the dependent service to dynamically choose which
  * implementation to use at runtime, rather than being bound to a single implementation
  * at configuration time.
- *
- * @template T The common type shared by all services accessible through this selector.
- *
- * @example
- * ```ts
- * // In a factory that depends on SelectorKey
- * const appFactory = ServiceFactory.singleton({
- *   provides: AppKey,
- *   dependsOn: [LoggerSelectorKey] as const,
- *   initialize: (loggerSelector: Selector<Logger>) => {
- *     return {
- *       logWithConsole: async () => {
- *         const logger = await loggerSelector.get(ConsoleLoggerKey);
- *         logger.log('Using console logger');
- *       },
- *       logWithFile: async () => {
- *         const logger = await loggerSelector.get(FileLoggerKey);
- *         logger.log('Using file logger');
- *       },
- *     };
- *   },
- * });
- * ```
  */
 export class Selector<T> {
   /**
    * Creates a new Selector instance.
    *
-   * Note: Selector instances are created automatically by ServiceModule
-   * when resolving dependencies. You typically don't need to create them manually.
+   * Selector instances are created automatically by ServiceModule when
+   * resolving dependencies. You typically don't need to create them manually.
    *
-   * @param key The SelectorKey that defines which services can be selected.
    * @param module The ServiceModule used to resolve the selected service.
+   * @param keys The ServiceKeys that can be selected through this selector.
    */
   constructor(
     private readonly module: ServiceModule,
-    private readonly key: SelectorKey<T>,
+    public readonly keys: readonly ServiceKey<T>[],
   ) {}
 
   /**
@@ -55,19 +33,23 @@ export class Selector<T> {
    *
    * @param key The ServiceKey identifying which service implementation to retrieve.
    * @returns A Promise that resolves to the requested service instance.
+   * @throws {NoSuchKeyError} If the key is not among this selector's keys.
    *
    * @example
    * ```ts
-   * const logger = await loggerSelector.get(ConsoleLoggerKey);
-   * logger.log('Hello!');
+   * // `loggers: Selector<Logger>` is injected into factories that declare
+   * // `dependsOn: [loggerSelectorKey]`
+   * const key = loggers.keys.find((k) => k.name === 'FileLogger')!
+   * const logger = await loggers.get(key)
+   * logger.log('Resolved by name at runtime')
    * ```
    */
   get(key: ServiceKey<T>): Promise<T> {
-    if (this.key.values.some((k) => k === key)) {
+    if (this.keys.some((k) => k === key)) {
       return this.module.get(key)
     } else {
-      throw new Error(
-        `ServiceKey(name=${key.name}) is not listed on SelectorKey(name=${this.key.name})`,
+      throw new NoSuchKeyError(
+        `"${key.name}" is not among this selector's keys, which are ${this.keys.map((k) => `"${k.name}"`).join(', ')}`,
       )
     }
   }

@@ -5,31 +5,31 @@ import {
   ServiceKey,
   ServiceModule,
 } from '@composed-di/core'
-import {
+import type {
   InstrumentOptions,
   LifecycleContext,
   MethodCallContext,
   OperationSpan,
-} from './types'
+} from './types.js'
 
 /**
- * Base class for observing services: extend it and implement the hooks to
- * be notified of lifecycle operations — a factory initializing or
- * disposing a service, a module resolving or disposing — and of method
- * calls on service instances.
+ * Base class for observing services. Extend it and implement the hooks to
+ * be notified of lifecycle operations (a factory initializing or disposing
+ * a service, a module resolving or disposing) and of method calls on
+ * service instances.
  *
  * @remarks
  * A subclass never touches services directly. Passing factories through
  * {@link ServiceInstrumentation.install | install} returns wrapped
- * factories that report to this instrumentation; compose those into the
+ * factories that report to this instrumentation. Compose those into the
  * ServiceModule in place of the originals.
  *
  * Each hook is called when its operation starts and returns an
  * {@link OperationSpan}, whose `end` is invoked once when that operation
  * finishes.
  *
- * Instrumentation is strictly observational: subclasses see every
- * operation but must never alter it — see the OperationSpan contract.
+ * Instrumentation is strictly observational. Subclasses see every
+ * operation but must never alter it. See the OperationSpan contract.
  */
 export abstract class ServiceInstrumentation {
   /**
@@ -40,9 +40,9 @@ export abstract class ServiceInstrumentation {
   private readonly instrumentedFactories = new WeakSet<ServiceFactory>()
 
   /**
-   * Called when a lifecycle operation starts: a factory initializing or
-   * disposing its service, or a module resolving (`get` / `getOrNull`)
-   * or disposing.
+   * Called when a lifecycle operation starts. Lifecycle operations are a
+   * factory initializing or disposing its service, and a module resolving
+   * (`get` / `getOrNull`) or disposing.
    *
    * @param context - Which operation started and, except for module
    * disposal, the service it concerns.
@@ -55,8 +55,8 @@ export abstract class ServiceInstrumentation {
    *
    * @param context - Identifies the service and method, and carries the
    * call's arguments when argument capture is enabled.
-   * @returns The span to notify when the call finishes — for methods that
-   * return a promise, when that promise settles.
+   * @returns The span to notify when the call finishes. For methods that
+   * return a promise, that is when the promise settles.
    */
   abstract methodCallSpan(context: MethodCallContext): OperationSpan
 
@@ -73,7 +73,7 @@ export abstract class ServiceInstrumentation {
    * @param options - What runtime values (arguments, results) are
    * captured and how they are redacted before reaching this
    * instrumentation (nothing is captured by default).
-   * @returns The instrumented factory to compose in place of `factory` —
+   * @returns The instrumented factory to compose in place of `factory`,
    * or `factory` itself when it is opted out or already instrumented.
    */
   install(factory: ServiceFactory, options?: InstrumentOptions): ServiceFactory
@@ -93,11 +93,11 @@ export abstract class ServiceInstrumentation {
    * @returns A new array of instrumented factories.
    */
   install(
-    factories: ServiceFactory[],
+    factories: ReadonlyArray<ServiceFactory>,
     options?: InstrumentOptions,
   ): ServiceFactory[]
   /**
-   * Creates and returns a new instrumented module: its factories are
+   * Creates and returns a new instrumented module. Its factories are
    * instrumented as by the array overload, and the module's own `get`,
    * `getOrNull` and `dispose` are reported as `module_get` /
    * `module_get_or_null` / `module_dispose` lifecycle operations.
@@ -116,7 +116,7 @@ export abstract class ServiceInstrumentation {
    */
   install(module: ServiceModule, options?: InstrumentOptions): ServiceModule
   install(
-    input: ServiceModule | ServiceFactory | ServiceFactory[],
+    input: ServiceModule | ServiceFactory | ReadonlyArray<ServiceFactory>,
     options: InstrumentOptions = {},
   ): ServiceModule | ServiceFactory | ServiceFactory[] {
     if (input instanceof ServiceModule) {
@@ -124,7 +124,9 @@ export abstract class ServiceInstrumentation {
       return instrumentServiceModule(this, module)
     }
 
-    if (Array.isArray(input)) {
+    const isFactories = (arg: any): arg is ReadonlyArray<ServiceFactory> =>
+      Array.isArray(arg)
+    if (isFactories(input)) {
       return input.map((factory) => this.install(factory, options))
     }
 
@@ -143,10 +145,10 @@ export abstract class ServiceInstrumentation {
 }
 
 /**
- * The capture policy of one instrumented factory: resolves what to report
+ * The capture policy of one instrumented factory. Resolves what to report
  * for a call's arguments and result, combining the capture flags with the
  * factory's redaction rule (if any). This is the single place that
- * decides visibility — instrumentations record what they receive and
+ * decides visibility. Instrumentations record what they receive and
  * nothing else.
  */
 interface CapturePolicy {
@@ -160,9 +162,9 @@ interface CapturePolicy {
   ): readonly unknown[] | undefined
 
   /**
-   * The result to deliver with a method call's success outcome: the
+   * The result to deliver with a method call's success outcome. The
    * (possibly redacted) value, wrapped so spreading it into the outcome
-   * preserves the value-presence contract — a captured `undefined` return
+   * preserves the value-presence contract. A captured `undefined` return
    * yields `{ value: undefined }` (key present), while capture off yields
    * undefined (no key at all).
    */
@@ -245,7 +247,7 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
 
   // An unknown implementation gives no way to tell a real initialization
   // from a memoized cache hit, so its lifetime semantics cannot be
-  // preserved — refuse loudly rather than degrade silently.
+  // preserved. Refuse loudly rather than degrade silently.
   throw new TypeError(
     `Cannot instrument factory ${delegate.constructor.name} for ${key.name}. ` +
       'Factories must be created with ServiceFactory.singleton() or ' +
@@ -255,12 +257,12 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
 
 /**
  * Wraps a module so its public entry points are reported to the
- * instrumentation: `get` and `getOrNull` as `module_get` /
+ * instrumentation. `get` and `getOrNull` are reported as `module_get` /
  * `module_get_or_null` spans around the whole resolution, dependencies
  * included, and `dispose` as a `module_dispose` span around the teardown
- * of every factory. A `getOrNull` miss ends its span successfully:
- * returning null is that operation working as intended, not a failure.
- * Everything else — including the factories array — is served by the
+ * of every factory. A `getOrNull` miss ends its span successfully.
+ * Returning null is that operation working as intended, not a failure.
+ * Everything else, including the factories array, is served by the
  * module untouched.
  */
 function instrumentServiceModule(
