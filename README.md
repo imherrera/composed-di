@@ -302,7 +302,7 @@ const checkoutFactory = ServiceFactory.singleton({
 
 ### Class-based registration
 
-Everything above is plain factories, and core stays that way. When services are already classes, [`@composed-di/decorators`](packages/decorators) moves the same three decisions — lifetime, dependencies, teardown — onto the class declaration, and `factoriesOf` turns the result back into ordinary core factories:
+Everything above is plain factories, and core stays that way. When services are already classes, [`@composed-di/decorators`](packages/decorators) moves the same three decisions — lifetime, dependencies, teardown — onto the class declaration, and `factoriesOf` turns the result back into ordinary core factories. Here is the [Quick start](#quick-start) again, keys and factories gone:
 
 ```ts
 import { ServiceModule } from '@composed-di/core'
@@ -315,35 +315,109 @@ import {
 } from '@composed-di/decorators'
 
 @Singleton
-class EspressoMachine {
-  pullShot(): void {}
+class Config {
+  readonly dbUrl = process.env.DB_URL!
 }
 
 @Singleton
-class Barista {
+class Database {
   // A decorated class is its own token — no ServiceKey needed.
-  @Inject(EspressoMachine)
-  private readonly machine!: EspressoMachine
+  @Inject(Config)
+  private readonly config!: Config
 
-  serveEspresso() {
-    this.machine.pullShot()
+  // Injected fields are resolved before the rest of construction runs.
+  private readonly client = createClient(this.config.dbUrl)
+
+  query(sql: string): Promise<unknown[]> {
+    return this.client.query(sql)
   }
 
   @OnDispose
-  clockOut() {}
+  close() {
+    this.client.close()
+  }
 }
 
-const cafe = ServiceModule.from([...factoriesOf(Barista, EspressoMachine)])
+const module = ServiceModule.from([...factoriesOf(Config, Database)])
 
-const barista = await cafe.get(keyOf(Barista))
-barista.serveEspresso()
+// Config is created first — lazily, exactly once, as before.
+const db = await module.get(keyOf(Database))
 
-cafe.dispose() // clockOut() runs
+module.dispose() // close() runs
 ```
 
 Decorated classes take zero constructor arguments — dependencies are fields, and a required parameter is a compile error on the decorator itself. Registration stays a composition decision: decorating a class marks it, the module still has to provide it.
 
-This is stage-3 decorators, so it needs TypeScript ≥ 5.0 with `experimentalDecorators` **off** — legacy mode changes the runtime calling convention and breaks at runtime rather than at compile time. See the [package README](packages/decorators/README.md) for `@OneShot`, `@Select`, and the rest of the API.
+`@OneShot` is the other lifetime: a fresh instance on every request, owned by the requester and never disposed by the container, so `@OnDispose` is `@Singleton`-only. Here is the request-id [factory](#factories) as a class:
+
+```ts
+@OneShot
+class RequestId {
+  readonly value = crypto.randomUUID() // new value per request
+}
+```
+
+The capture caveat applies unchanged — an `@Inject` field on a singleton would hold one `RequestId` for the singleton's entire lifetime. Per-call values arrive as method arguments, or through `@Select`: [runtime selection](#runtime-selection) as a field. The selector resolves through the module on every call, so singleton members stay shared and one-shot members come fresh, which makes it the safe way for a singleton to reach one-shots. With `StripeGateway` and `PaypalGateway` decorated, each class is its own token, and checkout reads as it did with keys:
+
+```ts
+@Singleton
+class CheckoutService {
+  @Select<PaymentGateway>(StripeGateway, PaypalGateway)
+  private readonly payments!: Selector<PaymentGateway>
+
+  async pay(order: Order) {
+    const gateway = await this.payments.get(
+      order.method === 'paypal' ? keyOf(PaypalGateway) : keyOf(StripeGateway),
+    )
+    return gateway.charge(order)
+  }
+}
+```
+
+The tiers mix freely, and the [`@myapp/data` package from Keys](#keys) shows where that matters: the `pg` `Pool` is third-party code, impossible to decorate, so it keeps its hand-written key and factory, while the repositories become decorated classes (replacing their exported keys as the package's surface). `@Inject` accepts a `ServiceKey` as readily as a class, with the key's service type checked against the field's type at compile time, and `factoriesOf` spreads next to explicit factories:
+
+```ts
+// @myapp/data — the Keys example, repositories decorated.
+import type { Pool } from 'pg'
+
+export const connectionKey = new ServiceKey<Pool>('Connection')
+
+@Singleton
+export class UserRepository {
+  @Inject(connectionKey)
+  private readonly pool!: Pool
+}
+
+@Singleton
+export class InvoiceRepository {
+  @Inject(connectionKey)
+  private readonly pool!: Pool
+}
+
+export const dataModule = ServiceModule.from([
+  ...factoriesOf(UserRepository, InvoiceRepository),
+  ServiceFactory.singleton({
+    provides: connectionKey,
+    initialize: () => new Pool({ connectionString: process.env.DB_URL }),
+    dispose: (pool) => pool.end(),
+  }),
+])
+```
+
+Crossing the other way, `keyOf(Class)` returns the `ServiceKey` the lifecycle decorator minted, for anything core-shaped: `module.get` above, a hand-written factory's `dependsOn`, or the fake-database override from [Modules](#modules) — substitution is last-wins at the key, exactly as for explicit factories. (`selectorOf(StripeGateway, PaypalGateway)` is the same bridge for `@Select`'s grouping.)
+
+```ts
+const testModule = ServiceModule.from([
+  module,
+  // Replace the database at its own key.
+  ServiceFactory.singleton({
+    provides: keyOf(Database),
+    initialize: () => fakeDatabase,
+  }),
+])
+```
+
+This is stage-3 decorators, so it needs TypeScript ≥ 5.0 with `experimentalDecorators` **off** — legacy mode changes the runtime calling convention and breaks at runtime rather than at compile time. See the [package README](packages/decorators/README.md) for the full API, and the example package for one app written both ways: [`cafeShop.ts`](packages/example/src/cafeShop.ts) with decorators, [`cafeShopCore.ts`](packages/example/src/cafeShopCore.ts) with factories alone.
 
 ## Observability
 
