@@ -1,5 +1,5 @@
 /**
- * Error thrown by `ServiceModule.from` when the given factories cannot form a valid
+ * Error thrown by {@link ServiceModule.from} when the given factories cannot form a valid
  * module. Either the dependency graph contains a cycle, or a factory depends on a
  * key that no factory in the module provides.
  *
@@ -11,10 +11,10 @@ export class ModuleValidationError extends Error {
 }
 
 /**
- * Error thrown by `ServiceModule.get` when no factory in the module provides the
+ * Error thrown by {@link ServiceModule.get} when no factory in the module provides the
  * requested key.
  *
- * Catch this to treat a service as optional, or use `ServiceModule.getOrNull`,
+ * Catch this to treat a service as optional, or use {@link ServiceModule.getOrNull},
  * which catches it for you and returns `null` instead.
  */
 export class NoSuchFactoryError extends Error {
@@ -22,39 +22,27 @@ export class NoSuchFactoryError extends Error {
 }
 
 /**
- * Error thrown by `Selector.get` when the requested key is not among the keys
- * grouped by the selector's `SelectorKey`.
+ * Error thrown by {@link Selector.get} when the requested key is not among the keys
+ * grouped by the selector's {@link SelectorKey}.
  *
- * Always indicates a bug in the caller. `Selector.keys` lists what can be requested.
+ * Always indicates a bug in the caller. {@link Selector.keys} lists what can be requested.
  */
 export class NoSuchKeyError extends Error {
   override name = 'NoSuchKeyError'
 }
 
 /**
- * Error thrown by a singleton factory when `dispose()` is called while the instance
- * is still being initialized. The pending `initialize()` promise rejects with this
- * error, and the abandoned instance is passed to the factory's `dispose` callback so
+ * Error thrown by a factory when {@link ServiceModule.dispose} is called while the instance
+ * is still being initialized. The pending {@link ServiceFactory.initialize} promise rejects with this
+ * error, and the abandoned instance is passed to the factory's {@link ServiceFactory.dispose} callback so
  * nothing leaks.
  *
  * This is a race, not necessarily a bug. Disposing a module during shutdown can
- * legitimately interrupt an in-flight `get()`. Callers may treat it as a cancellation
- * signal. A later `initialize()` starts fresh.
+ * legitimately interrupt an in-flight {@link ServiceModule.get}. Callers may treat it as a cancellation
+ * signal.
  */
-export class SingletonDisposedDuringInitError extends Error {
-  override name = 'SingletonDisposedDuringInitError'
-}
-
-/**
- * Error thrown by a singleton factory when the `initialize` or `dispose` callback
- * supplied to `ServiceFactory.singleton` synchronously re-enters the factory by
- * calling its `initialize()` or `dispose()` method.
- *
- * Re-entrant calls would corrupt the factory's in-flight state, so they are rejected
- * outright.
- */
-export class FactoryReentrancyError extends Error {
-  override name = 'FactoryReentrancyError'
+export class InitializationAbortedError extends Error {
+  override name = 'InitializationAbortedError'
 }
 
 /**
@@ -88,3 +76,19 @@ export const ServiceFactoryNotFoundError = NoSuchFactoryError
  * @deprecated Renamed to {@link NoSuchFactoryError}.
  * */
 export type ServiceFactoryNotFoundError = NoSuchFactoryError
+
+/**
+ * Renamed to {@link InitializationAbortedError}. This alias is kept for backwards compatibility
+ * and will be removed in a future release.
+ *
+ * @deprecated Renamed to {@link InitializationAbortedError}.
+ * */
+export const SingletonDisposedDuringInitError = InitializationAbortedError
+
+/**
+ * Renamed to {@link InitializationAbortedError}. This alias is kept for backwards compatibility
+ * and will be removed in a future release.
+ *
+ * @deprecated Renamed to {@link InitializationAbortedError}.
+ * */
+export type SingletonDisposedDuringInitError = InitializationAbortedError

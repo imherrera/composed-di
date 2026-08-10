@@ -3,7 +3,7 @@ import {
   ServiceFactory,
   ServiceKey,
   ServiceModule,
-  SingletonDisposedDuringInitError,
+  InitializationAbortedError,
 } from '@composed-di/core'
 import {
   type LifecycleContext,
@@ -405,7 +405,7 @@ describe('install() initialization outcomes', () => {
     module.dispose()
 
     resolveInit({ x: 1 })
-    await expect(pending).rejects.toThrow(SingletonDisposedDuringInitError)
+    await expect(pending).rejects.toThrow(InitializationAbortedError)
 
     // The initialization itself succeeded, and the orphaned instance was
     // immediately torn down. Both operations are reported.

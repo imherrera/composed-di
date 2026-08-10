@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { ServiceKey } from '../src/serviceKey.js'
 import { ServiceFactory } from '../src/serviceFactory.js'
-import {
-  SingletonDisposedDuringInitError,
-  FactoryReentrancyError,
-} from '../src/errors.js'
+import { InitializationAbortedError } from '../src/errors.js'
 
 /**
  * Test-controlled promise. Every interleaving in this suite is driven
@@ -227,7 +224,9 @@ describe('SingletonServiceFactory', () => {
         },
       })
 
-      expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
+      expect(() => factory.initialize()).toThrow(
+        'cannot be called re-entrantly',
+      )
       expect(attempts).toBe(1)
 
       // Nothing cached, guard disengaged. The retry contract holds.
@@ -235,7 +234,7 @@ describe('SingletonServiceFactory', () => {
       expect(attempts).toBe(2)
     })
 
-    it('throws FactoryReentrancyError when onInitialize calls initialize()', () => {
+    it('throws Error when onInitialize calls initialize()', () => {
       const key = new ServiceKey<string>('Key')
       const factory = ServiceFactory.singleton({
         provides: key,
@@ -245,10 +244,12 @@ describe('SingletonServiceFactory', () => {
         },
       })
 
-      expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
+      expect(() => factory.initialize()).toThrow(
+        'cannot be called re-entrantly',
+      )
     })
 
-    it('throws FactoryReentrancyError when onInitialize calls dispose()', () => {
+    it('throws Error when onInitialize calls dispose()', () => {
       const key = new ServiceKey<string>('Key')
       const factory = ServiceFactory.singleton({
         provides: key,
@@ -258,7 +259,9 @@ describe('SingletonServiceFactory', () => {
         },
       })
 
-      expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
+      expect(() => factory.initialize()).toThrow(
+        'cannot be called re-entrantly',
+      )
     })
 
     it('does not leave the guard engaged after a re-entrant call is rejected', async () => {
@@ -266,7 +269,9 @@ describe('SingletonServiceFactory', () => {
       const factory = ServiceFactory.singleton({
         provides: key,
         initialize: () => {
-          expect(() => factory.initialize()).toThrow(FactoryReentrancyError)
+          expect(() => factory.initialize()).toThrow(
+            'cannot be called re-entrantly',
+          )
           return 'value'
         },
       })
@@ -288,7 +293,7 @@ describe('SingletonServiceFactory', () => {
     // un-skips in the Node suite. The assertion below is the correct tier-2
     // semantics. The reentry happens BEFORE the init promise settles, so a
     // settled-marker ALS guard would still flag it as inside-the-hook.
-    it.skip('throws FactoryReentrancyError when onInitialize calls initialize() after an await', async () => {
+    it.skip('throws Error when onInitialize calls initialize() after an await', async () => {
       const key = new ServiceKey<string>('Key')
       let caught: unknown
       const factory = ServiceFactory.singleton({
@@ -305,7 +310,7 @@ describe('SingletonServiceFactory', () => {
       })
 
       expect(await factory.initialize()).toBe('value')
-      expect(caught).toBeInstanceOf(FactoryReentrancyError)
+      expect(caught).toBeInstanceOf(Error)
     })
   })
 
@@ -377,7 +382,7 @@ describe('SingletonServiceFactory', () => {
       expect(calls).toBe(2)
     })
 
-    it('tears down the orphan instance and rejects waiters with SingletonDisposedDuringInitError', async () => {
+    it('tears down the orphan instance and rejects waiters with InitializationAbortedError', async () => {
       const key = new ServiceKey<{ id: number }>('Key')
       const d = deferred<{ id: number }>()
       const disposed: Array<{ id: number }> = []
@@ -401,9 +406,7 @@ describe('SingletonServiceFactory', () => {
       const orphan = { id: 1 }
       d.resolve(orphan)
 
-      await expect(inFlight).rejects.toBeInstanceOf(
-        SingletonDisposedDuringInitError,
-      )
+      await expect(inFlight).rejects.toBeInstanceOf(InitializationAbortedError)
       // The late-arriving instance was handed to onDispose, not leaked.
       expect(disposed).toEqual([orphan])
 
@@ -438,7 +441,7 @@ describe('SingletonServiceFactory', () => {
       // A settles AFTER the revival.
       const orphanA = { gen: 0 }
       dA.resolve(orphanA)
-      await expect(pA).rejects.toBeInstanceOf(SingletonDisposedDuringInitError)
+      await expect(pA).rejects.toBeInstanceOf(InitializationAbortedError)
       expect(disposed).toEqual([orphanA])
 
       // If A's cleanup had clobbered the slot, this third caller would start
@@ -498,9 +501,7 @@ describe('SingletonServiceFactory', () => {
       d.resolve('orphan')
 
       // Waiters must see the lifecycle error, not the teardown error.
-      await expect(inFlight).rejects.toBeInstanceOf(
-        SingletonDisposedDuringInitError,
-      )
+      await expect(inFlight).rejects.toBeInstanceOf(InitializationAbortedError)
     })
 
     // Proves state was settled BEFORE onDispose ran, so the illegal inner
@@ -524,7 +525,7 @@ describe('SingletonServiceFactory', () => {
       })
 
       const first = await factory.initialize()
-      expect(() => factory.dispose()).toThrow(FactoryReentrancyError)
+      expect(() => factory.dispose()).toThrow('cannot be called re-entrantly')
 
       const second = await factory.initialize()
       expect(second).not.toBe(first)
@@ -533,7 +534,7 @@ describe('SingletonServiceFactory', () => {
       factory.dispose() // now behaves: plain teardown of the new generation
     })
 
-    it('throws FactoryReentrancyError when onDispose calls initialize()', async () => {
+    it('throws Error when onDispose calls initialize()', async () => {
       const key = new ServiceKey<string>('Key')
       const factory = ServiceFactory.singleton({
         provides: key,
@@ -545,10 +546,10 @@ describe('SingletonServiceFactory', () => {
 
       await factory.initialize()
 
-      expect(() => factory.dispose()).toThrow(FactoryReentrancyError)
+      expect(() => factory.dispose()).toThrow('cannot be called re-entrantly')
     })
 
-    it('throws FactoryReentrancyError when onDispose calls dispose()', async () => {
+    it('throws Error when onDispose calls dispose()', async () => {
       const key = new ServiceKey<string>('Key')
       const factory = ServiceFactory.singleton({
         provides: key,
@@ -560,7 +561,7 @@ describe('SingletonServiceFactory', () => {
 
       await factory.initialize()
 
-      expect(() => factory.dispose()).toThrow(FactoryReentrancyError)
+      expect(() => factory.dispose()).toThrow('cannot be called re-entrantly')
     })
 
     // Replaces a formerly-skipped test that asserted the OPPOSITE semantics.

@@ -1,8 +1,5 @@
 import type { ServiceKey, SelectorKey } from './serviceKey.js'
-import {
-  SingletonDisposedDuringInitError,
-  FactoryReentrancyError,
-} from './errors.js'
+import { InitializationAbortedError } from './errors.js'
 import type { Selector } from './serviceSelector.js'
 
 type DependencyType<T> =
@@ -199,7 +196,7 @@ export class SingletonFactory<
     }
 
     if (this.isRunningHook) {
-      throw new FactoryReentrancyError(
+      throw new Error(
         `SingletonServiceFactory(provides=${this.provides.name}): initialize() cannot be called re-entrantly from onInitialize or onDispose`,
       )
     }
@@ -231,7 +228,7 @@ export class SingletonFactory<
           } finally {
             this.isRunningHook = false
           }
-          throw new SingletonDisposedDuringInitError(
+          throw new InitializationAbortedError(
             `SingletonServiceFactory[provides=${this.provides.name}]: disposed during initialization`,
           )
         }
@@ -252,7 +249,7 @@ export class SingletonFactory<
 
   dispose(): void {
     if (this.isRunningHook) {
-      throw new FactoryReentrancyError(
+      throw new Error(
         `SingletonServiceFactory(provides=${this.provides.name}): dispose() cannot be called re-entrantly from onInitialize or onDispose`,
       )
     }
