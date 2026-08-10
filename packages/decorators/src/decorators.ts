@@ -87,27 +87,25 @@ export function OnDispose<This>(
  * token's service becomes the field's value during construction, before the
  * constructor body runs, so it is already usable there.
  *
- * The token's service type is checked against the field's type at compile
- * time. Tokens are either `ServiceKey`s (required for interface-typed fields,
- * since interfaces erase at runtime) or classes that already carry a
- * lifecycle decorator.
+ * This decorator makes the class constructible only through a module.
+ * Constructing it manually with `new` throws {@link FieldInjectionError}.
  *
- * A class with `@Inject` fields is constructible only through a
- * `ServiceModule`. Constructing it manually with `new` throws
- * {@link FieldInjectionError}. It must also carry `@Singleton` or `@OneShot`,
- * which is what claims the fields recorded here.
- *
- * Each field is its own request. Two fields injecting the same `@OneShot`
+ * Each field is its own request. Two fields injecting the same {@link OneShot}
  * class receive distinct instances, owned by the injecting class. Two fields
- * injecting the same `@Singleton` class are a definition-time error, because
+ * injecting the same {@link Singleton} class are a definition-time error because
  * they could only share one instance.
  *
  * @example
  * ```typescript
  * @Singleton
- * class Car {
- *   @Inject(engineKey)
- *   readonly engine!: Engine
+ * class CafeShop {
+ *   // We can inject a class directly
+ *   @Inject(Barista)
+ *   readonly engine!: Barista
+ *
+ *   // We can use a {@link ServiceKey}
+ *   @Inject(grinderKey)
+ *   readonly barista!: Grinder
  * }
  * ```
  */
