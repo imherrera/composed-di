@@ -1,12 +1,12 @@
 import { ServiceFactory, type ServiceKey } from '@composed-di/core'
-import { FieldInjectionError, MissingLifecycleError } from './errors'
-import { LifecycleRegistry } from './lifecycleRegistry'
-import type { Constructor } from './types'
+import { FieldInjectionError, MissingLifecycleError } from './errors.js'
+import { LifecycleRegistry } from './lifecycleRegistry.js'
+import type { Constructor } from './types.js'
 import {
   runWithFieldStash,
   type FieldInjection,
   type FieldStash,
-} from './metadata'
+} from './metadata.js'
 
 /**
  * Creates a `ServiceFactory` for a class marked with `@Singleton` or

@@ -3,15 +3,15 @@ import {
   DisposeHookError,
   DuplicateLifecycleError,
   FieldInjectionError,
-} from './errors'
+} from './errors.js'
 import {
   classKey,
   type ClassRegistration,
   type DisposeHook,
   type FieldInjection,
   type Lifecycle,
-} from './metadata'
-import type { Constructor } from './types'
+} from './metadata.js'
+import type { Constructor } from './types.js'
 
 /**
  * Owns every class registration made by the lifecycle decorators. Static

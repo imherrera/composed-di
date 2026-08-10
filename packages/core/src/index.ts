@@ -1,9 +1,9 @@
-export { ServiceModule } from './serviceModule'
+export { ServiceModule } from './serviceModule.js'
 export {
   ServiceFactory,
   SingletonFactory,
   OneShotFactory,
-} from './serviceFactory'
-export { ServiceKey, SelectorKey, ServiceSelectorKey } from './serviceKey'
-export { Selector, ServiceSelector } from './serviceSelector'
-export * from './errors'
+} from './serviceFactory.js'
+export { ServiceKey, SelectorKey, ServiceSelectorKey } from './serviceKey.js'
+export { Selector, ServiceSelector } from './serviceSelector.js'
+export * from './errors.js'

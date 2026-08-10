@@ -8,6 +8,7 @@
     "type": "git",
     "url": "git+https://github.com/imherrera/composed-di.git"
   },
+  "type": "module",
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",

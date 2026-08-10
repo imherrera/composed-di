@@ -12,6 +12,8 @@ Looking for OpenTelemetry support? Use [`@composed-di/instrumentation-otel`](../
 npm install @composed-di/instrumentation-core
 ```
 
+This package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c). It cannot be `require()`d from CommonJS on Node.js < 22.
+
 ## How it works
 
 `ServiceInstrumentation.install()` wraps factories (or a whole module) and returns instrumented replacements — the originals are never mutated. Compose the wrapped versions instead:

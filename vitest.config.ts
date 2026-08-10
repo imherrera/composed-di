@@ -1,5 +1,10 @@
-import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
+
+const sourceEntry = (packageName: string) =>
+  fileURLToPath(
+    new URL(`packages/${packageName}/src/index.ts`, import.meta.url),
+  )
 
 export default defineConfig({
   test: {
@@ -10,19 +15,10 @@ export default defineConfig({
     // Resolve workspace packages to their sources so tests never depend
     // on build output.
     alias: {
-      '@composed-di/core': resolve(__dirname, 'packages/core/src/index.ts'),
-      '@composed-di/decorators': resolve(
-        __dirname,
-        'packages/decorators/src/index.ts',
-      ),
-      '@composed-di/instrumentation-core': resolve(
-        __dirname,
-        'packages/instrumentation-core/src/index.ts',
-      ),
-      '@composed-di/instrumentation-otel': resolve(
-        __dirname,
-        'packages/instrumentation-otel/src/index.ts',
-      ),
+      '@composed-di/core': sourceEntry('core'),
+      '@composed-di/decorators': sourceEntry('decorators'),
+      '@composed-di/instrumentation-core': sourceEntry('instrumentation-core'),
+      '@composed-di/instrumentation-otel': sourceEntry('instrumentation-otel'),
     },
   },
 })

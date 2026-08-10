@@ -1,9 +1,9 @@
 import { SelectorKey, ServiceKey, type Selector } from '@composed-di/core'
-import { keyOf } from './keyOf'
-import { LifecycleRegistry } from './lifecycleRegistry'
-import type { Constructor, ServiceToken } from './types'
-import { DisposeHookError, FieldInjectionError } from './errors'
-import { activeFieldStash, type FieldInjection } from './metadata'
+import { keyOf } from './keyOf.js'
+import { LifecycleRegistry } from './lifecycleRegistry.js'
+import type { Constructor, ServiceToken } from './types.js'
+import { DisposeHookError, FieldInjectionError } from './errors.js'
+import { activeFieldStash, type FieldInjection } from './metadata.js'
 
 /**
  * Declares a class as a **singleton** service. Once registered with

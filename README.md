@@ -39,6 +39,8 @@ npm install @composed-di/decorators
 npm install @composed-di/instrumentation-otel @opentelemetry/api
 ```
 
+Every package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c). They cannot be `require()`d from CommonJS on Node.js < 22.
+
 ### Quick start
 
 ```ts

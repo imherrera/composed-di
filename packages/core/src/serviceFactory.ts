@@ -1,9 +1,9 @@
-import type { ServiceKey, SelectorKey } from './serviceKey'
+import type { ServiceKey, SelectorKey } from './serviceKey.js'
 import {
   SingletonDisposedDuringInitError,
   FactoryReentrancyError,
-} from './errors'
-import type { Selector } from './serviceSelector'
+} from './errors.js'
+import type { Selector } from './serviceSelector.js'
 
 type DependencyType<T> =
   T extends SelectorKey<infer U>

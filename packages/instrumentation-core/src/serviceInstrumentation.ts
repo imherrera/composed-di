@@ -10,7 +10,7 @@ import {
   LifecycleContext,
   MethodCallContext,
   OperationSpan,
-} from './types'
+} from './types.js'
 
 /**
  * Base class for observing services. Extend it and implement the hooks to

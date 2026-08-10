@@ -1,6 +1,6 @@
 import { SelectorKey } from '@composed-di/core'
-import { keyOf } from './keyOf'
-import type { Constructor } from './types'
+import { keyOf } from './keyOf.js'
+import type { Constructor } from './types.js'
 
 /**
  * Creates a `SelectorKey` grouping the keys of the given decorated classes,

@@ -19,14 +19,12 @@
     "dist",
     "src"
   ],
-  "type": "commonjs",
+  "type": "module",
   "sideEffects": false,
-  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
       "default": "./dist/index.js"
     }
   },
@@ -42,6 +40,6 @@
     "@composed-di/core": "workspace:*"
   },
   "peerDependencies": {
-    "@composed-di/core": "^0.13.3"
+    "@composed-di/core": "^0.14.0"
   }
 }

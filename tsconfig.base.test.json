@@ -2,8 +2,6 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "module": "preserve",
-    "moduleResolution": "bundler",
     "types": ["node"]
   }
 }

@@ -11,7 +11,7 @@ import {
   OperationOutcome,
   OperationSpan,
   ServiceInstrumentation,
-} from '../src'
+} from '../src/index.js'
 
 /**
  * Records every event as `<service>.<operation>:<phase>` so tests can

@@ -8,7 +8,7 @@ import {
   MethodCallContext,
   ServiceInstrumentation,
   ServiceLifecycleEvent,
-} from '../src'
+} from '../src/index.js'
 
 // Deliberately not derived via Parameters<install>. On an overloaded method,
 // Parameters resolves to the last overload (ServiceModule), while these

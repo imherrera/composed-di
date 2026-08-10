@@ -1,7 +1,7 @@
-import { type ServiceKey, SelectorKey } from './serviceKey'
-import { type ServiceFactory } from './serviceFactory'
-import { Selector } from './serviceSelector'
-import { NoSuchFactoryError, ModuleValidationError } from './errors'
+import { type ServiceKey, SelectorKey } from './serviceKey.js'
+import { type ServiceFactory } from './serviceFactory.js'
+import { Selector } from './serviceSelector.js'
+import { NoSuchFactoryError, ModuleValidationError } from './errors.js'
 
 /**
  * ServiceModule is a container for service factories and manages dependency resolution.

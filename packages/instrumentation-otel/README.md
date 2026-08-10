@@ -10,6 +10,8 @@
 npm install @composed-di/instrumentation-otel @opentelemetry/api
 ```
 
+This package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c). It cannot be `require()`d from CommonJS on Node.js < 22.
+
 `@opentelemetry/api` (^1.9.0) is a peer dependency. Spans are created through the global tracer provider — the one `NodeSDK` (or `@opentelemetry/auto-instrumentations-node`) registers on startup — so no wiring is needed beyond having an OTEL SDK configured.
 
 ## Usage

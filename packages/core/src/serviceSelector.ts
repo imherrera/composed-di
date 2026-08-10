@@ -1,6 +1,6 @@
-import { NoSuchKeyError } from './errors'
-import { ServiceKey } from './serviceKey'
-import type { ServiceModule } from './serviceModule'
+import { NoSuchKeyError } from './errors.js'
+import { ServiceKey } from './serviceKey.js'
+import type { ServiceModule } from './serviceModule.js'
 
 /**
  * A runtime selector that provides access to multiple service implementations of the same type.

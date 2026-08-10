@@ -12,7 +12,7 @@ import {
 } from '@opentelemetry/api'
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
-import { OTELServiceInstrumentation } from '../src/otelServiceInstrumentation'
+import { OTELServiceInstrumentation } from '../src/otelServiceInstrumentation.js'
 
 let exporter: InMemorySpanExporter
 let provider: BasicTracerProvider

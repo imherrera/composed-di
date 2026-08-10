@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceKey } from '../src/serviceKey'
-import { ServiceFactory } from '../src/serviceFactory'
+import { ServiceKey } from '../src/serviceKey.js'
+import { ServiceFactory } from '../src/serviceFactory.js'
 import {
   SingletonDisposedDuringInitError,
   FactoryReentrancyError,
-} from '../src/errors'
+} from '../src/errors.js'
 
 /**
  * Test-controlled promise. Every interleaving in this suite is driven

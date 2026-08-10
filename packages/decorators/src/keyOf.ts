@@ -1,7 +1,7 @@
 import { ServiceKey } from '@composed-di/core'
-import { MissingLifecycleError } from './errors'
-import { classKey } from './metadata'
-import type { Constructor } from './types'
+import { MissingLifecycleError } from './errors.js'
+import { classKey } from './metadata.js'
+import type { Constructor } from './types.js'
 
 /**
  * Returns the `ServiceKey` of a decorated class, for use with

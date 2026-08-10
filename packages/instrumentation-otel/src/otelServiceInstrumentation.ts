@@ -22,14 +22,17 @@ import {
   ATTR_COMPOSED_DI_SERVICE_KEY,
   ATTR_ERROR_TYPE,
   ERROR_TYPE_VALUE_OTHER,
-} from './attributes'
-import * as pkg from '../package.json'
+} from './attributes.js'
+
+// Instrumentation scope reported on every span. Keep in sync with package.json.
+const SCOPE_NAME = '@composed-di/instrumentation-otel'
+const SCOPE_VERSION = '0.14.0'
 
 /**
  * A ServiceInstrumentation that records service events as OTEL spans.
  */
 export class OTELServiceInstrumentation extends ServiceInstrumentation {
-  private readonly tracer: Tracer = trace.getTracer(pkg.name, pkg.version)
+  private readonly tracer: Tracer = trace.getTracer(SCOPE_NAME, SCOPE_VERSION)
 
   lifecycleSpan(context: LifecycleContext): OperationSpan {
     const { className, methodName } = LIFECYCLE_TARGETS[context.event]

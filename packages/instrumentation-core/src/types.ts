@@ -1,5 +1,5 @@
 import { ServiceKey } from '@composed-di/core'
-import { RedactionRule } from './redaction'
+import { RedactionRule } from './redaction.js'
 
 /**
  * A handle representing a single in-flight operation (initialization,

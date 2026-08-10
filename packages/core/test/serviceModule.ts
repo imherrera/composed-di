@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ServiceModule } from '../src/serviceModule'
-import { ServiceKey, SelectorKey } from '../src/serviceKey'
-import { ServiceFactory } from '../src/serviceFactory'
-import { NoSuchFactoryError, ModuleValidationError } from '../src/errors'
+import { ServiceModule } from '../src/serviceModule.js'
+import { ServiceKey, SelectorKey } from '../src/serviceKey.js'
+import { ServiceFactory } from '../src/serviceFactory.js'
+import { NoSuchFactoryError, ModuleValidationError } from '../src/errors.js'
 
 function captureValidationError(create: () => ServiceModule) {
   try {
