@@ -99,11 +99,11 @@ export function OnDispose<This>(
  * ```typescript
  * @Singleton
  * class CafeShop {
- *   // We can inject a class directly
+ *   // We can inject a decorated class directly
  *   @Inject(Barista)
  *   readonly engine!: Barista
  *
- *   // We can use a {@link ServiceKey} instance also.
+ *   // We can inject a key provided by a factory
  *   @Inject(grinderKey)
  *   readonly barista!: Grinder
  * }
