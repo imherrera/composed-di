@@ -23,7 +23,7 @@ export interface FieldInjection {
 }
 
 /**
- * An `@OnDispose` teardown hook. Pairs the method it decorates with an
+ * An `@Dispose` teardown hook. Pairs the method it decorates with an
  * invoker that calls it on an instance.
  */
 export interface DisposeHook {
@@ -35,7 +35,7 @@ export interface DisposeHook {
 /**
  * Everything a lifecycle decorator records about a class. Holds the declared
  * lifecycle, the `ServiceKey` minted for the class, its `@Inject` fields,
- * and its `@OnDispose` hook if it has one.
+ * and its `@Dispose` hook if it has one.
  */
 export interface ClassRegistration {
   readonly lifecycle: Lifecycle

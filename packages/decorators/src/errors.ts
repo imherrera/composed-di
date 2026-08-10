@@ -20,7 +20,7 @@ export class DuplicateLifecycleError extends Error {
 }
 
 /**
- * Error thrown when `@OnDispose` is applied to a static method, applied
+ * Error thrown when `@Dispose` is applied to a static method, applied
  * more than once in the same class, applied to a class whose method
  * metadata does not match (the telltale of a missing lifecycle decorator),
  * or applied to a `@OneShot` class. One-shot instances are owned by their

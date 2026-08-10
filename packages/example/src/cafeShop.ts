@@ -7,7 +7,7 @@ import {
 import {
   Inject,
   OneShot,
-  OnDispose,
+  Dispose,
   Select,
   Singleton,
   keyOf,
@@ -35,7 +35,7 @@ interface Beans {
 
 // One-shot services are built fresh on every request and never cached.
 // Beans are consumed, not kept. The requester owns the instance, so one-shot
-// classes cannot have @OnDispose.
+// classes cannot have @Dispose.
 @OneShot
 class ArabicaBeans implements Beans {
   readonly grams = 18
@@ -73,7 +73,7 @@ class EspressoMachine {
 
   // Teardown, called on the retained instance when the module disposes.
   // Backflush the group head at closing.
-  @OnDispose
+  @Dispose
   backflush() {}
 }
 
@@ -97,7 +97,7 @@ class Barista {
     return new CuppaCoffee(shot)
   }
 
-  @OnDispose
+  @Dispose
   clockOut() {}
 }
 
@@ -125,7 +125,7 @@ class CafeShop {
 const module = ServiceModule.from([
   // Decorated classes register as themselves. Lifecycle comes from the
   // decorators, dependencies from the @Inject fields, and teardown from
-  // @OnDispose. The class declaration says everything.
+  // @Dispose. The class declaration says everything.
   ...factoriesOf(
     CafeShop,
     Barista,

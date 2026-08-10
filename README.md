@@ -309,7 +309,7 @@ import { ServiceModule } from '@composed-di/core'
 import {
   Singleton,
   Inject,
-  OnDispose,
+  Dispose,
   factoriesOf,
   keyOf,
 } from '@composed-di/decorators'
@@ -332,7 +332,7 @@ class Database {
     return this.client.query(sql)
   }
 
-  @OnDispose
+  @Dispose
   close() {
     this.client.close()
   }
@@ -348,7 +348,7 @@ module.dispose() // close() runs
 
 Decorated classes take zero constructor arguments — dependencies are fields, and a required parameter is a compile error on the decorator itself. Registration stays a composition decision: decorating a class marks it, the module still has to provide it.
 
-`@OneShot` is the other lifetime: a fresh instance on every request, owned by the requester and never disposed by the container, so `@OnDispose` is `@Singleton`-only. Here is the request-id [factory](#factories) as a class:
+`@OneShot` is the other lifetime: a fresh instance on every request, owned by the requester and never disposed by the container, so `@Dispose` is `@Singleton`-only. Here is the request-id [factory](#factories) as a class:
 
 ```ts
 @OneShot

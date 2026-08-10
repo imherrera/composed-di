@@ -47,7 +47,7 @@ export class LifecycleRegistry {
   private static readonly pendingFields: FieldInjection[] = []
 
   /**
-   * Hooks recorded by `@OnDispose` decorators that have not yet been claimed
+   * Hooks recorded by `@Dispose` decorators that have not yet been claimed
    * by a lifecycle decorator. Same drain discipline as {@link pendingFields}.
    */
   private static readonly pendingDisposes: DisposeHook[] = []
@@ -64,7 +64,7 @@ export class LifecycleRegistry {
   }
 
   /**
-   * Parks an `@OnDispose` hook until the class's lifecycle decorator claims it.
+   * Parks an `@Dispose` hook until the class's lifecycle decorator claims it.
    */
   static addPendingDispose(hook: DisposeHook): void {
     LifecycleRegistry.pendingDisposes.push(hook)
@@ -101,7 +101,7 @@ export class LifecycleRegistry {
 
   /**
    * Records a class's lifecycle. Claims the pending `@Inject` fields and
-   * `@OnDispose` hook, validates them, mints the class's `ServiceKey`, and
+   * `@Dispose` hook, validates them, mints the class's `ServiceKey`, and
    * stamps it under `classKey`.
    */
   static register(
@@ -148,14 +148,14 @@ export class LifecycleRegistry {
     const disposes = LifecycleRegistry.drainPendingDisposes()
     if (disposes.length > 1) {
       throw new DisposeHookError(
-        `class ${className} has more than one @OnDispose method. A class has exactly one teardown`,
+        `class ${className} has more than one @Dispose method. A class has exactly one teardown`,
       )
     }
     const dispose = disposes[0]
     if (dispose !== undefined) {
       if (lifecycle === 'oneShot') {
         throw new DisposeHookError(
-          `class ${className} is @OneShot. One-shot instances are owned by their requester, so @OnDispose is not allowed`,
+          `class ${className} is @OneShot. One-shot instances are owned by their requester, so @Dispose is not allowed`,
         )
       }
       const method = dispose.isPrivate
@@ -164,7 +164,7 @@ export class LifecycleRegistry {
             ?.value
       if (!dispose.isPrivate && typeof method !== 'function') {
         throw new DisposeHookError(
-          `@OnDispose method ${String(dispose.name)} does not belong to class ${className}. Is a lifecycle decorator missing on another class?`,
+          `@Dispose method ${String(dispose.name)} does not belong to class ${className}. Is a lifecycle decorator missing on another class?`,
         )
       }
     }

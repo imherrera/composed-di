@@ -25,7 +25,7 @@ import { ServiceModule } from '@composed-di/core'
 import {
   Singleton,
   Inject,
-  OnDispose,
+  Dispose,
   factoriesOf,
   keyOf,
 } from '@composed-di/decorators'
@@ -45,7 +45,7 @@ class Barista {
     this.machine.pullShot()
   }
 
-  @OnDispose
+  @Dispose
   clockOut() {}
 }
 
@@ -105,21 +105,21 @@ serveEspresso(beans: Beans): CuppaCoffee {
 }
 ```
 
-### `@OnDispose`
+### `@Dispose`
 
 Marks the class's teardown, called on the retained instance when the module disposes. Exactly one per class, instance methods only, `@Singleton` only — one-shot instances are never disposed by the container.
 
 ```ts
 @Singleton
 class EspressoMachine {
-  @OnDispose
+  @Dispose
   backflush() {} // runs on cafe.dispose()
 }
 ```
 
 ### `factoryOf(Class)` and `factoriesOf(...Classes)`
 
-`factoryOf` turns a decorated class into an ordinary core `ServiceFactory`: the key from the decorator, the lifecycle from the decorator, the dependencies from the `@Inject` fields, the teardown from `@OnDispose`. Registration stays a composition decision — decoration marks the class, the module provides it. `factoriesOf` is the variadic form, for registering several classes in one entry — mixed compositions spread it next to explicit factories:
+`factoryOf` turns a decorated class into an ordinary core `ServiceFactory`: the key from the decorator, the lifecycle from the decorator, the dependencies from the `@Inject` fields, the teardown from `@Dispose`. Registration stays a composition decision — decoration marks the class, the module provides it. `factoriesOf` is the variadic form, for registering several classes in one entry — mixed compositions spread it next to explicit factories:
 
 ```ts
 const cafe = ServiceModule.from([

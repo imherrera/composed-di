@@ -13,7 +13,7 @@ import {
  * `@OneShot`. The factory provides the class's `ServiceKey`, follows
  * the decorator's lifecycle, depends on the class's `@Inject` fields
  * (including those of decorated base classes), and tears down through its
- * `@OnDispose` method if it has one.
+ * `@Dispose` method if it has one.
  *
  * Decorator-registered classes must have zero-arg constructors. Dependencies
  * are declared exclusively through `@Inject` fields.

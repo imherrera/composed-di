@@ -57,20 +57,20 @@ export function OneShot<C extends Constructor<object>>(
  * ```typescript
  * @Singleton
  * class Database {
- *   @OnDispose
+ *   @Dispose
  *   close() {
  *     this.connection.end()
  *   }
  * }
  * ```
  */
-export function OnDispose<This>(
+export function Dispose<This>(
   _method: (this: This) => void,
   context: ClassMethodDecoratorContext<This, (this: This) => void>,
 ): void {
   if (context.static) {
     throw new DisposeHookError(
-      `@OnDispose cannot be applied to the static method ${String(context.name)}`,
+      `@Dispose cannot be applied to the static method ${String(context.name)}`,
     )
   }
   LifecycleRegistry.addPendingDispose({

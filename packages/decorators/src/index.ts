@@ -1,4 +1,4 @@
-export { Singleton, OneShot, Inject, Select, OnDispose } from './decorators.js'
+export { Singleton, OneShot, Inject, Select, Dispose } from './decorators.js'
 export { factoryOf, factoriesOf } from './factory.js'
 export { keyOf } from './keyOf.js'
 export { selectorOf } from './selectorOf.js'
