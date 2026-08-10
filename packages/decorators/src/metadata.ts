@@ -41,7 +41,7 @@ export interface ClassRegistration {
   readonly lifecycle: Lifecycle
   readonly key: ServiceKey<unknown>
   readonly fields: readonly FieldInjection[]
-  readonly dispose?: DisposeHook
+  readonly dispose?: DisposeHook | undefined
 }
 
 /**

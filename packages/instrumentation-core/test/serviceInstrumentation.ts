@@ -6,10 +6,10 @@ import {
   SingletonDisposedDuringInitError,
 } from '@composed-di/core'
 import {
-  LifecycleContext,
-  MethodCallContext,
-  OperationOutcome,
-  OperationSpan,
+  type LifecycleContext,
+  type MethodCallContext,
+  type OperationOutcome,
+  type OperationSpan,
   ServiceInstrumentation,
 } from '../src/index.js'
 
@@ -238,8 +238,8 @@ describe('install() overload shapes', () => {
 
     expect(instrumented).not.toBe(originals)
     expect(instrumented).toHaveLength(2)
-    expect(instrumented[0].provides).toBe(aKey)
-    expect(instrumented[1].provides).toBe(bKey)
+    expect(instrumented[0]!.provides).toBe(aKey)
+    expect(instrumented[1]!.provides).toBe(bKey)
     expect(instrumented[0]).not.toBe(originals[0])
     expect(instrumented[1]).not.toBe(originals[1])
   })
@@ -484,7 +484,7 @@ describe('install() contract preservation', () => {
         initialize: (config) => ({ connectedTo: () => config.url }),
       }),
     ])
-    expect(instrumented[1].dependsOn).toEqual([configKey])
+    expect(instrumented[1]!.dependsOn).toEqual([configKey])
 
     const module = ServiceModule.from(instrumented)
     const db = await module.get(dbKey)
@@ -522,7 +522,8 @@ describe('install() contract preservation', () => {
     const literal = await module.get(literalKey)
     literal.charge()
 
-    const [fromClass, fromLiteral] = recorder.methodContexts
+    const fromClass = recorder.methodContexts[0]!
+    const fromLiteral = recorder.methodContexts[1]!
     expect(fromClass.className).toBe('PaymentGateway')
     expect(fromLiteral.className).toBeUndefined()
     // No options were given, so no arguments are delivered either.

@@ -1,5 +1,5 @@
 import { ServiceKey } from '@composed-di/core'
-import { RedactionRule } from './redaction.js'
+import type { RedactionRule } from './redaction.js'
 
 /**
  * A handle representing a single in-flight operation (initialization,
@@ -116,7 +116,7 @@ export interface MethodCallContext {
    * services that are not instances of a named class, such as plain
    * object literals.
    */
-  className?: string
+  className?: string | undefined
 
   /**
    * The name of the method that is being called.
@@ -133,7 +133,7 @@ export interface MethodCallContext {
    * matches. Implementations must record the arguments exactly when present
    * and must not record any arguments when absent.
    */
-  args?: readonly unknown[]
+  args?: readonly unknown[] | undefined
 }
 
 /**

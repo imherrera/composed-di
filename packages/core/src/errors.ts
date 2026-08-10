@@ -7,7 +7,7 @@
  * than catching this at runtime.
  */
 export class ModuleValidationError extends Error {
-  name = 'ModuleValidationError'
+  override name = 'ModuleValidationError'
 }
 
 /**
@@ -18,7 +18,7 @@ export class ModuleValidationError extends Error {
  * which catches it for you and returns `null` instead.
  */
 export class NoSuchFactoryError extends Error {
-  name = 'NoSuchFactoryError'
+  override name = 'NoSuchFactoryError'
 }
 
 /**
@@ -28,7 +28,7 @@ export class NoSuchFactoryError extends Error {
  * Always indicates a bug in the caller. `Selector.keys` lists what can be requested.
  */
 export class NoSuchKeyError extends Error {
-  name = 'NoSuchKeyError'
+  override name = 'NoSuchKeyError'
 }
 
 /**
@@ -42,7 +42,7 @@ export class NoSuchKeyError extends Error {
  * signal. A later `initialize()` starts fresh.
  */
 export class SingletonDisposedDuringInitError extends Error {
-  name = 'SingletonDisposedDuringInitError'
+  override name = 'SingletonDisposedDuringInitError'
 }
 
 /**
@@ -54,7 +54,7 @@ export class SingletonDisposedDuringInitError extends Error {
  * outright.
  */
 export class FactoryReentrancyError extends Error {
-  name = 'FactoryReentrancyError'
+  override name = 'FactoryReentrancyError'
 }
 
 /**

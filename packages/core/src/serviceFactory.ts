@@ -88,7 +88,7 @@ export abstract class ServiceFactory<
     initialize,
     dispose = () => {},
   }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
-    dispose?: (instance: T) => void
+    dispose?: ((instance: T) => void) | undefined
     dependsOn?: D
   }): ServiceFactory<T, D> {
     return new SingletonFactory(provides, dependsOn, initialize, dispose)

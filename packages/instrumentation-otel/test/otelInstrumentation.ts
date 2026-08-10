@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   BasicTracerProvider,
   InMemorySpanExporter,
-  ReadableSpan,
+  type ReadableSpan,
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base'
 import {

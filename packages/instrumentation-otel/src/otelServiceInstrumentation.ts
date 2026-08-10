@@ -1,17 +1,17 @@
 import {
-  Attributes,
+  type Attributes,
   context as otelContext,
   SpanStatusCode,
   trace,
-  Tracer,
+  type Tracer,
 } from '@opentelemetry/api'
 import {
-  LifecycleContext,
-  OperationOutcome,
-  OperationSpan,
-  MethodCallContext,
+  type LifecycleContext,
+  type OperationOutcome,
+  type OperationSpan,
+  type MethodCallContext,
   ServiceInstrumentation,
-  ServiceLifecycleEvent,
+  type ServiceLifecycleEvent,
 } from '@composed-di/instrumentation-core'
 import { ServiceKey } from '@composed-di/core'
 import {
@@ -56,7 +56,7 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
       methodName: context.methodName,
       args: context.args,
     })
-    const spanName = attributes[ATTR_CODE_FUNCTION_NAME]
+    const spanName = `${context.className ?? context.key.name}.${context.methodName}`
     return this.buildSpan(spanName, attributes)
   }
 
@@ -95,11 +95,11 @@ export class OTELServiceInstrumentation extends ServiceInstrumentation {
   }
 
   private buildAttributes(params: {
-    key?: ServiceKey<unknown>
+    key?: ServiceKey<unknown> | undefined
     event: ServiceLifecycleEvent | 'call'
-    className?: string
+    className?: string | undefined
     methodName: string
-    args?: readonly unknown[]
+    args?: readonly unknown[] | undefined
   }) {
     const attributes: { [key: string]: string } = {
       [ATTR_CODE_FUNCTION_NAME]: `${params.className ?? params.key?.name}.${params.methodName}`,

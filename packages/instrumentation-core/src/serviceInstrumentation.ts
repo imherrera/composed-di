@@ -5,7 +5,7 @@ import {
   ServiceKey,
   ServiceModule,
 } from '@composed-di/core'
-import {
+import type {
   InstrumentOptions,
   LifecycleContext,
   MethodCallContext,

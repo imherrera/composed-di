@@ -6,7 +6,7 @@
  * be marked in its own right.
  */
 export class MissingLifecycleError extends Error {
-  name = 'MissingLifecycleError'
+  override name = 'MissingLifecycleError'
 }
 
 /**
@@ -16,7 +16,7 @@ export class MissingLifecycleError extends Error {
  * A class has exactly one lifecycle. Apply exactly one lifecycle decorator.
  */
 export class DuplicateLifecycleError extends Error {
-  name = 'DuplicateLifecycleError'
+  override name = 'DuplicateLifecycleError'
 }
 
 /**
@@ -27,7 +27,7 @@ export class DuplicateLifecycleError extends Error {
  * requester, so the container never disposes them.
  */
 export class DisposeHookError extends Error {
-  name = 'DisposeHookError'
+  override name = 'DisposeHookError'
 }
 
 /**
@@ -42,5 +42,5 @@ export class DisposeHookError extends Error {
  * the declaration rather than catching this at runtime.
  */
 export class FieldInjectionError extends Error {
-  name = 'FieldInjectionError'
+  override name = 'FieldInjectionError'
 }

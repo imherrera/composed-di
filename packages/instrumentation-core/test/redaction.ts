@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { ServiceFactory, ServiceKey, ServiceModule } from '@composed-di/core'
 import {
-  CaptureOptions,
+  type CaptureOptions,
   redactionRule,
-  LifecycleContext,
-  OperationOutcome,
-  MethodCallContext,
+  type LifecycleContext,
+  type OperationOutcome,
+  type MethodCallContext,
   ServiceInstrumentation,
-  ServiceLifecycleEvent,
+  type ServiceLifecycleEvent,
 } from '../src/index.js'
 
 // Deliberately not derived via Parameters<install>. On an overloaded method,
@@ -17,9 +17,9 @@ type Entries = ServiceFactory[]
 
 interface RecordedEvent {
   type: ServiceLifecycleEvent | 'call'
-  key?: ServiceKey<unknown>
-  methodName?: string
-  args?: readonly unknown[]
+  key?: ServiceKey<unknown> | undefined
+  methodName?: string | undefined
+  args?: readonly unknown[] | undefined
   outcome?: OperationOutcome
   ranWithin?: boolean
 }
