@@ -36,7 +36,7 @@ export class ServiceModule {
 
     // Check if a factory to supply the requested key was not found
     if (!factory) {
-      throw new NoSuchFactoryError(`No such factory provides ${key.name}`)
+      throw new NoSuchFactoryError(`No factory provides "${key.name}"`)
     }
 
     // Check if the factory has an instance already
@@ -133,8 +133,8 @@ function checkCircularDependencies(factories: ReadonlyArray<ServiceFactory>) {
     if (stack.has(symbol)) {
       const cycle = [...path, factory.provides.name]
       const frames = cycle.slice(0, -1).map((name, index) => {
-        const edge = `${name} factory depends on ${cycle[index + 1]}`
-        return index === cycle.length - 2 ? `${edge} (circular)` : edge
+        const edge = `"${name}" factory depends on "${cycle[index + 1]}"`
+        return index === cycle.length - 2 ? `${edge} <- circular` : edge
       })
       throw new ModuleValidationError(
         `Circular dependency detected:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
@@ -193,7 +193,7 @@ function checkMissingDependencies(factories: ReadonlyArray<ServiceFactory>) {
 
     if (frames.length !== 0) {
       acc.push(
-        `${factory.provides.name} factory will fail to initialize because it depends on service keys that no factory provides:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
+        `The "${factory.provides.name}" factory will fail to initialize because it depends on service keys that no factory provides:\n${frames.map((frame) => `    "${frame}"`).join('\n')}`,
       )
     }
 

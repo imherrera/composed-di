@@ -49,7 +49,7 @@ export class Selector<T> {
       return this.module.get(key)
     } else {
       throw new NoSuchKeyError(
-        `Could not find ${key.name} among this Selector's keys ([${this.keys.map((k) => k.name).join(',')}])`,
+        `"${key.name}" is not among this selector's keys, which are ${this.keys.map((k) => `"${k.name}"`).join(', ')}`,
       )
     }
   }

@@ -197,7 +197,7 @@ export class SingletonFactory<
 
     if (this.isRunningHook) {
       throw new Error(
-        `SingletonServiceFactory(provides=${this.provides.name}): initialize() cannot be called re-entrantly from onInitialize or onDispose`,
+        `The "${this.provides.name}" factory initialize method cannot be called re-entrantly from onInitialize or onDispose`,
       )
     }
 
@@ -229,7 +229,7 @@ export class SingletonFactory<
             this.isRunningHook = false
           }
           throw new InitializationAbortedError(
-            `SingletonServiceFactory[provides=${this.provides.name}]: disposed during initialization`,
+            `The "${this.provides.name}" factory was disposed during initialization`,
           )
         }
 
@@ -250,7 +250,7 @@ export class SingletonFactory<
   dispose(): void {
     if (this.isRunningHook) {
       throw new Error(
-        `SingletonServiceFactory(provides=${this.provides.name}): dispose() cannot be called re-entrantly from onInitialize or onDispose`,
+        `The "${this.provides.name}" factory dispose method cannot be called re-entrantly from onInitialize or onDispose`,
       )
     }
 

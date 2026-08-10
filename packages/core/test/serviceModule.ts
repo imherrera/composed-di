@@ -400,9 +400,9 @@ describe('ServiceModule', () => {
 
       expect(error.message).toEqual(
         'Circular dependency detected:\n' +
-          '    UserService factory depends on Database\n' +
-          '    Database factory depends on Config\n' +
-          '    Config factory depends on Database (circular)',
+          '    "UserService" factory depends on "Database"\n' +
+          '    "Database" factory depends on "Config"\n' +
+          '    "Config" factory depends on "Database" <- circular',
       )
     })
 
@@ -448,12 +448,12 @@ describe('ServiceModule', () => {
       )
 
       expect(error.message).toEqual(
-        'UserService factory will fail to initialize because it depends on service keys that no factory provides:\n' +
-          '    Database\n' +
-          '    FileLogger\n' +
+        'The "UserService" factory will fail to initialize because it depends on service keys that no factory provides:\n' +
+          '    "Database"\n' +
+          '    "FileLogger"\n' +
           '\n' +
-          'AuthService factory will fail to initialize because it depends on service keys that no factory provides:\n' +
-          '    AuthConfig',
+          'The "AuthService" factory will fail to initialize because it depends on service keys that no factory provides:\n' +
+          '    "AuthConfig"',
       )
     })
   })
