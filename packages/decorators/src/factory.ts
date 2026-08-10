@@ -1,5 +1,5 @@
 import { ServiceFactory, type ServiceKey } from '@composed-di/core'
-import { FieldInjectionError, MissingLifecycleError } from './errors.js'
+import { DecoratorValidationError } from './errors.js'
 import { LifecycleRegistry } from './lifecycleRegistry.js'
 import type { Constructor } from './types.js'
 import {
@@ -29,7 +29,7 @@ import {
  * const module = ServiceModule.from([factoryOf(Car)])
  * ```
  *
- * @throws {MissingLifecycleError} If the class has no lifecycle decorator.
+ * @throws {DecoratorValidationError} If the class has no lifecycle decorator.
  * @throws {TypeError} If the class declares required constructor parameters.
  */
 export function factoryOf<C extends Constructor<object>>(
@@ -37,7 +37,7 @@ export function factoryOf<C extends Constructor<object>>(
 ): ServiceFactory<InstanceType<C>> {
   const registration = LifecycleRegistry.get(constructor)
   if (!registration) {
-    throw new MissingLifecycleError(
+    throw new DecoratorValidationError(
       `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @OneShot to register it with factoryOf`,
     )
   }
@@ -65,7 +65,7 @@ export function factoryOf<C extends Constructor<object>>(
       const missed = fields
         .filter((field) => !stash.consumed.has(field))
         .map((field) => String(field.name))
-      throw new FieldInjectionError(
+      throw new DecoratorValidationError(
         `class ${constructor.name}: the @Inject fields [${missed.join(', ')}] were never initialized during construction. Their metadata does not belong to this class (is a lifecycle decorator missing on another class that uses @Inject?)`,
       )
     }
@@ -94,7 +94,7 @@ export function factoryOf<C extends Constructor<object>>(
  *
  * @param constructors The classes to register. Each must carry a lifecycle decorator.
  * @return One factory per class.
- * @throws {MissingLifecycleError} If any class has no lifecycle decorator.
+ * @throws {DecoratorValidationError} If any class has no lifecycle decorator.
  */
 export function factoriesOf(
   ...constructors: [Constructor<object>, ...Constructor<object>[]]

@@ -2,11 +2,7 @@ import { SelectorKey, ServiceKey, type Selector } from '@composed-di/core'
 import { keyOf } from './keyOf.js'
 import { LifecycleRegistry } from './lifecycleRegistry.js'
 import type { Constructor, ServiceToken } from './types.js'
-import {
-  DisposeHookError,
-  FieldInjectionError,
-  LegacyDecoratorError,
-} from './errors.js'
+import { DecoratorValidationError } from './errors.js'
 import { activeFieldStash, type FieldInjection } from './metadata.js'
 
 /**
@@ -76,7 +72,7 @@ export function Dispose<This>(
 ): void {
   assertStandardContext('Dispose', context)
   if (context.static) {
-    throw new DisposeHookError(
+    throw new DecoratorValidationError(
       `@Dispose cannot be applied to the static method ${String(context.name)}`,
     )
   }
@@ -95,7 +91,7 @@ export function Dispose<This>(
  * constructor body runs, so it is already usable there.
  *
  * This decorator makes the class constructible only through a module.
- * Constructing it manually with `new` throws {@link FieldInjectionError}.
+ * Constructing it manually with `new` throws {@link DecoratorValidationError}.
  *
  * Each field is its own request. Two fields injecting the same {@link OneShot}
  * class receive distinct instances, owned by the injecting class. Two fields
@@ -170,7 +166,7 @@ function injectedField<This, T>(
 ): (this: This, initial: T) => T {
   assertStandardContext(decorator, context)
   if (context.static) {
-    throw new FieldInjectionError(
+    throw new DecoratorValidationError(
       `@${decorator}(${key.name}) cannot be applied to the static field ${String(context.name)}`,
     )
   }
@@ -183,12 +179,12 @@ function injectedField<This, T>(
 
     const stash = activeFieldStash()
     if (stash === undefined) {
-      throw new FieldInjectionError(
+      throw new DecoratorValidationError(
         `${label}: @${decorator} fields are resolved by a ServiceModule. Retrieve ${owner} through the module instead of constructing it with new`,
       )
     }
     if (!stash.values.has(field)) {
-      throw new FieldInjectionError(
+      throw new DecoratorValidationError(
         `${label}: no resolved instance for ${key.name}. The field is not part of the class registration (is the class's lifecycle decorator missing?)`,
       )
     }
@@ -205,7 +201,7 @@ function injectedField<This, T>(
  */
 function assertStandardContext(decorator: string, context: unknown): void {
   if (typeof context !== 'object' || context === null) {
-    throw new LegacyDecoratorError(
+    throw new DecoratorValidationError(
       `@${decorator} was invoked with the legacy decorator protocol (experimentalDecorators). Compile with standard ECMAScript decorators`,
     )
   }

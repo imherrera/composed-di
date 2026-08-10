@@ -141,7 +141,7 @@ Returns the `ServiceKey` the lifecycle decorator minted — the class's address.
 const barista = await cafe.get(keyOf(Barista))
 ```
 
-Throws `MissingLifecycleError` for an undecorated class.
+Throws `DecoratorValidationError` for an undecorated class.
 
 `keyOf` is for crossing into core API — `module.get`, a factory's `provides` or `dependsOn`. Inside `@Inject` and `@Select`, pass the class directly: `@Inject(keyOf(Barista))` means the same as `@Inject(Barista)`, with an extra call standing in the way.
 
@@ -208,7 +208,7 @@ The complete café — every feature above in one running file — lives at [`pa
 
 ## Errors
 
-`MissingLifecycleError`, `DuplicateLifecycleError`, `DisposeHookError`, and `FieldInjectionError` — each is documented at its definition in [`src/errors.ts`](src/errors.ts). All fire at class-definition or registration time where possible; nothing waits for a request to tell you the declaration is wrong.
+Every misdeclaration throws the same type, `DecoratorValidationError`, documented at its definition in [`src/errors.ts`](src/errors.ts). One type is enough because none of these are handleable — each means a declaration is wrong and the message names the exact violation, so there is nothing to catch on. All fire at class-definition or registration time where possible; nothing waits for a request to tell you the declaration is wrong.
 
 ## License
 

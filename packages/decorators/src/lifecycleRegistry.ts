@@ -1,9 +1,5 @@
 import { ServiceKey } from '@composed-di/core'
-import {
-  DisposeHookError,
-  DuplicateLifecycleError,
-  FieldInjectionError,
-} from './errors.js'
+import { DecoratorValidationError } from './errors.js'
 import {
   classKey,
   type ClassRegistration,
@@ -112,7 +108,7 @@ export class LifecycleRegistry {
     const className = context.name ?? constructor.name
 
     if (LifecycleRegistry.has(constructor)) {
-      throw new DuplicateLifecycleError(
+      throw new DecoratorValidationError(
         `class ${className} already has a lifecycle decorator. Apply exactly one of @Singleton or @OneShot`,
       )
     }
@@ -121,7 +117,7 @@ export class LifecycleRegistry {
     const seen = new Set<string | symbol>()
     for (const field of fields) {
       if (seen.has(field.name)) {
-        throw new FieldInjectionError(
+        throw new DecoratorValidationError(
           `field ${className}.${String(field.name)} has more than one @Inject decorator`,
         )
       }
@@ -139,7 +135,7 @@ export class LifecycleRegistry {
         names.length > 1 &&
         LifecycleRegistry.lifecycleByKeySymbol.get(symbol) === 'singleton'
       ) {
-        throw new FieldInjectionError(
+        throw new DecoratorValidationError(
           `class ${className}: the fields [${names.map(String).join(', ')}] inject the same @Singleton class. They would all share one instance, so declare a single field`,
         )
       }
@@ -147,14 +143,14 @@ export class LifecycleRegistry {
 
     const disposes = LifecycleRegistry.drainPendingDisposes()
     if (disposes.length > 1) {
-      throw new DisposeHookError(
+      throw new DecoratorValidationError(
         `class ${className} has more than one @Dispose method. A class has exactly one teardown`,
       )
     }
     const dispose = disposes[0]
     if (dispose !== undefined) {
       if (lifecycle === 'oneShot') {
-        throw new DisposeHookError(
+        throw new DecoratorValidationError(
           `class ${className} is @OneShot. One-shot instances are owned by their requester, so @Dispose is not allowed`,
         )
       }
@@ -163,7 +159,7 @@ export class LifecycleRegistry {
         : Object.getOwnPropertyDescriptor(constructor.prototype, dispose.name)
             ?.value
       if (!dispose.isPrivate && typeof method !== 'function') {
-        throw new DisposeHookError(
+        throw new DecoratorValidationError(
           `@Dispose method ${String(dispose.name)} does not belong to class ${className}. Is a lifecycle decorator missing on another class?`,
         )
       }

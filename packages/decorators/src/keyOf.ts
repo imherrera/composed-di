@@ -1,5 +1,5 @@
 import { ServiceKey } from '@composed-di/core'
-import { MissingLifecycleError } from './errors.js'
+import { DecoratorValidationError } from './errors.js'
 import { classKey } from './metadata.js'
 import type { Constructor } from './types.js'
 
@@ -9,12 +9,12 @@ import type { Constructor } from './types.js'
  *
  * @param constructor The class to read the key from.
  * @return The class's own key.
- * @throws {MissingLifecycleError} If the class has no lifecycle decorator.
+ * @throws {DecoratorValidationError} If the class has no lifecycle decorator.
  */
 export function keyOf<T>(constructor: Constructor<T>): ServiceKey<T> {
   const key = Object.getOwnPropertyDescriptor(constructor, classKey)?.value
   if (!(key instanceof ServiceKey)) {
-    throw new MissingLifecycleError(
+    throw new DecoratorValidationError(
       `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @OneShot before using it as a token`,
     )
   }

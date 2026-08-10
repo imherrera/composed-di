@@ -8,7 +8,7 @@ import type { Constructor } from './types.js'
  *
  * @param constructors The classes to group. Each must carry a lifecycle decorator.
  * @return A `SelectorKey` over the classes' own keys.
- * @throws {MissingLifecycleError} If any class has no lifecycle decorator.
+ * @throws {DecoratorValidationError} If any class has no lifecycle decorator.
  */
 export function selectorOf<T>(
   ...constructors: [Constructor<T>, ...Constructor<T>[]]
