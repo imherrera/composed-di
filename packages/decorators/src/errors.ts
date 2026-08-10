@@ -31,6 +31,18 @@ export class DisposeHookError extends Error {
 }
 
 /**
+ * Error thrown when a decorator is invoked with the legacy decorator
+ * protocol, the one TypeScript enables via `experimentalDecorators`.
+ *
+ * The two protocols are incompatible, so every decorator in this package
+ * requires standard ECMAScript decorators. Compile with
+ * `experimentalDecorators` off.
+ */
+export class LegacyDecoratorError extends Error {
+  override name = 'LegacyDecoratorError'
+}
+
+/**
  * Error thrown when an `@Inject` field cannot be initialized correctly. The
  * causes are constructing the class with `new` outside of a `ServiceModule`,
  * decorating a field more than once, applying `@Inject` to a static field,

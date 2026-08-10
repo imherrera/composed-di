@@ -2,7 +2,11 @@ import { SelectorKey, ServiceKey, type Selector } from '@composed-di/core'
 import { keyOf } from './keyOf.js'
 import { LifecycleRegistry } from './lifecycleRegistry.js'
 import type { Constructor, ServiceToken } from './types.js'
-import { DisposeHookError, FieldInjectionError } from './errors.js'
+import {
+  DisposeHookError,
+  FieldInjectionError,
+  LegacyDecoratorError,
+} from './errors.js'
 import { activeFieldStash, type FieldInjection } from './metadata.js'
 
 /**
@@ -28,6 +32,7 @@ export function Singleton<C extends Constructor<object>>(
   constructor: C,
   context: ClassDecoratorContext<C>,
 ): void {
+  assertStandardContext('Singleton', context)
   LifecycleRegistry.register(constructor, context, 'singleton')
 }
 
@@ -44,6 +49,7 @@ export function OneShot<C extends Constructor<object>>(
   constructor: C,
   context: ClassDecoratorContext<C>,
 ): void {
+  assertStandardContext('OneShot', context)
   LifecycleRegistry.register(constructor, context, 'oneShot')
 }
 
@@ -68,6 +74,7 @@ export function Dispose<This>(
   _method: (this: This) => void,
   context: ClassMethodDecoratorContext<This, (this: This) => void>,
 ): void {
+  assertStandardContext('Dispose', context)
   if (context.static) {
     throw new DisposeHookError(
       `@Dispose cannot be applied to the static method ${String(context.name)}`,
@@ -161,6 +168,7 @@ function injectedField<This, T>(
   key: ServiceKey<T>,
   context: ClassFieldDecoratorContext<This, T>,
 ): (this: This, initial: T) => T {
+  assertStandardContext(decorator, context)
   if (context.static) {
     throw new FieldInjectionError(
       `@${decorator}(${key.name}) cannot be applied to the static field ${String(context.name)}`,
@@ -187,5 +195,18 @@ function injectedField<This, T>(
 
     stash.consumed.add(field)
     return stash.values.get(field) as T
+  }
+}
+
+/**
+ * Rejects calls made with the legacy decorator protocol, which passes a
+ * property key or `undefined` where the standard protocol passes a context
+ * object.
+ */
+function assertStandardContext(decorator: string, context: unknown): void {
+  if (typeof context !== 'object' || context === null) {
+    throw new LegacyDecoratorError(
+      `@${decorator} was invoked with the legacy decorator protocol (experimentalDecorators). Compile with standard ECMAScript decorators`,
+    )
   }
 }
