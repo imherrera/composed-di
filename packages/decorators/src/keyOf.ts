@@ -4,12 +4,11 @@ import { classKey } from './metadata.js'
 import type { Constructor } from './types.js'
 
 /**
- * Returns the `ServiceKey` of a decorated class, for use with
- * `ServiceModule.get` or as a factory's `provides`. Reads the class's own
- * key only, so a subclass never inherits its parent's.
+ * Returns the key of a decorated class. Reads the class's own key only,
+ * so a subclass never inherits its parent's.
  *
  * @param constructor The class to read the key from.
- * @return The class's own `ServiceKey`.
+ * @return The class's own key.
  * @throws {MissingLifecycleError} If the class has no lifecycle decorator.
  */
 export function keyOf<T>(constructor: Constructor<T>): ServiceKey<T> {
