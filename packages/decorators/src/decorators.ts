@@ -48,10 +48,10 @@ export function OneShot<C extends Constructor<object>>(
 }
 
 /**
- * Marks a method as the class's teardown. When the module disposes the
+ * Marks a method as the class's teardown. When the module disposes of the
  * singleton, this method is called on the retained instance. Exactly one per
- * class, instance methods only, and only on `@Singleton` classes, since
- * one-shot instances are never disposed by the container.
+ * class, instance methods only, and only on {@link Singleton} classes, since
+ * the module never disposes of one-shot instances.
  *
  * @example
  * ```typescript
