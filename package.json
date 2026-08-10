@@ -12,8 +12,8 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "pnpm build && vitest run",
+    "test:watch": "pnpm build && vitest",
     "test:types": "tsc --build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
