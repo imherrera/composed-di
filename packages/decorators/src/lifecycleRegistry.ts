@@ -113,6 +113,20 @@ export class LifecycleRegistry {
   }
 
   /**
+   * Returns the stamped on the exact class by the lifecycle decorator {@link Singleton} or {@link OneShot}, or undefined if
+   * it has none. Reads the class's own stamp only, never one inherited from a decorated base class.
+   */
+  static getServiceKey(
+    constructor: Constructor<unknown>,
+  ): ServiceKey<unknown> | undefined {
+    const stamped: unknown = Object.getOwnPropertyDescriptor(
+      constructor,
+      SERVICE_KEY,
+    )?.value
+    return stamped instanceof ServiceKey ? stamped : undefined
+  }
+
+  /**
    * Records a class's lifecycle. Claims the pending `@Inject` fields and
    * `@Dispose` hook, validates them, mints the class's `ServiceKey`, and
    * stamps it under `SERVICE_KEY`.

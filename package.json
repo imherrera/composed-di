@@ -15,7 +15,7 @@
     "test": "pnpm build && vitest run",
     "test:watch": "pnpm build && vitest",
     "test:types": "tsc --build",
-    "lint": "oxlint",
+    "lint": "oxlint && node scripts/lint/check-test-file-names.mjs",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
