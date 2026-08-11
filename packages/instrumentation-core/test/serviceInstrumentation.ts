@@ -115,11 +115,11 @@ describe('install() lifetime dispatch', () => {
     })
   })
 
-  describe('one-shot delegates', () => {
+  describe('transient delegates', () => {
     it('should initialize on every get() and observe each instance', async () => {
-      const key = new ServiceKey<{ id(): number }>('oneShot')
+      const key = new ServiceKey<{ id(): number }>('transient')
       let counter = 0
-      const factory = ServiceFactory.oneShot({
+      const factory = ServiceFactory.transient({
         provides: key,
         initialize: () => {
           const id = ++counter
@@ -131,13 +131,13 @@ describe('install() lifetime dispatch', () => {
 
       const a = await module.get(key)
       const b = await module.get(key)
-      // install() must not impose singleton semantics on a one-shot
+      // install() must not impose singleton semantics on a transient
       // delegate. Each get() produces (and reports) a fresh instance.
       expect(a).not.toBe(b)
       expect(a.id()).toBe(1)
       expect(b.id()).toBe(2)
-      expect(recorder.count('oneShot.factory_initialize:start')).toBe(2)
-      expect(recorder.count('oneShot.id:start')).toBe(2)
+      expect(recorder.count('transient.factory_initialize:start')).toBe(2)
+      expect(recorder.count('transient.id:start')).toBe(2)
     })
   })
 
@@ -231,7 +231,10 @@ describe('install() overload shapes', () => {
         provides: aKey,
         initialize: () => ({ x: 1 }),
       }),
-      ServiceFactory.oneShot({ provides: bKey, initialize: () => ({ y: 2 }) }),
+      ServiceFactory.transient({
+        provides: bKey,
+        initialize: () => ({ y: 2 }),
+      }),
     ]
     const recorder = new RecordingListener()
     const instrumented = recorder.install(originals)
@@ -532,7 +535,7 @@ describe('install() contract preservation', () => {
 
   it('should return non-object instances untouched', async () => {
     const key = new ServiceKey<string>('token')
-    const factory = ServiceFactory.oneShot({
+    const factory = ServiceFactory.transient({
       provides: key,
       initialize: () => 'abc-123',
     })

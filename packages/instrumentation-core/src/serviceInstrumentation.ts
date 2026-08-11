@@ -1,5 +1,5 @@
 import {
-  OneShotFactory,
+  TransientFactory,
   ServiceFactory,
   SingletonFactory,
   ServiceKey,
@@ -237,8 +237,8 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
     })
   }
 
-  if (delegate instanceof OneShotFactory) {
-    return ServiceFactory.oneShot<T, D>({
+  if (delegate instanceof TransientFactory) {
+    return ServiceFactory.transient<T, D>({
       provides: delegate.provides,
       dependsOn: delegate.dependsOn,
       initialize: initialize,
@@ -251,7 +251,7 @@ function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
   throw new TypeError(
     `Cannot instrument factory ${delegate.constructor.name} for ${key.name}. ` +
       'Factories must be created with ServiceFactory.singleton() or ' +
-      'ServiceFactory.oneShot(); custom ServiceFactory implementations cannot be instrumented.',
+      'ServiceFactory.transient(); custom ServiceFactory implementations cannot be instrumented.',
   )
 }
 

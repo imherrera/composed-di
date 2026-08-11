@@ -10,7 +10,7 @@ import {
 
 /**
  * Creates a `ServiceFactory` for a class marked with `@Singleton` or
- * `@OneShot`. The factory provides the class's `ServiceKey`, follows
+ * `@Transient`. The factory provides the class's `ServiceKey`, follows
  * the decorator's lifecycle, depends on the class's `@Inject` fields
  * (including those of decorated base classes), and tears down through its
  * `@Dispose` method if it has one.
@@ -38,7 +38,7 @@ export function factoryOf<C extends Constructor<object>>(
   const registration = LifecycleRegistry.get(constructor)
   if (!registration) {
     throw new DecoratorValidationError(
-      `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @OneShot to register it with factoryOf`,
+      `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @Transient to register it with factoryOf`,
     )
   }
   if (constructor.length > 0) {
@@ -75,8 +75,8 @@ export function factoryOf<C extends Constructor<object>>(
 
   const provides = registration.key as ServiceKey<InstanceType<C>>
 
-  if (registration.lifecycle === 'oneShot') {
-    return ServiceFactory.oneShot({ provides, dependsOn, initialize })
+  if (registration.lifecycle === 'transient') {
+    return ServiceFactory.transient({ provides, dependsOn, initialize })
   }
 
   return ServiceFactory.singleton({

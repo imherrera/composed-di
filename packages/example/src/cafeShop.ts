@@ -6,7 +6,7 @@ import {
 } from '@composed-di/core'
 import {
   Inject,
-  OneShot,
+  Transient,
   Dispose,
   Select,
   Singleton,
@@ -33,17 +33,17 @@ interface Beans {
   readonly grams: number
 }
 
-// One-shot services are built fresh on every request and never cached.
-// Beans are consumed, not kept. The requester owns the instance, so one-shot
+// Transient services are built fresh on every request and never cached.
+// Beans are consumed, not kept. The requester owns the instance, so transient
 // classes cannot have @Dispose.
-@OneShot
+@Transient
 class ArabicaBeans implements Beans {
   readonly grams = 18
 }
 
 // Each decorated class is its own token, even when implementations share an
 // interface. Twice the caffeine, half the subtlety.
-@OneShot
+@Transient
 class RobustaBeans implements Beans {
   readonly grams = 16
 }
@@ -90,7 +90,7 @@ class Barista {
   private readonly machine!: EspressoMachine
 
   // Beans arrive with the order, not as an @Inject field. A singleton
-  // injecting a one-shot would capture a single dose forever.
+  // injecting a transient would capture a single dose forever.
   serveEspresso(beans: Beans): CuppaCoffee {
     const grounds = this.grinder.grind(beans)
     const shot = this.machine.pullShot(grounds)
@@ -106,7 +106,7 @@ class CafeShop {
   // @Select groups services of a shared type under one key, here the menu
   // of roasts. The field receives a Selector to pick the implementation per
   // call, at runtime. Unlike the beans themselves, the selector is safe in
-  // a singleton. It resolves a fresh one-shot on every call instead of
+  // a singleton. It resolves a fresh transient on every call instead of
   // capturing one.
   @Select<Beans>(ArabicaBeans, RobustaBeans)
   private readonly roasts!: Selector<Beans>
@@ -146,7 +146,7 @@ export async function main() {
   const shop = await module.get(keyOf(CafeShop))
 
   // Each order picks a roast at runtime. The Selector resolves a fresh
-  // one-shot dose per call, while the staff singletons stay the same.
+  // transient dose per call, while the staff singletons stay the same.
   const single = await shop.order('arabica')
   const double = await shop.order('robusta')
 

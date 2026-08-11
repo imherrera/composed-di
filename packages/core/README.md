@@ -85,7 +85,7 @@ Declare keys in the same package as the factories that provide them, so the pack
 Two lifetimes:
 
 - **`ServiceFactory.singleton({...})`** — `initialize` runs on the first request; every later request shares the instance. Concurrent requests during an in-flight initialization share the same promise, a failed initialization is never cached, and after `dispose()` the next request builds a fresh instance.
-- **`ServiceFactory.oneShot({...})`** — a fresh instance on every request, with no framework-managed cleanup; the requester owns the instance.
+- **`ServiceFactory.transient({...})`** — a fresh instance on every request, with no framework-managed cleanup; the requester owns the instance.
 
 ```ts
 // Shared: one barista for the whole café, torn down when the module disposes.
@@ -97,7 +97,7 @@ const baristaFactory = ServiceFactory.singleton({
 })
 
 // Owned by the requester: beans are consumed, not kept — a fresh dose per request.
-const arabicaFactory = ServiceFactory.oneShot({
+const arabicaFactory = ServiceFactory.transient({
   provides: arabicaKey,
   initialize: () => new ArabicaBeans(),
 })
@@ -157,7 +157,7 @@ const cafeShopFactory = ServiceFactory.singleton({
 })
 ```
 
-The selector resolves through the module, so lifetimes hold: a singleton key yields the shared instance, a one-shot key a fresh one per call — each order gets a fresh dose of beans, while the shop itself stays a singleton. That also makes a selector the safe way for a singleton to consume one-shots without capturing a single instance forever. `selector.get` accepts only the grouped keys, and every grouped key must be provided by the module for validation to pass.
+The selector resolves through the module, so lifetimes hold: a singleton key yields the shared instance, a transient key a fresh one per call — each order gets a fresh dose of beans, while the shop itself stays a singleton. That also makes a selector the safe way for a singleton to consume transients without capturing a single instance forever. `selector.get` accepts only the grouped keys, and every grouped key must be provided by the module for validation to pass.
 
 ### Errors
 

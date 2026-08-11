@@ -1,17 +1,10 @@
 import type { ServiceKey } from '@composed-di/core'
 
 /**
- * The symbol under which a lifecycle decorator stamps the class's own
- * `ServiceKey`. Backed by the global symbol registry, so duplicated copies
- * of this package agree on the slot.
- */
-export const classKey = Symbol.for('__service_key__')
-
-/**
  * The lifecycles a class decorator can declare, mirroring the two factory
  * shapes in `@composed-di/core`.
  */
-export type Lifecycle = 'singleton' | 'oneShot'
+export type Lifecycle = 'singleton' | 'transient'
 
 /**
  * A single `@Inject` field. Pairs the property it decorates with the key
@@ -28,7 +21,6 @@ export interface FieldInjection {
  */
 export interface DisposeHook {
   readonly name: string | symbol
-  readonly isPrivate: boolean
   readonly invoke: (instance: object) => void
 }
 
@@ -47,7 +39,7 @@ export interface ClassRegistration {
 /**
  * The dependencies resolved for the class currently being constructed by
  * `factoryOf`, keyed by field. Each `@Inject` field is its own
- * request, so two fields of the same one-shot key hold distinct instances.
+ * request, so two fields of the same transient key hold distinct instances.
  * `consumed` lets `factoryOf` verify afterwards that every resolved
  * value actually reached its field.
  */
@@ -56,6 +48,10 @@ export interface FieldStash {
   readonly consumed: Set<FieldInjection>
 }
 
+// Per-copy state by design. The cross-copy guarantee is key-only (see
+// symbols.ts). A stash writer and its readers always share one module
+// instance, because `factoryOf` constructs only classes registered by its
+// own copy, whose field initializers came from that same copy's decorators.
 let currentStash: FieldStash | undefined
 
 /**

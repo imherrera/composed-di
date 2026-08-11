@@ -20,7 +20,7 @@ describe('ServiceModule', () => {
   describe('from', () => {
     it('should create a module from a list of factories', () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1',
       })
@@ -32,14 +32,14 @@ describe('ServiceModule', () => {
 
     it('should create a module from other modules', () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1',
       })
       const module1 = ServiceModule.from([factory1])
 
       const key2 = new ServiceKey<string>('Key2')
-      const factory2 = ServiceFactory.oneShot({
+      const factory2 = ServiceFactory.transient({
         provides: key2,
         initialize: () => 'value2',
       })
@@ -52,11 +52,11 @@ describe('ServiceModule', () => {
 
     it('should implement last-wins deduplication', async () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1a = ServiceFactory.oneShot({
+      const factory1a = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1a',
       })
-      const factory1b = ServiceFactory.oneShot({
+      const factory1b = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1b',
       })
@@ -69,7 +69,7 @@ describe('ServiceModule', () => {
 
     it('should throw error on recursive dependencies', () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         dependsOn: [key1],
         initialize: () => 'value1',
@@ -83,7 +83,7 @@ describe('ServiceModule', () => {
     it('should throw error on missing dependencies', () => {
       const key1 = new ServiceKey<string>('Key1')
       const key2 = new ServiceKey<string>('Key2')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         dependsOn: [key2],
         initialize: () => 'value1',
@@ -99,7 +99,7 @@ describe('ServiceModule', () => {
       const key2 = new ServiceKey<string>('Key2')
       const key2Selector = new SelectorKey<string>([key2])
 
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         dependsOn: [key2Selector],
         initialize: () => 'value1',
@@ -114,13 +114,13 @@ describe('ServiceModule', () => {
       const key1 = new ServiceKey<string>('Key1')
       const key2 = new ServiceKey<string>('Key2')
 
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         dependsOn: [key2],
         initialize: () => 'value1',
       })
 
-      const factory2 = ServiceFactory.oneShot({
+      const factory2 = ServiceFactory.transient({
         provides: key2,
         dependsOn: [key1],
         initialize: () => 'value2',
@@ -136,17 +136,17 @@ describe('ServiceModule', () => {
       const key2 = new ServiceKey<string>('Key2')
       const key3 = new ServiceKey<string>('Key3')
 
-      const f1 = ServiceFactory.oneShot({
+      const f1 = ServiceFactory.transient({
         provides: key1,
         dependsOn: [key2],
         initialize: () => '',
       })
-      const f2 = ServiceFactory.oneShot({
+      const f2 = ServiceFactory.transient({
         provides: key2,
         dependsOn: [key3],
         initialize: () => '',
       })
-      const f3 = ServiceFactory.oneShot({
+      const f3 = ServiceFactory.transient({
         provides: key3,
         dependsOn: [key1],
         initialize: () => '',
@@ -162,13 +162,13 @@ describe('ServiceModule', () => {
       const key2 = new ServiceKey<string>('Key2')
       const key2Selector = new SelectorKey<string>([key2])
 
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         dependsOn: [key2Selector],
         initialize: () => 'value1',
       })
 
-      const factory2 = ServiceFactory.oneShot({
+      const factory2 = ServiceFactory.transient({
         provides: key2,
         dependsOn: [key1],
         initialize: () => 'value2',
@@ -183,7 +183,7 @@ describe('ServiceModule', () => {
   describe('get', () => {
     it('should resolve a simple service', async () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1',
       })
@@ -197,12 +197,12 @@ describe('ServiceModule', () => {
       const key1 = new ServiceKey<string>('Key1')
       const key2 = new ServiceKey<string>('Key2')
 
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1',
       })
 
-      const factory2 = ServiceFactory.oneShot({
+      const factory2 = ServiceFactory.transient({
         provides: key2,
         dependsOn: [key1],
         initialize: (val1) => `value2-${val1}`,
@@ -218,18 +218,18 @@ describe('ServiceModule', () => {
       const key2 = new ServiceKey<string>('Key2')
       const key3 = new ServiceKey<string>('Key3')
 
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => '1',
       })
 
-      const factory2 = ServiceFactory.oneShot({
+      const factory2 = ServiceFactory.transient({
         provides: key2,
         dependsOn: [key1],
         initialize: (v1) => `2-${v1}`,
       })
 
-      const factory3 = ServiceFactory.oneShot({
+      const factory3 = ServiceFactory.transient({
         provides: key3,
         dependsOn: [key2],
         initialize: (v2) => `3-${v2}`,
@@ -263,10 +263,10 @@ describe('ServiceModule', () => {
       expect(counter).toBe(1)
     })
 
-    it('should respect oneShot scope', async () => {
+    it('should respect transient scope', async () => {
       const key1 = new ServiceKey<{ id: number }>('Key1')
       let counter = 0
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => ({ id: ++counter }),
       })
@@ -281,17 +281,17 @@ describe('ServiceModule', () => {
       expect(counter).toBe(2)
     })
 
-    it('should not apply the warm-singleton fast path to one-shot factories', async () => {
+    it('should not apply the warm-singleton fast path to transient factories', async () => {
       const key1 = new ServiceKey<string>('Key1')
       const key2 = new ServiceKey<{ id: number }>('Key2')
 
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1',
       })
 
       let counter = 0
-      const factory2 = ServiceFactory.oneShot({
+      const factory2 = ServiceFactory.transient({
         provides: key2,
         dependsOn: [key1],
         initialize: () => ({ id: ++counter }),
@@ -299,7 +299,7 @@ describe('ServiceModule', () => {
 
       const module = ServiceModule.from([factory1, factory2])
 
-      // Each request must survive the fast-path check (one-shot factories
+      // Each request must survive the fast-path check (transient factories
       // have no getInstance) and produce a fresh instance
       expect((await module.get(key2)).id).toBe(1)
       expect((await module.get(key2)).id).toBe(2)
@@ -310,16 +310,16 @@ describe('ServiceModule', () => {
       const key2 = new ServiceKey<string>('Key2')
       const valueSelector = new SelectorKey<string>([key1, key2])
 
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1',
       })
-      const factory2 = ServiceFactory.oneShot({
+      const factory2 = ServiceFactory.transient({
         provides: key2,
         initialize: () => 'value2',
       })
 
-      const factoryApp = ServiceFactory.oneShot({
+      const factoryApp = ServiceFactory.transient({
         provides: new ServiceKey<string>('App'),
         dependsOn: [valueSelector],
         initialize: async (selector) => {
@@ -335,7 +335,7 @@ describe('ServiceModule', () => {
 
     it('should handle errors in factory initialization', async () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => {
           throw new Error('Init error')
@@ -374,17 +374,17 @@ describe('ServiceModule', () => {
       const databaseKey = new ServiceKey<string>('Database')
       const configKey = new ServiceKey<string>('Config')
 
-      const userServiceFactory = ServiceFactory.oneShot({
+      const userServiceFactory = ServiceFactory.transient({
         provides: userServiceKey,
         dependsOn: [databaseKey],
         initialize: () => 'root',
       })
-      const databaseFactory = ServiceFactory.oneShot({
+      const databaseFactory = ServiceFactory.transient({
         provides: databaseKey,
         dependsOn: [configKey],
         initialize: () => 'a',
       })
-      const configFactory = ServiceFactory.oneShot({
+      const configFactory = ServiceFactory.transient({
         provides: configKey,
         dependsOn: [databaseKey],
         initialize: () => 'b',
@@ -419,20 +419,20 @@ describe('ServiceModule', () => {
         fileLoggerKey,
       ])
 
-      const configFactory = ServiceFactory.oneShot({
+      const configFactory = ServiceFactory.transient({
         provides: configKey,
         initialize: () => 'config',
       })
-      const consoleLoggerFactory = ServiceFactory.oneShot({
+      const consoleLoggerFactory = ServiceFactory.transient({
         provides: consoleLoggerKey,
         initialize: () => 'console',
       })
-      const appFactory = ServiceFactory.oneShot({
+      const appFactory = ServiceFactory.transient({
         provides: userServiceKey,
         dependsOn: [configKey, databaseKey, loggerSelectorKey],
         initialize: () => 'app',
       })
-      const authServiceFactory = ServiceFactory.oneShot({
+      const authServiceFactory = ServiceFactory.transient({
         provides: authServiceKey,
         dependsOn: [authConfigKey],
         initialize: () => 'auth',
@@ -461,7 +461,7 @@ describe('ServiceModule', () => {
   describe('getOrNull', () => {
     it('should return service value when factory exists', async () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1',
       })
@@ -481,7 +481,7 @@ describe('ServiceModule', () => {
 
     it('should re-throw errors other than NoSuchFactoryError', async () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => {
           throw new Error('Init error')
@@ -570,7 +570,7 @@ describe('ServiceModule', () => {
 
     it('should not fail if factory has no dispose method', () => {
       const key1 = new ServiceKey<string>('Key1')
-      const factory1 = ServiceFactory.oneShot({
+      const factory1 = ServiceFactory.transient({
         provides: key1,
         initialize: () => 'value1',
       })

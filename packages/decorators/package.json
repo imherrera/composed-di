@@ -20,7 +20,9 @@
     "src"
   ],
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/src/symbols.js"
+  ],
   "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {

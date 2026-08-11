@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/%40composed-di%2Fdecorators)](https://www.npmjs.com/package/@composed-di/decorators)
 
-Class-based registration for [`@composed-di/core`](../core), built on standard TC39 decorators — still no `experimentalDecorators`, no `reflect-metadata`, no metadata emission. The class declaration carries everything: lifecycle, dependencies, and teardown. The module only composes.
+Class-based registration for [`@composed-di/core`](../core), built on standard TC39 decorators — still no `experimentalDecorators`, no `reflect-metadata`, no `emitDecoratorMetadata`. The class declaration carries everything: lifecycle, dependencies, and teardown. The module only composes.
 
 ## Installation
 
@@ -14,9 +14,10 @@ This package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908
 
 ## Requirements
 
-- TypeScript ≥ 5.0.
+- TypeScript ≥ 5.2. The decorators bind fields to their class through [decorator metadata](https://github.com/tc39/proposal-decorator-metadata) (`context.metadata`), which landed in 5.2; on an older compiler `@Inject`, `@Select`, and `@Dispose` throw `DecoratorValidationError` at class definition.
 - `experimentalDecorators` must be **off**. This package uses standard decorators; legacy mode changes their runtime calling convention, so mixing them breaks at runtime, not compile time.
-- Any transpiler with stage-3 decorator support works: tsc, esbuild ≥ 0.21, swc, babel with the `2023-05` decorators plugin.
+- Any transpiler with stage-3 decorator **and** decorator-metadata support works: tsc ≥ 5.2, esbuild ≥ 0.21.3, swc, babel with the `2023-05` decorators plugin.
+- The engine needs no flags or polyfills: importing the package defines `Symbol.metadata` when the engine lacks it (as of today, all of them do).
 
 ## Quick start
 
@@ -60,13 +61,13 @@ cafe.dispose() // closing time: clockOut() runs
 
 ## API overview
 
-### `@Singleton` and `@OneShot`
+### `@Singleton` and `@Transient`
 
-The lifecycle lives on the class. `@Singleton` classes are built on first request and shared thereafter; `@OneShot` classes are built fresh on every request and never cached — the requester owns the instance.
+The lifecycle lives on the class. `@Singleton` classes are built on first request and shared thereafter; `@Transient` classes are built fresh on every request and never cached — the requester owns the instance.
 
 ```ts
 // Beans are consumed, not kept: a fresh dose per request.
-@OneShot
+@Transient
 class ArabicaBeans implements Beans {
   readonly grams = 18
 }
@@ -95,9 +96,9 @@ class Barista {
 
 The `!` is TypeScript's syntax for a true statement — the field is assigned by machinery the checker cannot see. A class with `@Inject` fields is constructible only through a module; `new Barista()` throws.
 
-Each field is its own request: two fields injecting the same `@OneShot` class receive two distinct instances, while two fields injecting the same `@Singleton` class are a definition-time error — they could only share one instance.
+Each field is its own request: two fields injecting the same `@Transient` class receive two distinct instances, while two fields injecting the same `@Singleton` class are a definition-time error — they could only share one instance.
 
-Don't inject a one-shot into a singleton field — that would capture a single instance forever. Pass it per call, or inject a selector (below):
+Don't inject a transient into a singleton field — that would capture a single instance forever. Pass it per call, or inject a selector (below):
 
 ```ts
 serveEspresso(beans: Beans): CuppaCoffee {
@@ -107,7 +108,7 @@ serveEspresso(beans: Beans): CuppaCoffee {
 
 ### `@Dispose`
 
-Marks the class's teardown, called on the retained instance when the module disposes. Exactly one per class, instance methods only, `@Singleton` only — one-shot instances are never disposed by the container.
+Marks the class's teardown, called on the retained instance when the module disposes. Exactly one per class, instance methods only, `@Singleton` only — transient instances are never disposed by the container.
 
 ```ts
 @Singleton
@@ -147,7 +148,7 @@ Throws `DecoratorValidationError` for an undecorated class.
 
 ### `@Select`
 
-Declares a field that receives a core `Selector` over several services — for picking an implementation per call at runtime. Tokens are decorated classes or `ServiceKey`s, mixed freely. Unlike the one-shots themselves, the selector is safe in a singleton: it resolves a fresh instance on every call instead of capturing one.
+Declares a field that receives a core `Selector` over several services — for picking an implementation per call at runtime. Tokens are decorated classes or `ServiceKey`s, mixed freely. Unlike the transients themselves, the selector is safe in a singleton: it resolves a fresh instance on every call instead of capturing one.
 
 ```ts
 @Singleton
