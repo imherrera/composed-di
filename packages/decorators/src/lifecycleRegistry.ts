@@ -16,7 +16,8 @@ import { PENDING_DISPOSES, PENDING_FIELDS, SERVICE_KEY } from './symbols.js'
 export class LifecycleRegistry {
   /**
    * Registrations by class, keyed by the exact class object. Subclasses are
-   * never looked up through their parents.
+   * never looked up through their parents. Deliberately per copy. Only the
+   * stamped `ServiceKey` crosses duplicated copies of this package.
    */
   private static readonly registrations = new WeakMap<
     Constructor<object>,
@@ -113,8 +114,10 @@ export class LifecycleRegistry {
   }
 
   /**
-   * Returns the stamped on the exact class by the lifecycle decorator {@link Singleton} or {@link OneShot}, or undefined if
-   * it has none. Reads the class's own stamp only, never one inherited from a decorated base class.
+   * Returns the `ServiceKey` stamped on the exact class by the lifecycle
+   * decorator {@link Singleton} or {@link OneShot}, or undefined if it has
+   * none. Reads the class's own stamp only, never one inherited from a
+   * decorated base class.
    */
   static getServiceKey(
     constructor: Constructor<unknown>,

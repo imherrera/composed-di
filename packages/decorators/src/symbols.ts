@@ -1,6 +1,11 @@
 // The global names this package claims. Every entry is backed by the global
 // symbol registry so that duplicated copies of this package agree on it.
 // Membership rule: global coordination points only, nothing else.
+//
+// The cross-copy guarantee is key-only. Duplicated copies agree on a class's
+// stamped `ServiceKey`, so decorated classes work as tokens everywhere.
+// Everything else (registrations, the field stash) is per copy: a copy's
+// `factoryOf` constructs only classes its own decorators registered.
 
 // TypeScript populates `context.metadata` only when `Symbol.metadata` is
 // defined, and no engine defines it natively yet.

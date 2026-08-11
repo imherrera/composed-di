@@ -48,6 +48,10 @@ export interface FieldStash {
   readonly consumed: Set<FieldInjection>
 }
 
+// Per-copy state by design. The cross-copy guarantee is key-only (see
+// symbols.ts). A stash writer and its readers always share one module
+// instance, because `factoryOf` constructs only classes registered by its
+// own copy, whose field initializers came from that same copy's decorators.
 let currentStash: FieldStash | undefined
 
 /**
