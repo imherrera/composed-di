@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/%40composed-di%2Fdecorators)](https://www.npmjs.com/package/@composed-di/decorators)
 
-Class-based registration for [`@composed-di/core`](../core), built on standard TC39 decorators — still no `experimentalDecorators`, no `reflect-metadata`, no metadata emission. The class declaration carries everything: lifecycle, dependencies, and teardown. The module only composes.
+Class-based registration for [`@composed-di/core`](../core), built on standard TC39 decorators — still no `experimentalDecorators`, no `reflect-metadata`, no `emitDecoratorMetadata`. The class declaration carries everything: lifecycle, dependencies, and teardown. The module only composes.
 
 ## Installation
 
@@ -14,9 +14,10 @@ This package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908
 
 ## Requirements
 
-- TypeScript ≥ 5.0.
+- TypeScript ≥ 5.2. The decorators bind fields to their class through [decorator metadata](https://github.com/tc39/proposal-decorator-metadata) (`context.metadata`), which landed in 5.2; on an older compiler `@Inject`, `@Select`, and `@Dispose` throw `DecoratorValidationError` at class definition.
 - `experimentalDecorators` must be **off**. This package uses standard decorators; legacy mode changes their runtime calling convention, so mixing them breaks at runtime, not compile time.
-- Any transpiler with stage-3 decorator support works: tsc, esbuild ≥ 0.21, swc, babel with the `2023-05` decorators plugin.
+- Any transpiler with stage-3 decorator **and** decorator-metadata support works: tsc ≥ 5.2, esbuild ≥ 0.21.3, swc, babel with the `2023-05` decorators plugin.
+- The engine needs no flags or polyfills: importing the package defines `Symbol.metadata` when the engine lacks it (as of today, all of them do).
 
 ## Quick start
 
