@@ -5,7 +5,10 @@
     "suspicious": "warn"
   },
   "plugins": ["import"],
-  "jsPlugins": ["./lint/custom_rules.mjs"],
+  "jsPlugins": [
+    "./scripts/lint/instance-naming.mjs",
+    "./scripts/lint/manifest-constants.mjs"
+  ],
   "rules": {
     "unicorn/filename-case": [
       "error",
@@ -17,8 +20,8 @@
     "unicorn/prefer-node-protocol": "error",
     "import/no-cycle": "error",
     "import/extensions": ["error", "ignorePackages"],
-    "composed-di/instance-naming": "error",
-    "composed-di/manifest-constants": "error"
+    "instance-naming/camel-case": "error",
+    "manifest-constants/match": "error"
   },
   "overrides": [
     {
