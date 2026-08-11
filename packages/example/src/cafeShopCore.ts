@@ -107,11 +107,11 @@ const module = ServiceModule.from([
     provides: grinderKey,
     initialize: () => new BurrGrinder(),
   }),
-  ServiceFactory.oneShot({
+  ServiceFactory.transient({
     provides: arabicaKey,
     initialize: () => new ArabicaBeans(),
   }),
-  ServiceFactory.oneShot({
+  ServiceFactory.transient({
     provides: robustaKey,
     initialize: () => new RobustaBeans(),
   }),
@@ -139,7 +139,7 @@ export async function main() {
   const shop = await module.get(cafeShopKey)
 
   // Each order picks a roast at runtime. The Selector resolves a fresh
-  // one-shot dose per call, while the staff singletons stay the same.
+  // transient dose per call, while the staff singletons stay the same.
   const single = await shop.order('arabica')
   const double = await shop.order('robusta')
 

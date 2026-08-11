@@ -115,7 +115,7 @@ export class LifecycleRegistry {
 
   /**
    * Returns the {@link ServiceKey} stamped on the exact class by the lifecycle
-   * decorator {@link Singleton} or {@link OneShot}, or undefined if it has
+   * decorator {@link Singleton} or {@link Transient}, or undefined if it has
    * none. Reads the class's own stamp only, never one inherited from a
    * decorated base class.
    */
@@ -143,7 +143,7 @@ export class LifecycleRegistry {
 
     if (LifecycleRegistry.has(constructor)) {
       throw new DecoratorValidationError(
-        `class ${className} already has a lifecycle decorator. Apply exactly one of @Singleton or @OneShot`,
+        `class ${className} already has a lifecycle decorator. Apply exactly one of @Singleton or @Transient`,
       )
     }
 
@@ -188,9 +188,9 @@ export class LifecycleRegistry {
       )
     }
     const dispose = disposes[0]
-    if (dispose !== undefined && lifecycle === 'oneShot') {
+    if (dispose !== undefined && lifecycle === 'transient') {
       throw new DecoratorValidationError(
-        `class ${className} is @OneShot. One-shot instances are owned by their requester, so @Dispose is not allowed`,
+        `class ${className} is @Transient. Transient instances are owned by their requester, so @Dispose is not allowed`,
       )
     }
 

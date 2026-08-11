@@ -22,7 +22,7 @@ Prefer to declare services as classes? [`@composed-di/decorators`](packages/deco
 - **Type-safe** — `ServiceKey<T>` is a typed token; a factory's `initialize` receives its dependencies fully typed, in declaration order. No strings, no `any`.
 - **Observability built in** — instrument any factory to trace initialization, disposal, and every method call, with opt-in argument/result capture and redaction rules for sensitive services.
 - **Fail-fast validation** — `ServiceModule.from()` detects circular dependencies and missing factories at module creation, with readable traces of the broken path.
-- **Explicit lifecycles** — lazily-created singletons with deterministic `dispose()`, and one-shot (transient) factories.
+- **Explicit lifecycles** — lazily-created singletons with deterministic `dispose()`, and transient factories.
 - **Async-native** — `initialize` may return a promise; concurrent requests for an in-flight singleton share the same initialization.
 - **Runtime selection** — `SelectorKey` groups multiple implementations of an interface so a service can pick one at runtime.
 - **Classes, if you want them** — an optional package registers classes directly, with the lifecycle, dependencies, and teardown declared on the class. Standard decorators only, so nothing depends on `reflect-metadata` or `experimentalDecorators`.
@@ -252,16 +252,16 @@ The one cost is that `transport: ServiceModule` promises nothing about which key
 Two lifetimes are provided:
 
 - **`ServiceFactory.singleton({...})`** — `initialize` runs on the first request; every later request shares the instance. A failed initialization is never cached, and after `dispose()` the next request builds a fresh instance.
-- **`ServiceFactory.oneShot({...})`** — a fresh instance on every request, with no framework-managed cleanup; the requester owns the instance.
+- **`ServiceFactory.transient({...})`** — a fresh instance on every request, with no framework-managed cleanup; the requester owns the instance.
 
 ```ts
-const requestIdFactory = ServiceFactory.oneShot({
+const requestIdFactory = ServiceFactory.transient({
   provides: requestIdKey,
   initialize: () => crypto.randomUUID(), // new value per request
 })
 ```
 
-A singleton that depends on a one-shot factory captures that value for its entire lifetime — the one-shot runs once, during the singleton's initialization, and the result is then shared like any other singleton state. That is usually not what you want from a per-request value.
+A singleton that depends on a transient factory captures that value for its entire lifetime — the transient runs once, during the singleton's initialization, and the result is then shared like any other singleton state. That is usually not what you want from a per-request value.
 
 ### Modules
 
@@ -348,16 +348,16 @@ module.dispose() // close() runs
 
 Decorated classes take zero constructor arguments — dependencies are fields, and a required parameter is a compile error on the decorator itself. Registration stays a composition decision: decorating a class marks it, the module still has to provide it.
 
-`@OneShot` is the other lifetime: a fresh instance on every request, owned by the requester and never disposed by the container, so `@Dispose` is `@Singleton`-only. Here is the request-id [factory](#factories) as a class:
+`@Transient` is the other lifetime: a fresh instance on every request, owned by the requester and never disposed by the container, so `@Dispose` is `@Singleton`-only. Here is the request-id [factory](#factories) as a class:
 
 ```ts
-@OneShot
+@Transient
 class RequestId {
   readonly value = crypto.randomUUID() // new value per request
 }
 ```
 
-The capture caveat applies unchanged — an `@Inject` field on a singleton would hold one `RequestId` for the singleton's entire lifetime. Per-call values arrive as method arguments, or through `@Select`: [runtime selection](#runtime-selection) as a field. The selector resolves through the module on every call, so singleton members stay shared and one-shot members come fresh, which makes it the safe way for a singleton to reach one-shots. With `StripeGateway` and `PaypalGateway` decorated, each class is its own token, and checkout reads as it did with keys:
+The capture caveat applies unchanged — an `@Inject` field on a singleton would hold one `RequestId` for the singleton's entire lifetime. Per-call values arrive as method arguments, or through `@Select`: [runtime selection](#runtime-selection) as a field. The selector resolves through the module on every call, so singleton members stay shared and transient members come fresh, which makes it the safe way for a singleton to reach transients. With `StripeGateway` and `PaypalGateway` decorated, each class is its own token, and checkout reads as it did with keys:
 
 ```ts
 @Singleton
@@ -479,7 +479,7 @@ The fix is to make the declaring module resolve once — dedupe the dependency, 
 
 Not yet implemented, listed here so the direction is public:
 
-- **Opt-in eager initialization for singleton factories** — `await module.warmup()` to build selected singletons up front, so a bad connection string fails while the process is starting rather than on the first request that needs it. Lazy stays the default; long-running servers opt in, serverless and mobile do not. One-shot factories are unaffected, since there is nothing to build ahead of time.
+- **Opt-in eager initialization for singleton factories** — `await module.warmup()` to build selected singletons up front, so a bad connection string fails while the process is starting rather than on the first request that needs it. Lazy stays the default; long-running servers opt in, serverless and mobile do not. Transient factories are unaffected, since there is nothing to build ahead of time.
 
 ## Development
 

@@ -33,7 +33,7 @@ export function Singleton<C extends Constructor<object>>(
 }
 
 /**
- * Declares a class as a **one-shot** service. Once registered with
+ * Declares a class as a **transient** service. Once registered with
  * `factoryOf`, every request constructs a fresh instance, with no caching,
  * no deduplication, and no framework-managed disposal (cleanup belongs
  * entirely to whoever requested the instance).
@@ -41,19 +41,19 @@ export function Singleton<C extends Constructor<object>>(
  * A decorated class is itself usable as a token in `@Inject`, `@Select`,
  * and `selectorOf`. `keyOf` returns its `ServiceKey` for `ServiceModule.get`.
  */
-export function OneShot<C extends Constructor<object>>(
+export function Transient<C extends Constructor<object>>(
   constructor: C,
   context: ClassDecoratorContext<C>,
 ): void {
-  assertStandardContext('OneShot', context)
-  LifecycleRegistry.register(constructor, context, 'oneShot')
+  assertStandardContext('Transient', context)
+  LifecycleRegistry.register(constructor, context, 'transient')
 }
 
 /**
  * Marks a method as the class's teardown. When the module disposes of the
  * singleton, this method is called on the retained instance. Exactly one per
  * class, instance methods only, and only on {@link Singleton} classes, since
- * the module never disposes of one-shot instances.
+ * the module never disposes of transient instances.
  *
  * @example
  * ```typescript
@@ -92,7 +92,7 @@ export function Dispose<This>(
  * This decorator makes the class constructible only through a module.
  * Constructing it manually with `new` throws {@link DecoratorValidationError}.
  *
- * Each field is its own request. Two fields injecting the same {@link OneShot}
+ * Each field is its own request. Two fields injecting the same {@link Transient}
  * class receive distinct instances, owned by the injecting class. Two fields
  * injecting the same {@link Singleton} class are a definition-time error because
  * they could only share one instance.
@@ -128,7 +128,7 @@ export function Inject<T>(token: ServiceToken<T>) {
  * picks among them per call, at runtime.
  *
  * Tokens are `ServiceKey`s or decorated classes, mixed freely. Unlike a
- * one-shot injected directly, the selector is safe in a singleton field. It
+ * transient injected directly, the selector is safe in a singleton field. It
  * resolves a fresh instance on every call instead of capturing one.
  *
  * @example

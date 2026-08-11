@@ -4,7 +4,7 @@ import type { ServiceKey } from '@composed-di/core'
  * The lifecycles a class decorator can declare, mirroring the two factory
  * shapes in `@composed-di/core`.
  */
-export type Lifecycle = 'singleton' | 'oneShot'
+export type Lifecycle = 'singleton' | 'transient'
 
 /**
  * A single `@Inject` field. Pairs the property it decorates with the key
@@ -39,7 +39,7 @@ export interface ClassRegistration {
 /**
  * The dependencies resolved for the class currently being constructed by
  * `factoryOf`, keyed by field. Each `@Inject` field is its own
- * request, so two fields of the same one-shot key hold distinct instances.
+ * request, so two fields of the same transient key hold distinct instances.
  * `consumed` lets `factoryOf` verify afterwards that every resolved
  * value actually reached its field.
  */

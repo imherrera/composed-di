@@ -15,7 +15,7 @@ export function keyOf<T>(constructor: Constructor<T>): ServiceKey<T> {
   const serviceKey = LifecycleRegistry.getServiceKey(constructor)
   if (serviceKey === undefined) {
     throw new DecoratorValidationError(
-      `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @OneShot before using it as a token`,
+      `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @Transient before using it as a token`,
     )
   }
   return serviceKey as ServiceKey<T>

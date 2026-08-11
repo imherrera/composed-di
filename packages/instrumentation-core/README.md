@@ -33,7 +33,7 @@ const factories = instrumentation.install([configFactory, dbFactory])
 
 Installing the same factory twice with the same instrumentation is a no-op — it is passed through unchanged rather than double-reported.
 
-Only factories created with `ServiceFactory.singleton()` or `ServiceFactory.oneShot()` can be instrumented; handcrafted `ServiceFactory` implementations are rejected with a `TypeError`, because their lifetime semantics cannot be preserved.
+Only factories created with `ServiceFactory.singleton()` or `ServiceFactory.transient()` can be instrumented; handcrafted `ServiceFactory` implementations are rejected with a `TypeError`, because their lifetime semantics cannot be preserved.
 
 ## What gets reported
 

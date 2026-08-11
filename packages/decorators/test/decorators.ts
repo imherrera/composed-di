@@ -23,7 +23,7 @@ describe('Inject', () => {
         return this.foo
       }
     }
-    void Undecorated // never gets @Singleton/@OneShot -- the actual bug
+    void Undecorated // never gets @Singleton/@Transient -- the actual bug
 
     @Singleton
     class Real {}

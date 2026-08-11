@@ -95,39 +95,59 @@ export abstract class ServiceFactory<
    * Creates a factory that builds a **fresh instance on every request**, with no
    * caching and no deduplication.
    *
-   * One-shot services have no framework-managed lifecycle. `dispose` is a no-op, so
+   * Transient services have no framework-managed lifecycle. `dispose` is a no-op, so
    * instances are untouched by `module.dispose(...)`. Cleanup belongs entirely to
    * whoever requested the instance.
    *
    * @example
    * ```typescript
    * const requestIdKey = new ServiceKey<string>('RequestId')
-   * const requestId = ServiceFactory.oneShot({
+   * const requestId = ServiceFactory.transient({
    *   provides: requestIdKey,
    *   initialize: () => crypto.randomUUID(), // fresh value per request
    * })
    * ```
    */
-  static oneShot<const T, const D extends readonly ServiceKey<unknown>[] = []>({
+  static transient<
+    const T,
+    const D extends readonly ServiceKey<unknown>[] = [],
+  >({
     provides,
     dependsOn = [] as unknown as D,
     initialize,
   }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
     dependsOn?: D
   }): ServiceFactory<T, D> {
-    return new OneShotFactory(provides, dependsOn, initialize)
+    return new TransientFactory(provides, dependsOn, initialize)
+  }
+
+  /**
+   * Renamed to {@link ServiceFactory.transient}. This alias is kept for backwards
+   * compatibility and will be removed in a future release.
+   *
+   * @deprecated Renamed to {@link ServiceFactory.transient}.
+   * */
+  static oneShot<const T, const D extends readonly ServiceKey<unknown>[] = []>(
+    options: Omit<
+      ServiceFactory<T, D>,
+      'dispose' | 'dependsOn' | 'getInstance'
+    > & {
+      dependsOn?: D
+    },
+  ): ServiceFactory<T, D> {
+    return ServiceFactory.transient(options)
   }
 }
 
 /**
- * A `OneShotFactory` builds a fresh instance on every request and retains none of
+ * A `TransientFactory` builds a fresh instance on every request and retains none of
  * them, so it has no lifecycle of its own. `dispose` is a no-op, and the caller
  * of each request owns that instance's cleanup entirely.
  *
  * @template T - The type of the service instances built by this factory.
  * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
  */
-export class OneShotFactory<
+export class TransientFactory<
   const T,
   const D extends readonly ServiceKey<unknown>[] = [],
 > extends ServiceFactory<T, D> {
@@ -151,6 +171,25 @@ export class OneShotFactory<
     // Nothing retained, nothing to tear down.
   }
 }
+
+/**
+ * Renamed to {@link TransientFactory}. This alias is kept for backwards
+ * compatibility and will be removed in a future release.
+ *
+ * @deprecated Renamed to {@link TransientFactory}.
+ * */
+export const OneShotFactory = TransientFactory
+
+/**
+ * Renamed to {@link TransientFactory}. This alias is kept for backwards
+ * compatibility and will be removed in a future release.
+ *
+ * @deprecated Renamed to {@link TransientFactory}.
+ * */
+export type OneShotFactory<
+  T,
+  D extends readonly ServiceKey<unknown>[] = [],
+> = TransientFactory<T, D>
 
 /**
  * A `SingletonFactory` manages the lifecycle of a singleton service instance. It ensures

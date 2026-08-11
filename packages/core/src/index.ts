@@ -2,6 +2,7 @@ export { ServiceModule } from './serviceModule.js'
 export {
   ServiceFactory,
   SingletonFactory,
+  TransientFactory,
   OneShotFactory,
 } from './serviceFactory.js'
 export { ServiceKey, SelectorKey, ServiceSelectorKey } from './serviceKey.js'
