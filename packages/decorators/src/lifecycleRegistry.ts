@@ -114,7 +114,7 @@ export class LifecycleRegistry {
   }
 
   /**
-   * Returns the `ServiceKey` stamped on the exact class by the lifecycle
+   * Returns the {@link ServiceKey} stamped on the exact class by the lifecycle
    * decorator {@link Singleton} or {@link OneShot}, or undefined if it has
    * none. Reads the class's own stamp only, never one inherited from a
    * decorated base class.
