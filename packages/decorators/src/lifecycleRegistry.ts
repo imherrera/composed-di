@@ -1,13 +1,13 @@
 import { ServiceKey } from '@composed-di/core'
 import { DecoratorValidationError } from './errors.js'
 import {
-  classKey,
   type ClassRegistration,
   type DisposeHook,
   type FieldInjection,
   type Lifecycle,
 } from './metadata.js'
 import type { Constructor } from './types.js'
+import { PENDING_DISPOSES, PENDING_FIELDS, SERVICE_KEY } from './symbols.js'
 
 /**
  * Owns every class registration made by the lifecycle decorators. Static
@@ -30,54 +30,71 @@ export class LifecycleRegistry {
    */
   private static readonly lifecycleByKeySymbol = new Map<symbol, Lifecycle>()
 
-  /**
-   * Fields recorded by `@Inject` decorators that have not yet been claimed
-   * by a lifecycle decorator.
-   *
-   * Field decorators cannot see their class, but the decorator standard
-   * applies all member decorators before the class decorator of the same
-   * class definition, so `@Inject` parks each field here and `register`
-   * drains the list synchronously, before any other class definition can
-   * interleave.
-   */
-  private static readonly pendingFields: FieldInjection[] = []
-
-  /**
-   * Hooks recorded by `@Dispose` decorators that have not yet been claimed
-   * by a lifecycle decorator. Same drain discipline as {@link pendingFields}.
-   */
-  private static readonly pendingDisposes: DisposeHook[] = []
-
   private constructor() {
     // Static only.
   }
 
   /**
-   * Parks an `@Inject` field until the class's lifecycle decorator claims it.
+   * Parks an `@Inject` field on its class definition's decorator metadata
+   * until the class's lifecycle decorator claims it.
    */
-  static addPendingField(field: FieldInjection): void {
-    LifecycleRegistry.pendingFields.push(field)
+  static addPendingField(
+    metadata: DecoratorMetadataObject | undefined,
+    field: FieldInjection,
+  ): void {
+    LifecycleRegistry.park(metadata, PENDING_FIELDS, field)
   }
 
   /**
-   * Parks an `@Dispose` hook until the class's lifecycle decorator claims it.
+   * Parks an `@Dispose` hook on its class definition's decorator metadata
+   * until the class's lifecycle decorator claims it.
    */
-  static addPendingDispose(hook: DisposeHook): void {
-    LifecycleRegistry.pendingDisposes.push(hook)
+  static addPendingDispose(
+    metadata: DecoratorMetadataObject | undefined,
+    hook: DisposeHook,
+  ): void {
+    LifecycleRegistry.park(metadata, PENDING_DISPOSES, hook)
   }
 
-  private static drainPendingFields(): FieldInjection[] {
-    return LifecycleRegistry.pendingFields.splice(
-      0,
-      LifecycleRegistry.pendingFields.length,
-    )
+  private static park<T>(
+    metadata: DecoratorMetadataObject | undefined,
+    slot: symbol,
+    record: T,
+  ): void {
+    if (metadata === undefined) {
+      throw new DecoratorValidationError(
+        'decorator metadata is unavailable. Requires a compiler that implements decorator metadata (TypeScript 5.2 or later) and a defined Symbol.metadata, which importing @composed-di/decorators provides',
+      )
+    }
+    const records = LifecycleRegistry.ownRecords<T>(metadata, slot)
+    if (records === undefined) {
+      metadata[slot] = [record]
+    } else {
+      records.push(record)
+    }
   }
 
-  private static drainPendingDisposes(): DisposeHook[] {
-    return LifecycleRegistry.pendingDisposes.splice(
-      0,
-      LifecycleRegistry.pendingDisposes.length,
-    )
+  private static claim<T>(
+    metadata: DecoratorMetadataObject | undefined,
+    slot: symbol,
+  ): T[] {
+    return metadata === undefined
+      ? []
+      : (LifecycleRegistry.ownRecords<T>(metadata, slot) ?? [])
+  }
+
+  /**
+   * Reads the records under `slot` as an own property only. A metadata
+   * object inherits from the base class's metadata, and records must never
+   * park on or be claimed from the parent's slot.
+   */
+  private static ownRecords<T>(
+    metadata: DecoratorMetadataObject,
+    slot: symbol,
+  ): T[] | undefined {
+    return Object.getOwnPropertyDescriptor(metadata, slot)?.value as
+      | T[]
+      | undefined
   }
 
   /**
@@ -98,7 +115,7 @@ export class LifecycleRegistry {
   /**
    * Records a class's lifecycle. Claims the pending `@Inject` fields and
    * `@Dispose` hook, validates them, mints the class's `ServiceKey`, and
-   * stamps it under `classKey`.
+   * stamps it under `SERVICE_KEY`.
    */
   static register(
     constructor: Constructor<object>,
@@ -113,7 +130,10 @@ export class LifecycleRegistry {
       )
     }
 
-    const fields = LifecycleRegistry.drainPendingFields()
+    const fields = LifecycleRegistry.claim<FieldInjection>(
+      context.metadata,
+      PENDING_FIELDS,
+    )
     const seen = new Set<string | symbol>()
     for (const field of fields) {
       if (seen.has(field.name)) {
@@ -141,32 +161,24 @@ export class LifecycleRegistry {
       }
     }
 
-    const disposes = LifecycleRegistry.drainPendingDisposes()
+    const disposes = LifecycleRegistry.claim<DisposeHook>(
+      context.metadata,
+      PENDING_DISPOSES,
+    )
     if (disposes.length > 1) {
       throw new DecoratorValidationError(
         `class ${className} has more than one @Dispose method. A class has exactly one teardown`,
       )
     }
     const dispose = disposes[0]
-    if (dispose !== undefined) {
-      if (lifecycle === 'oneShot') {
-        throw new DecoratorValidationError(
-          `class ${className} is @OneShot. One-shot instances are owned by their requester, so @Dispose is not allowed`,
-        )
-      }
-      const method = dispose.isPrivate
-        ? undefined
-        : Object.getOwnPropertyDescriptor(constructor.prototype, dispose.name)
-            ?.value
-      if (!dispose.isPrivate && typeof method !== 'function') {
-        throw new DecoratorValidationError(
-          `@Dispose method ${String(dispose.name)} does not belong to class ${className}. Is a lifecycle decorator missing on another class?`,
-        )
-      }
+    if (dispose !== undefined && lifecycle === 'oneShot') {
+      throw new DecoratorValidationError(
+        `class ${className} is @OneShot. One-shot instances are owned by their requester, so @Dispose is not allowed`,
+      )
     }
 
     const key = new ServiceKey<unknown>(className)
-    Object.defineProperty(constructor, classKey, { value: key })
+    Object.defineProperty(constructor, SERVICE_KEY, { value: key })
     LifecycleRegistry.registrations.set(constructor, {
       lifecycle,
       key,

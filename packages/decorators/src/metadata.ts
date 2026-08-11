@@ -1,13 +1,6 @@
 import type { ServiceKey } from '@composed-di/core'
 
 /**
- * The symbol under which a lifecycle decorator stamps the class's own
- * `ServiceKey`. Backed by the global symbol registry, so duplicated copies
- * of this package agree on the slot.
- */
-export const classKey = Symbol.for('__service_key__')
-
-/**
  * The lifecycles a class decorator can declare, mirroring the two factory
  * shapes in `@composed-di/core`.
  */
@@ -28,7 +21,6 @@ export interface FieldInjection {
  */
 export interface DisposeHook {
   readonly name: string | symbol
-  readonly isPrivate: boolean
   readonly invoke: (instance: object) => void
 }
 

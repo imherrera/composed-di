@@ -76,9 +76,8 @@ export function Dispose<This>(
       `@Dispose cannot be applied to the static method ${String(context.name)}`,
     )
   }
-  LifecycleRegistry.addPendingDispose({
+  LifecycleRegistry.addPendingDispose(context.metadata, {
     name: context.name,
-    isPrivate: context.private,
     invoke: (instance) => {
       context.access.get(instance as This).call(instance as This)
     },
@@ -171,7 +170,7 @@ function injectedField<This, T>(
     )
   }
   const field: FieldInjection = { name: context.name, key }
-  LifecycleRegistry.addPendingField(field)
+  LifecycleRegistry.addPendingField(context.metadata, field)
 
   return function (this: This, _initial: T): T {
     const owner = (this as object).constructor.name
