@@ -66,7 +66,7 @@ export function factoryOf<C extends Constructor<object>>(
         .filter((field) => !stash.consumed.has(field))
         .map((field) => String(field.name))
       throw new DecoratorValidationError(
-        `class ${constructor.name}: the @Inject fields [${missed.join(', ')}] were never initialized during construction. Their metadata does not belong to this class (is a lifecycle decorator missing on another class that uses @Inject?)`,
+        `class ${constructor.name}: the @Inject fields [${missed.join(', ')}] were resolved but never read during construction. This is an internal composed-di invariant violation, not a class declaration issue -- please file a bug report with a minimal repro`,
       )
     }
 
