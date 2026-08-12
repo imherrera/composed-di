@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`@composed-di/decorators`** — two fields of a class may `@Inject` the same singleton. Declaring two fields that injected the same singleton on a class used to throw `DecoratorValidationError` at class definition, both fields now receive the one shared instance.
 
-[unreleased]: https://github.com/imherrera/composed-di/compare/v0.14.0...HEAD
+[unreleased]: https://github.com/imherrera/composed-di/compare/master...develop
