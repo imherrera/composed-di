@@ -55,6 +55,26 @@ describe('Inject', () => {
     expect(() => ServiceModule.from([factoryOf(Real)])).not.toThrow()
   })
 
+  it('rejects two fields injecting the same @Singleton class', () => {
+    @Singleton
+    class Grinder {}
+
+    const defineBarista = () => {
+      @Singleton
+      class Barista {
+        @Inject(Grinder)
+        readonly primary!: Grinder
+
+        @Inject(Grinder)
+        readonly backup!: Grinder
+      }
+      void Barista
+    }
+
+    expect(defineBarista).toThrow(DecoratorValidationError)
+    expect(defineBarista).toThrow(/\[primary, backup\] inject the same/)
+  })
+
   // Code review finding #1: static properties inherit through the
   // constructor's prototype chain, so an undecorated subclass resolves its
   // parent's stamped SERVICE_KEY by ordinary lookup. `@Inject` must reject
