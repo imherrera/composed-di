@@ -118,7 +118,7 @@ export function Inject<T>(token: ServiceToken<T>) {
     _value: undefined,
     context: ClassFieldDecoratorContext<This, T>,
   ): (this: This, initial: T) => T {
-    return injectedField('Inject', key, context)
+    return inject('Inject', key, context)
   }
 }
 
@@ -149,7 +149,7 @@ export function Select<T>(...tokens: [ServiceToken<T>, ...ServiceToken<T>[]]) {
     _value: undefined,
     context: ClassFieldDecoratorContext<This, Selector<T>>,
   ): (this: This, initial: Selector<T>) => Selector<T> {
-    return injectedField('Select', key, context)
+    return inject('Select', key, context)
   }
 }
 
@@ -158,12 +158,13 @@ export function Select<T>(...tokens: [ServiceToken<T>, ...ServiceToken<T>[]]) {
  * and returns the field initializer that pulls the resolved instance from
  * the active stash. This is the machinery shared by `@Inject` and `@Select`.
  */
-function injectedField<This, T>(
+function inject<This, T>(
   decorator: string,
   key: ServiceKey<T>,
   context: ClassFieldDecoratorContext<This, T>,
 ): (this: This, initial: T) => T {
   assertStandardContext(decorator, context)
+
   if (context.static) {
     throw new DecoratorValidationError(
       `@${decorator}(${key.name}) cannot be applied to the static field ${String(context.name)}`,
