@@ -24,13 +24,6 @@ export class LifecycleRegistry {
     ClassRegistration
   >()
 
-  /**
-   * Lifecycles by the symbol of the key each registration minted, so a later
-   * class definition can validate its `@Inject` fields against the
-   * lifecycles of already-registered classes.
-   */
-  private static readonly lifecycleByKeySymbol = new Map<symbol, Lifecycle>()
-
   private constructor() {
     // Static only.
   }
@@ -161,23 +154,6 @@ export class LifecycleRegistry {
       seen.add(field.name)
     }
 
-    const namesByKey = new Map<symbol, (string | symbol)[]>()
-    for (const field of fields) {
-      const names = namesByKey.get(field.key.symbol) ?? []
-      names.push(field.name)
-      namesByKey.set(field.key.symbol, names)
-    }
-    for (const [symbol, names] of namesByKey) {
-      if (
-        names.length > 1 &&
-        LifecycleRegistry.lifecycleByKeySymbol.get(symbol) === 'singleton'
-      ) {
-        throw new DecoratorValidationError(
-          `class ${className}: the fields [${names.map(String).join(', ')}] inject the same @Singleton class. They would all share one instance, so declare a single field`,
-        )
-      }
-    }
-
     const disposes = LifecycleRegistry.claim<DisposeHook>(
       context.metadata,
       PENDING_DISPOSES,
@@ -202,6 +178,5 @@ export class LifecycleRegistry {
       fields,
       dispose,
     })
-    LifecycleRegistry.lifecycleByKeySymbol.set(key.symbol, lifecycle)
   }
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { ServiceKey, ServiceModule } from '@composed-di/core'
 import { Singleton, Inject } from '../src/decorators.js'
 import { factoryOf } from '../src/factory.js'
+import { keyOf } from '../src/keyOf.js'
 import { DecoratorValidationError } from '../src/errors.js'
 
 describe('Inject', () => {
@@ -55,24 +56,29 @@ describe('Inject', () => {
     expect(() => ServiceModule.from([factoryOf(Real)])).not.toThrow()
   })
 
-  it('rejects two fields injecting the same @Singleton class', () => {
+  // A core factory may list the same key twice in `dependsOn`, and each
+  // position resolves on its own. Fields are the same request made twice, so
+  // repeating a @Singleton token is a declaration the decorators accept and
+  // the shared instance lands in both fields.
+  it('hands the one shared instance to two fields injecting the same @Singleton class', async () => {
     @Singleton
     class Grinder {}
 
-    const defineBarista = () => {
-      @Singleton
-      class Barista {
-        @Inject(Grinder)
-        readonly primary!: Grinder
+    @Singleton
+    class Barista {
+      @Inject(Grinder)
+      readonly primary!: Grinder
 
-        @Inject(Grinder)
-        readonly backup!: Grinder
-      }
-      void Barista
+      @Inject(Grinder)
+      readonly backup!: Grinder
     }
 
-    expect(defineBarista).toThrow(DecoratorValidationError)
-    expect(defineBarista).toThrow(/\[primary, backup\] inject the same/)
+    const factory = factoryOf(Barista)
+    expect(factory.dependsOn).toEqual([keyOf(Grinder), keyOf(Grinder)])
+
+    const cafe = ServiceModule.from([factory, factoryOf(Grinder)])
+    const barista = await cafe.get(keyOf(Barista))
+    expect(barista.primary).toBe(barista.backup)
   })
 
   // Code review finding #1: static properties inherit through the

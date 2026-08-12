@@ -96,7 +96,7 @@ class Barista {
 
 The `!` is TypeScript's syntax for a true statement — the field is assigned by machinery the checker cannot see. A class with `@Inject` fields is constructible only through a module; `new Barista()` throws.
 
-Each field is its own request: two fields injecting the same `@Transient` class receive two distinct instances, while two fields injecting the same `@Singleton` class are a definition-time error — they could only share one instance.
+Each field is its own request, exactly like a repeated key in a factory's `dependsOn`. Two fields injecting the same `@Transient` class receive two distinct instances, and two fields injecting the same `@Singleton` class receive the one shared instance.
 
 Don't inject a transient into a singleton field — that would capture a single instance forever. Pass it per call, or inject a selector (below):
 
