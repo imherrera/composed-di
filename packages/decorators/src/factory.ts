@@ -2,11 +2,7 @@ import { ServiceFactory, type ServiceKey } from '@composed-di/core'
 import { DecoratorValidationError } from './errors.js'
 import { LifecycleRegistry } from './lifecycleRegistry.js'
 import type { Constructor } from './types.js'
-import {
-  runWithFieldStash,
-  type FieldInjection,
-  type FieldStash,
-} from './metadata.js'
+import { runWithFieldStash, type FieldStash } from './metadata.js'
 
 /**
  * Creates a factory for a class marked with {@link Singleton} or {@link Transient} you must register the factory into a {@link ServiceModule}.
@@ -29,22 +25,23 @@ export function factoryOf<C extends Constructor<object>>(
     )
   }
 
-  const fields = fieldInjectionsOf(constructor)
-  const dependsOn = fields.map((field) => field.key)
+  const injectedFields = LifecycleRegistry.getInjectedFields(constructor)
+  const dependsOn = injectedFields.map((field) => field.key)
 
   const initialize = (...dependencies: unknown[]) => {
     const stash: FieldStash = {
       values: new Map(),
       consumed: new Set(),
     }
-    fields.forEach((field, index) => {
+
+    injectedFields.forEach((field, index) => {
       stash.values.set(field, dependencies[index])
     })
 
     const instance = runWithFieldStash(stash, () => new constructor())
 
     if (stash.consumed.size !== stash.values.size) {
-      const missed = fields
+      const missed = injectedFields
         .filter((field) => !stash.consumed.has(field))
         .map((field) => String(field.name))
       throw new DecoratorValidationError(
@@ -82,19 +79,4 @@ export function factoriesOf(
   ...constructors: [Constructor<object>, ...Constructor<object>[]]
 ): ServiceFactory[] {
   return constructors.map((constructor) => factoryOf(constructor))
-}
-
-function fieldInjectionsOf(constructor: Constructor<object>): FieldInjection[] {
-  const chain: FieldInjection[][] = []
-  for (
-    let current: object | null = constructor;
-    current !== null;
-    current = Object.getPrototypeOf(current)
-  ) {
-    const registration = LifecycleRegistry.get(current as Constructor<object>)
-    if (registration) {
-      chain.unshift([...registration.fields])
-    }
-  }
-  return chain.flat()
 }

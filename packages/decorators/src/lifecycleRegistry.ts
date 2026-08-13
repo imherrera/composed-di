@@ -107,6 +107,26 @@ export class LifecycleRegistry {
   }
 
   /**
+   * Returns the {@link Inject} fields of the class and of every decorated class in
+   * its prototype chain, base-first. The one registry read that crosses
+   * inheritance, unlike {@link LifecycleRegistry.get} and {@link LifecycleRegistry.getServiceKey}.
+   */
+  static getInjectedFields(constructor: Constructor<object>): FieldInjection[] {
+    const chain: FieldInjection[][] = []
+    for (
+      let current: object | null = constructor;
+      current !== null;
+      current = Object.getPrototypeOf(current)
+    ) {
+      const registration = LifecycleRegistry.get(current as Constructor<object>)
+      if (registration) {
+        chain.unshift([...registration.fields])
+      }
+    }
+    return chain.flat()
+  }
+
+  /**
    * Returns the {@link ServiceKey} stamped on the exact class by the lifecycle
    * decorator {@link Singleton} or {@link Transient}, or undefined if it has
    * none. Reads the class's own stamp only, never one inherited from a
