@@ -1,9 +1,9 @@
 import { SelectorKey, ServiceKey, type Selector } from '@composed-di/core'
-import { keyOf } from './keyOf.js'
-import { LifecycleRegistry } from './lifecycleRegistry.js'
-import type { Constructor, ServiceToken } from './types.js'
+import { type Constructor, type ServiceToken } from './types.js'
+import { keyOf } from './utils.js'
+import { LifecycleRegistry } from './internal/lifecycleRegistry.js'
 import { DecoratorValidationError } from './errors.js'
-import { activeFieldStash, type FieldInjection } from './metadata.js'
+import { activeFieldStash, type FieldInjection } from './internal/metadata.js'
 
 /**
  * Identifies a class that will be instantiated only once and shared every time it is requested.

@@ -1,8 +1,8 @@
-import { ServiceFactory, type ServiceKey } from '@composed-di/core'
-import { DecoratorValidationError } from './errors.js'
-import { LifecycleRegistry } from './lifecycleRegistry.js'
+import { ServiceFactory, type ServiceKey, SelectorKey } from '@composed-di/core'
 import type { Constructor } from './types.js'
-import { runWithFieldStash, type FieldStash } from './metadata.js'
+import { DecoratorValidationError } from './errors.js'
+import { LifecycleRegistry } from './internal/lifecycleRegistry.js'
+import { runWithFieldStash, type FieldStash } from './internal/metadata.js'
 
 /**
  * Creates a factory for a class marked with {@link Singleton} or {@link Transient} you must register the factory into a {@link ServiceModule}.
@@ -79,4 +79,35 @@ export function factoriesOf(
   ...constructors: [Constructor<object>, ...Constructor<object>[]]
 ): ServiceFactory[] {
   return constructors.map((constructor) => factoryOf(constructor))
+}
+
+/**
+ * Returns the key of a decorated class. Reads the class's own key only,
+ * so a subclass never inherits its parent's.
+ *
+ * @param constructor The class to read the key from.
+ * @return The class's own key.
+ * @throws {DecoratorValidationError} If the class has no lifecycle decorator.
+ */
+export function keyOf<T>(constructor: Constructor<T>): ServiceKey<T> {
+  const key = LifecycleRegistry.getServiceKey(constructor)
+  if (key === undefined) {
+    throw new DecoratorValidationError(
+      `class ${constructor.name} has no lifecycle decorator. Apply @Singleton or @Transient before using it as a token`,
+    )
+  }
+  return key as ServiceKey<T>
+}
+
+/**
+ * Creates a selector key for runtime selection among implementations of a shared type.
+ *
+ * @param constructors The classes to group. Each must carry a lifecycle decorator.
+ * @return A selector key over the classes' own keys.
+ * @throws {DecoratorValidationError} If any class has no lifecycle decorator.
+ */
+export function selectorOf<T>(
+  ...constructors: [Constructor<T>, ...Constructor<T>[]]
+): SelectorKey<T> {
+  return new SelectorKey(constructors.map((constructor) => keyOf(constructor)))
 }

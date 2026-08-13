@@ -1,12 +1,12 @@
 import { ServiceKey } from '@composed-di/core'
-import { DecoratorValidationError } from './errors.js'
+import { DecoratorValidationError } from '../errors.js'
 import {
   type ClassRegistration,
   type DisposeHook,
   type FieldInjection,
   type Lifecycle,
 } from './metadata.js'
-import type { Constructor } from './types.js'
+import type { Constructor } from '../types.js'
 import { PENDING_DISPOSES, PENDING_FIELDS, SERVICE_KEY } from './symbols.js'
 
 /**

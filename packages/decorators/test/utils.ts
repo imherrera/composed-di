@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { Singleton } from '../src/decorators.js'
-import { keyOf } from '../src/keyOf.js'
+import { keyOf } from '../src/utils.js'
 import { DecoratorValidationError } from '../src/errors.js'
-import { SERVICE_KEY } from '../src/symbols.js'
+import { SERVICE_KEY } from '../src/internal/symbols.js'
 
 // Code review finding #1: static properties inherit through the constructor's
 // prototype chain, so `class Sub extends Real {}` can see `Real`'s stamped

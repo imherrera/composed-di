@@ -1,6 +1,4 @@
 export { Singleton, Transient, Inject, Select, Dispose } from './decorators.js'
-export { factoryOf, factoriesOf } from './factory.js'
-export { keyOf } from './keyOf.js'
-export { selectorOf } from './selectorOf.js'
 export type { Constructor, ServiceToken } from './types.js'
 export * from './errors.js'
+export * from './utils.js'

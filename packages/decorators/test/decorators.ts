@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { ServiceKey, ServiceModule } from '@composed-di/core'
 import { Singleton, Inject } from '../src/decorators.js'
-import { factoryOf } from '../src/factory.js'
-import { keyOf } from '../src/keyOf.js'
+import { keyOf, factoryOf } from '../src/utils.js'
 import { DecoratorValidationError } from '../src/errors.js'
 
 describe('Inject', () => {
