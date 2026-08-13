@@ -7,8 +7,8 @@ import type { ServiceKey } from '@composed-di/core'
 export type Lifecycle = 'singleton' | 'transient'
 
 /**
- * A single `@Inject` field. Pairs the property it decorates with the key
- * that resolves it.
+ * A single `@Inject` field. Pairs the decorated field with the key that
+ * resolves it.
  */
 export interface FieldInjection {
   readonly name: string | symbol

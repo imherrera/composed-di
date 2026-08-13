@@ -55,8 +55,9 @@ export function Dispose<This>(
 }
 
 /**
- * Identifies injectable class properties. An injectable property may have any access modifier (public, private, protected).
- * The properties are injected before the constructor body runs, so they are already usable there.
+ * Identifies an injectable field. The field may have any access modifier
+ * (public, private, protected), and is injected before the constructor
+ * body runs, so it is already usable there.
  *
  * This decorator makes the class constructible only through a module.
  * Constructing it manually throws {@link DecoratorValidationError}.
