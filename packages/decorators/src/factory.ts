@@ -9,25 +9,7 @@ import {
 } from './metadata.js'
 
 /**
- * Creates a `ServiceFactory` for a class marked with `@Singleton` or
- * `@Transient`. The factory provides the class's `ServiceKey`, follows
- * the decorator's lifecycle, depends on the class's `@Inject` fields
- * (including those of decorated base classes), and tears down through its
- * `@Dispose` method if it has one.
- *
- * Decorator-registered classes must have zero-arg constructors. Dependencies
- * are declared exclusively through `@Inject` fields.
- *
- * @example
- * ```typescript
- * @Singleton
- * class Car {
- *   @Inject(engineKey)
- *   readonly engine!: Engine
- * }
- *
- * const module = ServiceModule.from([factoryOf(Car)])
- * ```
+ * Creates a factory for a class marked with {@link Singleton} or {@link Transient} you must register the factory into a {@link ServiceModule}.
  *
  * @throws {DecoratorValidationError} If the class has no lifecycle decorator.
  * @throws {TypeError} If the class declares required constructor parameters.
@@ -47,7 +29,7 @@ export function factoryOf<C extends Constructor<object>>(
     )
   }
 
-  const fields = collectFieldInjections(constructor)
+  const fields = fieldInjectionsOf(constructor)
   const dependsOn = fields.map((field) => field.key)
 
   const initialize = (...dependencies: unknown[]) => {
@@ -88,9 +70,9 @@ export function factoryOf<C extends Constructor<object>>(
 }
 
 /**
- * Creates a `ServiceFactory` for each of the given decorated classes, in
- * order. The variadic companion of `factoryOf`, for registering
- * several classes in one `ServiceModule.from` entry.
+ * Creates a factory for each of the given decorated classes, in
+ * order. The variadic companion of {@link factoryOf}, useful to register
+ * several classes in one {@link ServiceModule} instance.
  *
  * @param constructors The classes to register. Each must carry a lifecycle decorator.
  * @return One factory per class.
@@ -102,18 +84,10 @@ export function factoriesOf(
   return constructors.map((constructor) => factoryOf(constructor))
 }
 
-/**
- * Collects the `@Inject` fields that will initialize during construction of
- * `cls`. The class's own fields follow those of decorated base classes,
- * base-first, mirroring the order JavaScript runs field initializers in.
- *
- * Only field metadata is inherited this way. The lifecycle decorator itself
- * is not, so `factoryOf` still rejects an undecorated subclass.
- */
-function collectFieldInjections(cls: Constructor<object>): FieldInjection[] {
+function fieldInjectionsOf(constructor: Constructor<object>): FieldInjection[] {
   const chain: FieldInjection[][] = []
   for (
-    let current: object | null = cls;
+    let current: object | null = constructor;
     current !== null;
     current = Object.getPrototypeOf(current)
   ) {

@@ -6,23 +6,9 @@ import { DecoratorValidationError } from './errors.js'
 import { activeFieldStash, type FieldInjection } from './metadata.js'
 
 /**
- * Declares a class as a **singleton** service. Once registered with
- * `factoryOf`, the first request constructs the instance and every
- * request thereafter shares it.
+ * Identifies a class that will be instantiated only once and shared every time it is requested.
  *
- * A decorated class is itself usable as a token in `@Inject`, `@Select`,
- * and `selectorOf`. `keyOf` returns its `ServiceKey` for `ServiceModule.get`.
- *
- * @example
- * ```typescript
- * @Singleton
- * class GasolineTank implements EngineTank {
- *   consume(): void {}
- * }
- *
- * const module = ServiceModule.from([factoryOf(GasolineTank)])
- * const tank = await module.get(keyOf(GasolineTank))
- * ```
+ * This decorator is not inherited.
  */
 export function Singleton<C extends Constructor<object>>(
   constructor: C,
@@ -33,13 +19,9 @@ export function Singleton<C extends Constructor<object>>(
 }
 
 /**
- * Declares a class as a **transient** service. Once registered with
- * `factoryOf`, every request constructs a fresh instance, with no caching,
- * no deduplication, and no framework-managed disposal (cleanup belongs
- * entirely to whoever requested the instance).
+ * Identifies a class that will be instantiated every time it is requested.
  *
- * A decorated class is itself usable as a token in `@Inject`, `@Select`,
- * and `selectorOf`. `keyOf` returns its `ServiceKey` for `ServiceModule.get`.
+ * This decorator is not inherited.
  */
 export function Transient<C extends Constructor<object>>(
   constructor: C,
@@ -50,21 +32,9 @@ export function Transient<C extends Constructor<object>>(
 }
 
 /**
- * Marks a method as the class's teardown. When the module disposes of the
- * singleton, this method is called on the retained instance. Exactly one per
- * class, instance methods only, and only on {@link Singleton} classes, since
- * the module never disposes of transient instances.
+ * Identifies a method as the class's teardown. The method will be called exactly once when the module disposes of a retained instance.
  *
- * @example
- * ```typescript
- * @Singleton
- * class Database {
- *   @Dispose
- *   close() {
- *     this.connection.end()
- *   }
- * }
- * ```
+ * This decorator is not inherited and only applicable for {@link Singleton} classes.
  */
 export function Dispose<This>(
   _method: (this: This) => void,
@@ -85,31 +55,11 @@ export function Dispose<This>(
 }
 
 /**
- * Declares that a field receives a service resolved from the module. The
- * token's service becomes the field's value during construction, before the
- * constructor body runs, so it is already usable there.
+ * Identifies injectable class properties. An injectable property may have any access modifier (public, private, protected).
+ * The properties are injected before the constructor body runs, so they are already usable there.
  *
  * This decorator makes the class constructible only through a module.
- * Constructing it manually with `new` throws {@link DecoratorValidationError}.
- *
- * Each field is its own request. Two fields injecting the same {@link Transient}
- * class receive distinct instances, owned by the injecting class. Two fields
- * injecting the same {@link Singleton} class are a definition-time error because
- * they could only share one instance.
- *
- * @example
- * ```typescript
- * @Singleton
- * class CafeShop {
- *   // We can inject a decorated class directly
- *   @Inject(Barista)
- *   readonly engine!: Barista
- *
- *   // We can inject a key provided by a factory
- *   @Inject(grinderKey)
- *   readonly barista!: Grinder
- * }
- * ```
+ * Constructing it manually throws {@link DecoratorValidationError}.
  */
 export function Inject<T>(token: ServiceToken<T>) {
   const key = token instanceof ServiceKey ? token : keyOf(token)
@@ -123,22 +73,9 @@ export function Inject<T>(token: ServiceToken<T>) {
 }
 
 /**
- * Declares that a field receives a `Selector` over the given services. The
- * tokens' keys are grouped under one `SelectorKey`, and the field's value
- * picks among them per call, at runtime.
+ * Declares that a field receives a {@link Selector} over the given type.
  *
- * Tokens are `ServiceKey`s or decorated classes, mixed freely. Unlike a
- * transient injected directly, the selector is safe in a singleton field. It
- * resolves a fresh instance on every call instead of capturing one.
- *
- * @example
- * ```typescript
- * @Singleton
- * class CafeShop {
- *   @Select<Beans>(ArabicaBeans, RobustaBeans)
- *   private readonly roasts!: Selector<Beans>
- * }
- * ```
+ * The arguments can be {@link ServiceKey} or decorated classes, mixed freely.
  */
 export function Select<T>(...tokens: [ServiceToken<T>, ...ServiceToken<T>[]]) {
   const key = new SelectorKey<T>(

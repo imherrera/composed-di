@@ -3,11 +3,10 @@ import { keyOf } from './keyOf.js'
 import type { Constructor } from './types.js'
 
 /**
- * Creates a `SelectorKey` grouping the keys of the given decorated classes,
- * for runtime selection among implementations of a shared type.
+ * Creates a selector key for runtime selection among implementations of a shared type.
  *
  * @param constructors The classes to group. Each must carry a lifecycle decorator.
- * @return A `SelectorKey` over the classes' own keys.
+ * @return A selector key over the classes' own keys.
  * @throws {DecoratorValidationError} If any class has no lifecycle decorator.
  */
 export function selectorOf<T>(
