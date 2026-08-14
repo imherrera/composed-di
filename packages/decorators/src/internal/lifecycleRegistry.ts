@@ -57,7 +57,7 @@ export class LifecycleRegistry {
   ): void {
     if (metadata === undefined) {
       throw new DecoratorValidationError(
-        'decorator metadata is unavailable. Requires a compiler that implements decorator metadata (TypeScript 5.2 or later) and a defined Symbol.metadata, which importing @composed-di/decorators provides',
+        'decorator metadata is unavailable. Requires a compiler that implements decorator metadata (TypeScript 5.2 or later)',
       )
     }
     const records = LifecycleRegistry.ownRecords<T>(metadata, slot)
