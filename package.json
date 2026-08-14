@@ -11,7 +11,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc --build",
-    "clean": "tsc --build --clean",
+    "clean": "rm -rf packages/*/dist/",
     "test": "pnpm build && vitest run",
     "test:watch": "pnpm build && vitest",
     "test:types": "tsc --build",
@@ -19,7 +19,7 @@
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "publish:all": "pnpm lint && pnpm fmt:check && pnpm build && pnpm test && pnpm -r publish --access public",
+    "publish:all": "pnpm clean && pnpm lint && pnpm fmt:check && pnpm build && pnpm test && pnpm -r publish --access public",
     "prepare": "pnpm build"
   },
   "devDependencies": {
