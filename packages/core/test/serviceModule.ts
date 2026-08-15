@@ -4,18 +4,6 @@ import { ServiceKey, SelectorKey } from '../src/serviceKey.js'
 import { ServiceFactory } from '../src/serviceFactory.js'
 import { NoSuchFactoryError, ModuleValidationError } from '../src/errors.js'
 
-function captureValidationError(create: () => ServiceModule) {
-  try {
-    create()
-  } catch (error) {
-    if (error instanceof ModuleValidationError) {
-      return error
-    }
-    throw error
-  }
-  throw new Error('Expected module creation to throw ModuleValidationError')
-}
-
 describe('ServiceModule', () => {
   describe('from', () => {
     it('should create a module from a list of factories', () => {
@@ -390,19 +378,19 @@ describe('ServiceModule', () => {
         initialize: () => 'b',
       })
 
-      const error = captureValidationError(() =>
-        ServiceModule.from([
-          userServiceFactory,
-          databaseFactory,
-          configFactory,
-        ]),
-      )
+      const circularFactories = [
+        userServiceFactory,
+        databaseFactory,
+        configFactory,
+      ]
 
-      expect(error.message).toEqual(
-        'Circular dependency detected:\n' +
-          '    "UserService" factory depends on "Database"\n' +
-          '    "Database" factory depends on "Config"\n' +
-          '    "Config" factory depends on "Database" <- circular',
+      expect(() => ServiceModule.from(circularFactories)).toThrow(
+        new ModuleValidationError(
+          'Circular dependency detected:\n' +
+            '    "UserService" factory depends on "Database"\n' +
+            '    "Database" factory depends on "Config"\n' +
+            '    "Config" factory depends on "Database" <- circular',
+        ),
       )
     })
 
@@ -438,22 +426,22 @@ describe('ServiceModule', () => {
         initialize: () => 'auth',
       })
 
-      const error = captureValidationError(() =>
+      expect(() =>
         ServiceModule.from([
           configFactory,
           consoleLoggerFactory,
           appFactory,
           authServiceFactory,
         ]),
-      )
-
-      expect(error.message).toEqual(
-        'The "UserService" factory will fail to initialize because it depends on service keys that no factory provides:\n' +
-          '    "Database"\n' +
-          '    "FileLogger"\n' +
-          '\n' +
-          'The "AuthService" factory will fail to initialize because it depends on service keys that no factory provides:\n' +
-          '    "AuthConfig"',
+      ).toThrow(
+        new ModuleValidationError(
+          'The "UserService" factory will fail to initialize because it depends on service keys that no factory provides:\n' +
+            '    "Database"\n' +
+            '    "FileLogger"\n' +
+            '\n' +
+            'The "AuthService" factory will fail to initialize because it depends on service keys that no factory provides:\n' +
+            '    "AuthConfig"',
+        ),
       )
     })
   })
