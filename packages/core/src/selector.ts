@@ -5,21 +5,12 @@ import type { ServiceModule } from './serviceModule.js'
 /**
  * A runtime selector that provides access to multiple service implementations of the same type.
  *
- * A `Selector` is automatically created and injected when a factory depends on a
- * `SelectorKey<T>`. It allows the dependent service to dynamically choose which
+ * This class is automatically created and injected when a factory depends on a
+ * {@link SelectorKey}. It allows the dependent service to dynamically choose which
  * implementation to use at runtime, rather than being bound to a single implementation
  * at configuration time.
  */
 export class Selector<T> {
-  /**
-   * Creates a new Selector instance.
-   *
-   * Selector instances are created automatically by ServiceModule when
-   * resolving dependencies. You typically don't need to create them manually.
-   *
-   * @param module The ServiceModule used to resolve the selected service.
-   * @param keys The ServiceKeys that can be selected through this selector.
-   */
   constructor(
     private readonly module: ServiceModule,
     public readonly keys: readonly ServiceKey<T>[],

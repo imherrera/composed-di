@@ -1,6 +1,6 @@
 import type { ServiceKey, SelectorKey } from './serviceKey.js'
 import { InitializationAbortedError } from './errors.js'
-import type { Selector } from './serviceSelector.js'
+import type { Selector } from './selector.js'
 
 type DependencyType<T> =
   T extends SelectorKey<infer U>

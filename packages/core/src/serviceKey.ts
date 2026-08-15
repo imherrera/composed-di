@@ -1,4 +1,4 @@
-import type { Selector } from './serviceSelector.js'
+import type { Selector } from './selector.js'
 
 /**
  * A typed token used to identify and retrieve a service from a ServiceModule.

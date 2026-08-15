@@ -1,6 +1,6 @@
 import { type ServiceKey, SelectorKey } from './serviceKey.js'
 import { type ServiceFactory } from './serviceFactory.js'
-import { Selector } from './serviceSelector.js'
+import { Selector } from './selector.js'
 import { NoSuchFactoryError, ModuleValidationError } from './errors.js'
 
 /**

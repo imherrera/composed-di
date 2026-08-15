@@ -6,5 +6,5 @@ export {
   OneShotFactory,
 } from './serviceFactory.js'
 export { ServiceKey, SelectorKey, ServiceSelectorKey } from './serviceKey.js'
-export { Selector, ServiceSelector } from './serviceSelector.js'
+export { type Selector, type ServiceSelector } from './selector.js'
 export * from './errors.js'
