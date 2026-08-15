@@ -1,4 +1,4 @@
-import type { ServiceKey } from '@composed-di/core'
+import type { DependencyKey, ServiceKey } from '@composed-di/core'
 
 /**
  * The lifecycles a class decorator can declare, mirroring the two factory
@@ -7,12 +7,12 @@ import type { ServiceKey } from '@composed-di/core'
 export type Lifecycle = 'singleton' | 'transient'
 
 /**
- * A single `@Inject` field. Pairs the decorated field with the key that
- * resolves it.
+ * A single `@Inject` or `@Select` field. Pairs the decorated field with the key
+ * that resolves it, which is a `SelectorKey` for a `@Select` field.
  */
 export interface FieldInjection {
   readonly name: string | symbol
-  readonly key: ServiceKey<unknown>
+  readonly key: DependencyKey<unknown>
 }
 
 /**

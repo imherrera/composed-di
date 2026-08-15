@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ServiceModule } from '../src/serviceModule.js'
-import { ServiceKey, SelectorKey } from '../src/serviceKey.js'
+import { ServiceKey } from '../src/serviceKey.js'
+import { SelectorKey } from '../src/selectorKey.js'
 import { ServiceFactory } from '../src/serviceFactory.js'
 import { NoSuchFactoryError, ModuleValidationError } from '../src/errors.js'
 

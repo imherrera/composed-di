@@ -1,5 +1,6 @@
-import { type ServiceKey, SelectorKey } from './serviceKey.js'
-import { type ServiceFactory } from './serviceFactory.js'
+import { type ServiceKey } from './serviceKey.js'
+import { SelectorKey } from './selectorKey.js'
+import { type DependencyKey, type ServiceFactory } from './serviceFactory.js'
 import { Selector } from './selector.js'
 import { NoSuchFactoryError, ModuleValidationError } from './errors.js'
 
@@ -277,7 +278,7 @@ function isRegistered(
  * @param factory The factory to check.
  * @returns True if the factory provides the key, false otherwise.
  */
-function isSuitable<T, D extends readonly ServiceKey<any>[]>(
+function isSuitable<T, D extends readonly DependencyKey<any>[]>(
   key: ServiceKey<T>,
   factory: ServiceFactory,
 ): factory is ServiceFactory<T, D> {

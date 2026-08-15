@@ -1,4 +1,9 @@
-import { SelectorKey, ServiceKey, type Selector } from '@composed-di/core'
+import {
+  type DependencyKey,
+  SelectorKey,
+  ServiceKey,
+  type Selector,
+} from '@composed-di/core'
 import { type Constructor, type ServiceToken } from './types.js'
 import { keyOf } from './utils.js'
 import { LifecycleRegistry } from './internal/lifecycleRegistry.js'
@@ -98,14 +103,14 @@ export function Select<T>(...tokens: [ServiceToken<T>, ...ServiceToken<T>[]]) {
  */
 function inject<This, T>(
   decorator: string,
-  key: ServiceKey<T>,
+  key: DependencyKey<unknown>,
   context: ClassFieldDecoratorContext<This, T>,
 ): (this: This, initial: T) => T {
   assertStandardContext(decorator, context)
 
   if (context.static) {
     throw new DecoratorValidationError(
-      `@${decorator}(${key.name}) cannot be applied to the static field ${String(context.name)}`,
+      `@${decorator} cannot be applied to the static field ${String(context.name)}`,
     )
   }
   const field: FieldInjection = { name: context.name, key }
@@ -123,7 +128,7 @@ function inject<This, T>(
     }
     if (!stash.values.has(field)) {
       throw new DecoratorValidationError(
-        `${label}: no resolved instance for ${key.name}. The field is not part of the class registration (is the class's lifecycle decorator missing?)`,
+        `${label}: no resolved instance. The field is not part of the class registration (is the class's lifecycle decorator missing?)`,
       )
     }
 

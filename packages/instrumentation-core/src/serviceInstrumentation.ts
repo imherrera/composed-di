@@ -4,6 +4,7 @@ import {
   SingletonFactory,
   ServiceKey,
   ServiceModule,
+  type DependencyKey,
 } from '@composed-di/core'
 import type {
   InstrumentOptions,
@@ -194,7 +195,10 @@ function buildCapturePolicy(
   }
 }
 
-function instrumentServiceFactory<T, D extends readonly ServiceKey<unknown>[]>(
+function instrumentServiceFactory<
+  T,
+  D extends readonly DependencyKey<unknown>[],
+>(
   instrumentation: ServiceInstrumentation,
   options: InstrumentOptions,
   delegate: ServiceFactory<T, D>,

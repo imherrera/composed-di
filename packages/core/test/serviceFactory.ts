@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ServiceKey } from '../src/serviceKey.js'
+import { SelectorKey } from '../src/selectorKey.js'
 import { ServiceFactory } from '../src/serviceFactory.js'
 import { InitializationAbortedError } from '../src/errors.js'
 
@@ -605,3 +606,16 @@ describe('SingletonServiceFactory', () => {
     })
   })
 })
+
+/**
+ * Compile-time assertions. `tsc --build` checks every `@ts-expect-error` below and
+ * fails the build if one of them stops being an error. Exported to satisfy
+ * `noUnusedLocals`; never called.
+ */
+export function typeAssertions(group: SelectorKey<string>) {
+  ServiceFactory.transient({
+    // @ts-expect-error a factory provides one service, never a group of them
+    provides: group,
+    initialize: () => 'value',
+  })
+}

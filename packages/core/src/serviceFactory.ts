@@ -1,7 +1,17 @@
-import type { ServiceKey, SelectorKey } from './serviceKey.js'
+import type { ServiceKey } from './serviceKey.js'
+import type { SelectorKey } from './selectorKey.js'
 import { InitializationAbortedError } from './errors.js'
 import type { Selector } from './selector.js'
 
+/**
+ * Either kind of key a factory can depend on {@link ServiceKey} for a
+ * single service, or a {@link SelectorKey} grouping several implementations of one type.
+ *
+ * @template T The type of service the key identifies.
+ */
+export type DependencyKey<T> = ServiceKey<T> | SelectorKey<T>
+
+// The two branches are disjoint, so their order carries no meaning
 type DependencyType<T> =
   T extends SelectorKey<infer U>
     ? Selector<U>
@@ -9,8 +19,8 @@ type DependencyType<T> =
       ? U
       : never
 
-// Helper types to convert an array/tuple of ServiceKey to tuple of their types
-type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
+// Helper types to convert an array/tuple of dependency keys to tuple of their types
+type DependencyTypes<T extends readonly DependencyKey<unknown>[]> = {
   [K in keyof T]: DependencyType<T[K]>
 }
 
@@ -19,12 +29,13 @@ type DependencyTypes<T extends readonly ServiceKey<unknown>[]> = {
  * to be used.
  *
  * @template T The type of the service created by the factory.
- * @template D A tuple of `ServiceKey`s describing the dependencies required by the
+ * @template D A tuple of `DependencyKey`s describing the dependencies required by the
  * service, in the order {@link initialize} expects them.
  */
 export abstract class ServiceFactory<
   const T = unknown,
-  const D extends readonly ServiceKey<unknown>[] = readonly ServiceKey<any>[],
+  const D extends readonly DependencyKey<unknown>[] =
+    readonly DependencyKey<any>[],
 > {
   /**
    * The key under which this factory's service is registered and requested.
@@ -78,7 +89,7 @@ export abstract class ServiceFactory<
    */
   static singleton<
     const T,
-    const D extends readonly ServiceKey<unknown>[] = [],
+    const D extends readonly DependencyKey<unknown>[] = [],
   >({
     provides,
     dependsOn = [] as unknown as D,
@@ -110,7 +121,7 @@ export abstract class ServiceFactory<
    */
   static transient<
     const T,
-    const D extends readonly ServiceKey<unknown>[] = [],
+    const D extends readonly DependencyKey<unknown>[] = [],
   >({
     provides,
     dependsOn = [] as unknown as D,
@@ -127,7 +138,10 @@ export abstract class ServiceFactory<
    *
    * @deprecated Renamed to {@link ServiceFactory.transient}.
    * */
-  static oneShot<const T, const D extends readonly ServiceKey<unknown>[] = []>(
+  static oneShot<
+    const T,
+    const D extends readonly DependencyKey<unknown>[] = [],
+  >(
     options: Omit<
       ServiceFactory<T, D>,
       'dispose' | 'dependsOn' | 'getInstance'
@@ -145,11 +159,11 @@ export abstract class ServiceFactory<
  * of each request owns that instance's cleanup entirely.
  *
  * @template T - The type of the service instances built by this factory.
- * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
+ * @template D - A tuple of `DependencyKey` types that represent the dependencies this factory relies on.
  */
 export class TransientFactory<
   const T,
-  const D extends readonly ServiceKey<unknown>[] = [],
+  const D extends readonly DependencyKey<unknown>[] = [],
 > extends ServiceFactory<T, D> {
   constructor(
     readonly provides: ServiceKey<T>,
@@ -188,7 +202,7 @@ export const OneShotFactory = TransientFactory
  * */
 export type OneShotFactory<
   T,
-  D extends readonly ServiceKey<unknown>[] = [],
+  D extends readonly DependencyKey<unknown>[] = [],
 > = TransientFactory<T, D>
 
 /**
@@ -198,11 +212,11 @@ export type OneShotFactory<
  * It extends the `ServiceFactory` class to include additional behavior for managing singleton services.
  *
  * @template T - The type of the service instance managed by this factory.
- * @template D - A tuple of `ServiceKey` types that represent the dependencies this factory relies on.
+ * @template D - A tuple of `DependencyKey` types that represent the dependencies this factory relies on.
  */
 export class SingletonFactory<
   const T,
-  const D extends readonly ServiceKey<unknown>[] = [],
+  const D extends readonly DependencyKey<unknown>[] = [],
 > extends ServiceFactory<T, D> {
   private promisedInstance: Promise<T> | undefined
   private retainedInstance: { value: T } | undefined
