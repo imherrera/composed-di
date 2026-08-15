@@ -22,6 +22,10 @@ describe('Selector', () => {
         initialize: () => 'v2',
       })
       const k3 = new ServiceKey<string>('k3')
+      const f3 = ServiceFactory.transient({
+        provides: k3,
+        initialize: () => 'v3',
+      })
 
       // A selector is built for the factory that declares it, so the only way to
       // get hold of one is to have that factory hand it back
@@ -32,7 +36,7 @@ describe('Selector', () => {
         initialize: (selector) => selector,
       })
 
-      const m = ServiceModule.from([f1, f2, passthrough])
+      const m = ServiceModule.from([f1, f2, f3, passthrough])
       const selector = await m.get(passthroughKey)
 
       expect(() => selector.get(k3)).toThrow(NoSuchKeyError)
