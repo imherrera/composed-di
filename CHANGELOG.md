@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **@composed-di/core** — `SelectorKey<T>` no longer extends `ServiceKey<Selector<T>>`, and has neither a `name` nor a `symbol`. It is accepted only in a factory's `dependsOn`, which is typed as `DependencyKey<T>`.
+- **@composed-di/core** — `ServiceModule.get`/`getOrNull` no longer accept a `SelectorKey`. Passing one is now a compile time error instead of compiling and throwing `NoSuchFactoryError` at runtime.
 - **@composed-di/decorators** — `@Inject(selectorOf(...))` is now a compile time error. Use `@Select(...)`.
 - **@composed-di/decorators** — two fields of a class may `@Inject` the same singleton. Declaring two fields that injected the same singleton on a class used to throw `DecoratorValidationError` at class definition, both fields now receive the one shared instance.
 
