@@ -14,46 +14,46 @@ const path = require('path')
 const Module = require('module')
 
 const originalReporterPath =
-  process.env['_VITEST_IDE_ORIGINAL_REPORTER_PATH'] ||
-  process.env['_JETBRAINS_VITEST_REPORTER_ABSOLUTE_PATH']
+    process.env['_VITEST_IDE_ORIGINAL_REPORTER_PATH'] ||
+    process.env['_JETBRAINS_VITEST_REPORTER_ABSOLUTE_PATH']
 
 if (!originalReporterPath) {
-  throw new Error(
-    '[vitest-ide] could not determine the original IntelliJ reporter path',
-  )
+    throw new Error(
+        '[vitest-ide] could not determine the original IntelliJ reporter path',
+    )
 }
 
 function resolveSourceFromMap(filePath) {
-  try {
-    const mapPath = filePath + '.map'
-    if (!fs.existsSync(mapPath)) return filePath
-    const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
-    const source = Array.isArray(map.sources) && map.sources[0]
-    if (!source) return filePath
-    const resolved = path.resolve(path.dirname(mapPath), source)
-    return fs.existsSync(resolved) ? resolved : filePath
-  } catch {
-    return filePath
-  }
+    try {
+        const mapPath = filePath + '.map'
+        if (!fs.existsSync(mapPath)) return filePath
+        const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+        const source = Array.isArray(map.sources) && map.sources[0]
+        if (!source) return filePath
+        const resolved = path.resolve(path.dirname(mapPath), source)
+        return fs.existsSync(resolved) ? resolved : filePath
+    } catch {
+        return filePath
+    }
 }
 
 try {
-  const scopedRequire = Module.createRequire(originalReporterPath)
-  const resolverModulePath = scopedRequire.resolve(
-    '../vitest-intellij-file-path-resolver.js',
-  )
-  const resolverModule = require(resolverModulePath)
-  resolverModule.VitestIntellijFilePathResolver.prototype.resolve = function (
-    filePath,
-  ) {
-    return resolveSourceFromMap(filePath)
-  }
+    const scopedRequire = Module.createRequire(originalReporterPath)
+    const resolverModulePath = scopedRequire.resolve(
+        '../vitest-intellij-file-path-resolver.js',
+    )
+    const resolverModule = require(resolverModulePath)
+    resolverModule.VitestIntellijFilePathResolver.prototype.resolve = function (
+        filePath,
+    ) {
+        return resolveSourceFromMap(filePath)
+    }
 } catch (e) {
-  process.stderr.write(
-    '[vitest-ide] failed to patch IntelliJ file path resolver: ' +
-      e.stack +
-      '\n',
-  )
+    process.stderr.write(
+        '[vitest-ide] failed to patch IntelliJ file path resolver: ' +
+            e.stack +
+            '\n',
+    )
 }
 
 module.exports = require(originalReporterPath)

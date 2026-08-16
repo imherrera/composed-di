@@ -24,30 +24,30 @@ This package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908
 ```ts
 import { ServiceModule } from '@composed-di/core'
 import {
-  Singleton,
-  Inject,
-  Dispose,
-  factoriesOf,
-  keyOf,
+    Singleton,
+    Inject,
+    Dispose,
+    factoriesOf,
+    keyOf,
 } from '@composed-di/decorators'
 
 @Singleton
 class EspressoMachine {
-  pullShot(): void {}
+    pullShot(): void {}
 }
 
 @Singleton
 class Barista {
-  // A decorated class is its own token — no ServiceKey needed.
-  @Inject(EspressoMachine)
-  private readonly machine!: EspressoMachine
+    // A decorated class is its own token — no ServiceKey needed.
+    @Inject(EspressoMachine)
+    private readonly machine!: EspressoMachine
 
-  serveEspresso() {
-    this.machine.pullShot()
-  }
+    serveEspresso() {
+        this.machine.pullShot()
+    }
 
-  @Dispose
-  clockOut() {}
+    @Dispose
+    clockOut() {}
 }
 
 const cafe = ServiceModule.from([...factoriesOf(Barista, EspressoMachine)])
@@ -69,7 +69,7 @@ The lifecycle lives on the class. `@Singleton` classes are built on first reques
 // Beans are consumed, not kept: a fresh dose per request.
 @Transient
 class ArabicaBeans implements Beans {
-  readonly grams = 18
+    readonly grams = 18
 }
 ```
 
@@ -82,15 +82,15 @@ Declares that a field receives a service, resolved before the constructor body r
 ```ts
 @Singleton
 class Barista {
-  // Interface-typed dependency: interfaces erase, so it is identified by a
-  // ServiceKey. The key's service type is checked against the field's type
-  // at compile time.
-  @Inject(grinderKey)
-  private readonly grinder!: Grinder
+    // Interface-typed dependency: interfaces erase, so it is identified by a
+    // ServiceKey. The key's service type is checked against the field's type
+    // at compile time.
+    @Inject(grinderKey)
+    private readonly grinder!: Grinder
 
-  // Class-typed dependency: the decorated class is the token.
-  @Inject(EspressoMachine)
-  private readonly machine!: EspressoMachine
+    // Class-typed dependency: the decorated class is the token.
+    @Inject(EspressoMachine)
+    private readonly machine!: EspressoMachine
 }
 ```
 
@@ -113,8 +113,8 @@ Marks the class's teardown, called on the retained instance when the module disp
 ```ts
 @Singleton
 class EspressoMachine {
-  @Dispose
-  backflush() {} // runs on cafe.dispose()
+    @Dispose
+    backflush() {} // runs on cafe.dispose()
 }
 ```
 
@@ -124,11 +124,11 @@ class EspressoMachine {
 
 ```ts
 const cafe = ServiceModule.from([
-  ...factoriesOf(CafeShop, Barista, EspressoMachine, ArabicaBeans),
-  ServiceFactory.singleton({
-    provides: grinderKey,
-    initialize: () => new BurrGrinder(),
-  }),
+    ...factoriesOf(CafeShop, Barista, EspressoMachine, ArabicaBeans),
+    ServiceFactory.singleton({
+        provides: grinderKey,
+        initialize: () => new BurrGrinder(),
+    }),
 ])
 ```
 
@@ -153,16 +153,16 @@ Declares a field that receives a core `Selector` over several services — for p
 ```ts
 @Singleton
 class CafeShop {
-  // The menu of roasts.
-  @Select<Beans>(ArabicaBeans, RobustaBeans)
-  private readonly roasts!: Selector<Beans>
+    // The menu of roasts.
+    @Select<Beans>(ArabicaBeans, RobustaBeans)
+    private readonly roasts!: Selector<Beans>
 
-  async order(roast: 'arabica' | 'robusta'): Promise<CuppaCoffee> {
-    const beans = await this.roasts.get(
-      roast === 'arabica' ? keyOf(ArabicaBeans) : keyOf(RobustaBeans),
-    )
-    return this.barista.serveEspresso(beans)
-  }
+    async order(roast: 'arabica' | 'robusta'): Promise<CuppaCoffee> {
+        const beans = await this.roasts.get(
+            roast === 'arabica' ? keyOf(ArabicaBeans) : keyOf(RobustaBeans),
+        )
+        return this.barista.serveEspresso(beans)
+    }
 }
 ```
 
@@ -176,12 +176,12 @@ Substitution happens at the key, not the constructor. `ServiceModule.from` is la
 
 ```ts
 const testCafe = ServiceModule.from([
-  cafe,
-  // Replace the machine at its own address.
-  ServiceFactory.singleton({
-    provides: keyOf(EspressoMachine),
-    initialize: () => fakeMachine,
-  }),
+    cafe,
+    // Replace the machine at its own address.
+    ServiceFactory.singleton({
+        provides: keyOf(EspressoMachine),
+        initialize: () => fakeMachine,
+    }),
 ])
 
 afterEach(() => testCafe.dispose()) // fresh singletons per test
@@ -198,8 +198,8 @@ const legacyAdapterKey = new ServiceKey<LegacyAdapter>('LegacyAdapter')
 // Decorated classes consume it like any other key.
 @Singleton
 class Garage {
-  @Inject(legacyAdapterKey)
-  private readonly adapter!: LegacyAdapter
+    @Inject(legacyAdapterKey)
+    private readonly adapter!: LegacyAdapter
 }
 ```
 

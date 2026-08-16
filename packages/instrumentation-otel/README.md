@@ -23,7 +23,7 @@ import { OTELServiceInstrumentation } from '@composed-di/instrumentation-otel'
 const instrumentation = new OTELServiceInstrumentation()
 
 const module = instrumentation.install(
-  ServiceModule.from([configFactory, databaseFactory]),
+    ServiceModule.from([configFactory, databaseFactory]),
 )
 
 // Traced end to end: a ServiceModule<Database>.get span, with a child
@@ -62,11 +62,11 @@ Nothing is captured by default. Opt in at `install()`, with per-service redactio
 import { redactionRule } from '@composed-di/instrumentation-core'
 
 const module = instrumentation.install(baseModule, {
-  capture: {
-    arguments: true,
-    results: true,
-    redactionRules: [redactionRule(vaultKey).redactAll().build()],
-  },
+    capture: {
+        arguments: true,
+        results: true,
+        redactionRules: [redactionRule(vaultKey).redactAll().build()],
+    },
 })
 ```
 

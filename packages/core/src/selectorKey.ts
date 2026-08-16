@@ -6,13 +6,13 @@ import type { ServiceKey } from './serviceKey.js'
  * this enables runtime selection between multiple implementations of the same interface.
  */
 export class SelectorKey<T> {
-  /**
-   * Creates a new SelectorKey that groups the provided service keys.
-   *
-   * @param values An array of ServiceKeys that this selector can provide access to.
-   *               All keys must be registered in the ServiceModule for dependency validation to pass.
-   */
-  constructor(readonly values: ServiceKey<T>[]) {}
+    /**
+     * Creates a new SelectorKey that groups the provided service keys.
+     *
+     * @param values An array of ServiceKeys that this selector can provide access to.
+     *               All keys must be registered in the ServiceModule for dependency validation to pass.
+     */
+    constructor(readonly values: ServiceKey<T>[]) {}
 }
 
 /**

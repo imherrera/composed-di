@@ -20,19 +20,19 @@ This package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d908
 import { ServiceKey, ServiceFactory, ServiceModule } from '@composed-di/core'
 
 class EspressoMachine {
-  pullShot(): void {}
-  backflush(): void {}
+    pullShot(): void {}
+    backflush(): void {}
 }
 
 class Barista {
-  // Constructor injection: the class is completely framework-free.
-  constructor(private readonly machine: EspressoMachine) {}
+    // Constructor injection: the class is completely framework-free.
+    constructor(private readonly machine: EspressoMachine) {}
 
-  serveEspresso() {
-    this.machine.pullShot()
-  }
+    serveEspresso() {
+        this.machine.pullShot()
+    }
 
-  clockOut() {}
+    clockOut() {}
 }
 
 // Typed keys identify each service.
@@ -41,17 +41,17 @@ const baristaKey = new ServiceKey<Barista>('Barista')
 
 // Cycles and missing dependencies throw here, not at request time.
 const cafe = ServiceModule.from([
-  ServiceFactory.singleton({
-    provides: machineKey,
-    initialize: () => new EspressoMachine(), // may be async
-    dispose: (machine) => machine.backflush(),
-  }),
-  ServiceFactory.singleton({
-    provides: baristaKey,
-    dependsOn: [machineKey],
-    initialize: (machine) => new Barista(machine),
-    dispose: (barista) => barista.clockOut(),
-  }),
+    ServiceFactory.singleton({
+        provides: machineKey,
+        initialize: () => new EspressoMachine(), // may be async
+        dispose: (machine) => machine.backflush(),
+    }),
+    ServiceFactory.singleton({
+        provides: baristaKey,
+        dependsOn: [machineKey],
+        initialize: (machine) => new Barista(machine),
+        dispose: (barista) => barista.clockOut(),
+    }),
 ])
 
 // The barista is hired lazily, on the first order — and only one is hired.
@@ -71,7 +71,7 @@ A typed token backed by a unique `Symbol`, so two keys with the same name never 
 // Grinders come in many kinds, so the service is interface-typed.
 // Interfaces erase at runtime; the key is the identity.
 interface Grinder {
-  grind(beans: Beans): Grounds
+    grind(beans: Beans): Grounds
 }
 
 const grinderKey = new ServiceKey<Grinder>('Grinder')
@@ -90,16 +90,16 @@ Two lifetimes:
 ```ts
 // Shared: one barista for the whole café, torn down when the module disposes.
 const baristaFactory = ServiceFactory.singleton({
-  provides: baristaKey,
-  dependsOn: [grinderKey, machineKey],
-  initialize: (grinder, machine) => new Barista(grinder, machine),
-  dispose: (barista) => barista.clockOut(),
+    provides: baristaKey,
+    dependsOn: [grinderKey, machineKey],
+    initialize: (grinder, machine) => new Barista(grinder, machine),
+    dispose: (barista) => barista.clockOut(),
 })
 
 // Owned by the requester: beans are consumed, not kept — a fresh dose per request.
 const arabicaFactory = ServiceFactory.transient({
-  provides: arabicaKey,
-  initialize: () => new ArabicaBeans(),
+    provides: arabicaKey,
+    initialize: () => new ArabicaBeans(),
 })
 ```
 
@@ -137,23 +137,23 @@ const robustaKey = new ServiceKey<Beans>('RobustaBeans')
 const roastsKey = new SelectorKey<Beans>([arabicaKey, robustaKey])
 
 class CafeShop {
-  constructor(
-    private readonly roasts: Selector<Beans>,
-    private readonly barista: Barista,
-  ) {}
+    constructor(
+        private readonly roasts: Selector<Beans>,
+        private readonly barista: Barista,
+    ) {}
 
-  async order(roast: 'arabica' | 'robusta'): Promise<CuppaCoffee> {
-    const beans = await this.roasts.get(
-      roast === 'arabica' ? arabicaKey : robustaKey,
-    )
-    return this.barista.serveEspresso(beans)
-  }
+    async order(roast: 'arabica' | 'robusta'): Promise<CuppaCoffee> {
+        const beans = await this.roasts.get(
+            roast === 'arabica' ? arabicaKey : robustaKey,
+        )
+        return this.barista.serveEspresso(beans)
+    }
 }
 
 const cafeShopFactory = ServiceFactory.singleton({
-  provides: cafeShopKey,
-  dependsOn: [roastsKey, baristaKey],
-  initialize: (roasts, barista) => new CafeShop(roasts, barista),
+    provides: cafeShopKey,
+    dependsOn: [roastsKey, baristaKey],
+    initialize: (roasts, barista) => new CafeShop(roasts, barista),
 })
 ```
 
@@ -169,12 +169,12 @@ Substitution happens at the key, not the construction site. `ServiceModule.from`
 
 ```ts
 const testCafe = ServiceModule.from([
-  cafe,
-  // Replace the machine at its own key.
-  ServiceFactory.singleton({
-    provides: machineKey,
-    initialize: () => fakeMachine,
-  }),
+    cafe,
+    // Replace the machine at its own key.
+    ServiceFactory.singleton({
+        provides: machineKey,
+        initialize: () => fakeMachine,
+    }),
 ])
 
 afterEach(() => testCafe.dispose()) // fresh singletons per test

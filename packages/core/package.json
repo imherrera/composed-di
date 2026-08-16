@@ -1,38 +1,38 @@
 {
-  "name": "@composed-di/core",
-  "version": "0.14.0",
-  "private": false,
-  "keywords": [
-    "dependency injection",
-    "di",
-    "lazy dependency injection"
-  ],
-  "license": "MIT",
-  "author": "Juan Herrera juanhr454@gmail.com",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/imherrera/composed-di.git",
-    "directory": "packages/core"
-  },
-  "files": [
-    "dist/src",
-    "src"
-  ],
-  "type": "module",
-  "sideEffects": false,
-  "types": "./dist/src/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/src/index.d.ts",
-      "default": "./dist/src/index.js"
+    "name": "@composed-di/core",
+    "version": "0.14.0",
+    "private": false,
+    "keywords": [
+        "dependency injection",
+        "di",
+        "lazy dependency injection"
+    ],
+    "license": "MIT",
+    "author": "Juan Herrera juanhr454@gmail.com",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/imherrera/composed-di.git",
+        "directory": "packages/core"
+    },
+    "files": [
+        "dist/src",
+        "src"
+    ],
+    "type": "module",
+    "sideEffects": false,
+    "types": "./dist/src/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/src/index.d.ts",
+            "default": "./dist/src/index.js"
+        }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "tsc --build",
+        "clean": "tsc --build --clean",
+        "prepublishOnly": "npm run build"
     }
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "build": "tsc --build",
-    "clean": "tsc --build --clean",
-    "prepublishOnly": "npm run build"
-  }
 }

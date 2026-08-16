@@ -11,39 +11,39 @@ import type { ServiceModule } from './serviceModule.js'
  * at configuration time.
  */
 export class Selector<T> {
-  constructor(
-    private readonly module: ServiceModule,
-    public readonly keys: readonly ServiceKey<T>[],
-  ) {}
+    constructor(
+        private readonly module: ServiceModule,
+        public readonly keys: readonly ServiceKey<T>[],
+    ) {}
 
-  /**
-   * Retrieves a service instance by its key from the available services in this selector.
-   *
-   * The key must be one of the keys that were included in the `SelectorKey`
-   * used to create this selector.
-   *
-   * @param key The ServiceKey identifying which service implementation to retrieve.
-   * @returns A Promise that resolves to the requested service instance.
-   * @throws {NoSuchKeyError} If the key is not among this selector's keys.
-   *
-   * @example
-   * ```ts
-   * // `loggers: Selector<Logger>` is injected into factories that declare
-   * // `dependsOn: [loggerSelectorKey]`
-   * const key = loggers.keys.find((k) => k.name === 'FileLogger')!
-   * const logger = await loggers.get(key)
-   * logger.log('Resolved by name at runtime')
-   * ```
-   */
-  get(key: ServiceKey<T>): Promise<T> {
-    if (this.keys.some((k) => k === key)) {
-      return this.module.get(key)
-    } else {
-      throw new NoSuchKeyError(
-        `"${key.name}" is not among this selector's keys, which are ${this.keys.map((k) => `"${k.name}"`).join(', ')}`,
-      )
+    /**
+     * Retrieves a service instance by its key from the available services in this selector.
+     *
+     * The key must be one of the keys that were included in the `SelectorKey`
+     * used to create this selector.
+     *
+     * @param key The ServiceKey identifying which service implementation to retrieve.
+     * @returns A Promise that resolves to the requested service instance.
+     * @throws {NoSuchKeyError} If the key is not among this selector's keys.
+     *
+     * @example
+     * ```ts
+     * // `loggers: Selector<Logger>` is injected into factories that declare
+     * // `dependsOn: [loggerSelectorKey]`
+     * const key = loggers.keys.find((k) => k.name === 'FileLogger')!
+     * const logger = await loggers.get(key)
+     * logger.log('Resolved by name at runtime')
+     * ```
+     */
+    get(key: ServiceKey<T>): Promise<T> {
+        if (this.keys.some((k) => k === key)) {
+            return this.module.get(key)
+        } else {
+            throw new NoSuchKeyError(
+                `"${key.name}" is not among this selector's keys, which are ${this.keys.map((k) => `"${k.name}"`).join(', ')}`,
+            )
+        }
     }
-  }
 }
 
 /**

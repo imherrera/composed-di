@@ -24,7 +24,7 @@ const instrumentation = new MyInstrumentation()
 // A whole module: factories are wrapped, and the module's own
 // get/getOrNull/dispose are reported too.
 const module = instrumentation.install(
-  ServiceModule.from([configFactory, dbFactory]),
+    ServiceModule.from([configFactory, dbFactory]),
 )
 
 // Or individual factories / arrays of factories.
@@ -41,15 +41,15 @@ Two hooks cover everything:
 
 - **`lifecycleSpan(context)`** — a lifecycle operation is starting. `context.event` is one of:
 
-  | Event                | Meaning                                                                 |
-  | -------------------- | ----------------------------------------------------------------------- |
-  | `factory_initialize` | A factory is creating its service instance.                             |
-  | `factory_dispose`    | A factory is tearing down its retained instance.                        |
-  | `module_get`         | An instrumented module is resolving `get(key)`, dependencies included.  |
-  | `module_get_or_null` | Same, for `getOrNull(key)` — a `null` miss is a success, not a failure. |
-  | `module_dispose`     | An instrumented module is disposing all factories (no single `key`).    |
+    | Event                | Meaning                                                                 |
+    | -------------------- | ----------------------------------------------------------------------- |
+    | `factory_initialize` | A factory is creating its service instance.                             |
+    | `factory_dispose`    | A factory is tearing down its retained instance.                        |
+    | `module_get`         | An instrumented module is resolving `get(key)`, dependencies included.  |
+    | `module_get_or_null` | Same, for `getOrNull(key)` — a `null` miss is a success, not a failure. |
+    | `module_dispose`     | An instrumented module is disposing all factories (no single `key`).    |
 
-  Every event carries the `ServiceKey` it concerns, except `module_dispose`.
+    Every event carries the `ServiceKey` it concerns, except `module_dispose`.
 
 - **`methodCallSpan(context)`** — a method is being called on a service instance (instances returned by instrumented factories are proxied). The context carries the service key, the method name, the implementing class name when there is one, and — only when capture is enabled — the arguments.
 
@@ -57,12 +57,12 @@ Both hooks return an **`OperationSpan`**:
 
 ```ts
 interface OperationSpan {
-  // Wraps the operation itself, so you can establish ambient state
-  // (e.g. tracing context) that nested operations inherit.
-  run<T>(fn: () => T): T
-  // Called exactly once when the operation finishes. For async methods,
-  // when the promise settles.
-  end(outcome: OperationOutcome): void
+    // Wraps the operation itself, so you can establish ambient state
+    // (e.g. tracing context) that nested operations inherit.
+    run<T>(fn: () => T): T
+    // Called exactly once when the operation finishes. For async methods,
+    // when the promise settles.
+    end(outcome: OperationOutcome): void
 }
 ```
 
@@ -72,31 +72,31 @@ interface OperationSpan {
 
 ```ts
 import {
-  LifecycleContext,
-  MethodCallContext,
-  OperationSpan,
-  ServiceInstrumentation,
+    LifecycleContext,
+    MethodCallContext,
+    OperationSpan,
+    ServiceInstrumentation,
 } from '@composed-di/instrumentation-core'
 
 class LoggingInstrumentation extends ServiceInstrumentation {
-  lifecycleSpan(context: LifecycleContext): OperationSpan {
-    return this.span(`${context.key?.name ?? 'module'}.${context.event}`)
-  }
-
-  methodCallSpan(context: MethodCallContext): OperationSpan {
-    return this.span(`${context.key.name}.${context.methodName}`)
-  }
-
-  private span(name: string): OperationSpan {
-    const startedAt = performance.now()
-    return {
-      run: (fn) => fn(), // no ambient state to establish
-      end: (outcome) => {
-        const ms = (performance.now() - startedAt).toFixed(1)
-        console.log(`${name} ${outcome.type} in ${ms}ms`)
-      },
+    lifecycleSpan(context: LifecycleContext): OperationSpan {
+        return this.span(`${context.key?.name ?? 'module'}.${context.event}`)
     }
-  }
+
+    methodCallSpan(context: MethodCallContext): OperationSpan {
+        return this.span(`${context.key.name}.${context.methodName}`)
+    }
+
+    private span(name: string): OperationSpan {
+        const startedAt = performance.now()
+        return {
+            run: (fn) => fn(), // no ambient state to establish
+            end: (outcome) => {
+                const ms = (performance.now() - startedAt).toFixed(1)
+                console.log(`${name} ${outcome.type} in ${ms}ms`)
+            },
+        }
+    }
 }
 ```
 
@@ -110,20 +110,21 @@ Nothing is captured by default: runtime values may be large or contain secrets, 
 import { redactionRule } from '@composed-di/instrumentation-core'
 
 const module = instrumentation.install(baseModule, {
-  capture: {
-    arguments: true, // deliver method args as MethodCallContext.args
-    results: true, // deliver return values on the success outcome
-    redactionRules: [
-      // Blank everything this service sees...
-      redactionRule(vaultKey).redactAll().exclude('ping').build(),
-      // ...or mask specific methods with custom output.
-      redactionRule(billingKey)
-        .redact('chargeCard', {
-          maskResult: (card) => `card ending in ${card.number.slice(-4)}`,
-        })
-        .build(),
-    ],
-  },
+    capture: {
+        arguments: true, // deliver method args as MethodCallContext.args
+        results: true, // deliver return values on the success outcome
+        redactionRules: [
+            // Blank everything this service sees...
+            redactionRule(vaultKey).redactAll().exclude('ping').build(),
+            // ...or mask specific methods with custom output.
+            redactionRule(billingKey)
+                .redact('chargeCard', {
+                    maskResult: (card) =>
+                        `card ending in ${card.number.slice(-4)}`,
+                })
+                .build(),
+        ],
+    },
 })
 ```
 

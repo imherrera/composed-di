@@ -1,44 +1,44 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "categories": {
-    "correctness": "error",
-    "suspicious": "warn"
-  },
-  "plugins": ["import"],
-  "jsPlugins": [
-    "./scripts/lint/instance-naming.mjs",
-    "./scripts/lint/manifest-constants.mjs"
-  ],
-  "rules": {
-    "unicorn/filename-case": [
-      "error",
-      {
-        "case": "camelCase"
-      }
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "categories": {
+        "correctness": "error",
+        "suspicious": "warn"
+    },
+    "plugins": ["import"],
+    "jsPlugins": [
+        "./scripts/lint/instance-naming.mjs",
+        "./scripts/lint/manifest-constants.mjs"
     ],
-    "unicorn/prefer-module": "error",
-    "unicorn/prefer-node-protocol": "error",
-    "import/no-cycle": "error",
-    "import/extensions": ["error", "ignorePackages"],
-    "instance-naming/camel-case": "error",
-    "manifest-constants/match": "error"
-  },
-  "overrides": [
-    {
-      "files": ["**/test/**"],
-      "plugins": ["vitest"],
-      "rules": {
-        "vitest/no-standalone-expect": "off",
-        "vitest/no-disabled-tests": "off",
-        "vitest/consistent-test-filename": [
-          "error",
-          {
-            "allTestPattern": "\\.(test|spec)\\.ts?$",
-            "pattern": "a name without the redundant \\.test suffix, files under test/ are already tests"
-          }
-        ]
-      }
-    }
-  ],
-  "ignorePatterns": ["**/dist/**", "**/node_modules/**"]
+    "rules": {
+        "unicorn/filename-case": [
+            "error",
+            {
+                "case": "camelCase"
+            }
+        ],
+        "unicorn/prefer-module": "error",
+        "unicorn/prefer-node-protocol": "error",
+        "import/no-cycle": "error",
+        "import/extensions": ["error", "ignorePackages"],
+        "instance-naming/camel-case": "error",
+        "manifest-constants/match": "error"
+    },
+    "overrides": [
+        {
+            "files": ["**/test/**"],
+            "plugins": ["vitest"],
+            "rules": {
+                "vitest/no-standalone-expect": "off",
+                "vitest/no-disabled-tests": "off",
+                "vitest/consistent-test-filename": [
+                    "error",
+                    {
+                        "allTestPattern": "\\.(test|spec)\\.ts?$",
+                        "pattern": "a name without the redundant \\.test suffix, files under test/ are already tests"
+                    }
+                ]
+            }
+        }
+    ],
+    "ignorePatterns": ["**/dist/**", "**/node_modules/**"]
 }

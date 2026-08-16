@@ -11,8 +11,8 @@ export type Lifecycle = 'singleton' | 'transient'
  * that resolves it, which is a `SelectorKey` for a `@Select` field.
  */
 export interface FieldInjection {
-  readonly name: string | symbol
-  readonly key: DependencyKey<unknown>
+    readonly name: string | symbol
+    readonly key: DependencyKey<unknown>
 }
 
 /**
@@ -20,8 +20,8 @@ export interface FieldInjection {
  * invoker that calls it on an instance.
  */
 export interface DisposeHook {
-  readonly name: string | symbol
-  readonly invoke: (instance: object) => void
+    readonly name: string | symbol
+    readonly invoke: (instance: object) => void
 }
 
 /**
@@ -30,10 +30,10 @@ export interface DisposeHook {
  * and its `@Dispose` hook if it has one.
  */
 export interface ClassRegistration {
-  readonly lifecycle: Lifecycle
-  readonly key: ServiceKey<unknown>
-  readonly fields: readonly FieldInjection[]
-  readonly dispose?: DisposeHook | undefined
+    readonly lifecycle: Lifecycle
+    readonly key: ServiceKey<unknown>
+    readonly fields: readonly FieldInjection[]
+    readonly dispose?: DisposeHook | undefined
 }
 
 /**
@@ -44,8 +44,8 @@ export interface ClassRegistration {
  * value actually reached its field.
  */
 export interface FieldStash {
-  readonly values: Map<FieldInjection, unknown>
-  readonly consumed: Set<FieldInjection>
+    readonly values: Map<FieldInjection, unknown>
+    readonly consumed: Set<FieldInjection>
 }
 
 // Per-copy state by design. The cross-copy guarantee is key-only (see
@@ -60,15 +60,15 @@ let currentStash: FieldStash | undefined
  * nest.
  */
 export function runWithFieldStash<T>(stash: FieldStash, construct: () => T): T {
-  const previous = currentStash
-  currentStash = stash
-  try {
-    return construct()
-  } finally {
-    currentStash = previous
-  }
+    const previous = currentStash
+    currentStash = stash
+    try {
+        return construct()
+    } finally {
+        currentStash = previous
+    }
 }
 
 export function activeFieldStash(): FieldStash | undefined {
-  return currentStash
+    return currentStash
 }

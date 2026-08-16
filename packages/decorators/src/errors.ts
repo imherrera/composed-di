@@ -9,5 +9,5 @@
  * declaration rather than catching this at runtime.
  */
 export class DecoratorValidationError extends Error {
-  override name = 'DecoratorValidationError'
+    override name = 'DecoratorValidationError'
 }

@@ -16,14 +16,14 @@ export const ATTR_COMPOSED_DI_SERVICE_EVENT = 'composed_di.service.event'
  * argument capture is enabled in the InstrumentOptions.
  */
 export const ATTR_COMPOSED_DI_SERVICE_FUNCTION_ARGUMENTS =
-  'composed_di.service.function.arguments'
+    'composed_di.service.function.arguments'
 
 /**
  * The method call result, serialized to JSON. Present exactly when
  * result capture is enabled in the InstrumentOptions.
  */
 export const ATTR_COMPOSED_DI_SERVICE_FUNCTION_RESULT =
-  'composed_di.service.function.result'
+    'composed_di.service.function.result'
 
 /** The name of the function the span covers, qualified by its class or service key. */
 export const ATTR_CODE_FUNCTION_NAME = 'code.function.name'

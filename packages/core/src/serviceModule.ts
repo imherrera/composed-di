@@ -13,104 +13,104 @@ import { NoSuchFactoryError, ModuleValidationError } from './errors.js'
  * at the time of module creation.
  */
 export class ServiceModule {
-  /**
-   * Private constructor to enforce module creation through the `static from` method.
-   *
-   * @param factories An array of service factories that this module will manage.
-   */
-  private constructor(readonly factories: ReadonlyArray<ServiceFactory>) {
-    checkMissingDependencies(this.factories)
-    checkCircularDependencies(this.factories)
-  }
-
-  /**
-   * Retrieves an instance for the given key.
-   *
-   * @param key The key of the instance to retrieve.
-   * @return A promise that resolves to the instance.
-   * @throws {NoSuchFactoryError} If no suitable factory is found for the given key.
-   */
-  public async get<T>(key: ServiceKey<T>): Promise<T> {
-    const factory = this.factories.find((candidate) => {
-      return isSuitable(key, candidate)
-    })
-
-    // Check if a factory to supply the requested key was not found
-    if (!factory) {
-      throw new NoSuchFactoryError(`No factory provides "${key.name}"`)
+    /**
+     * Private constructor to enforce module creation through the `static from` method.
+     *
+     * @param factories An array of service factories that this module will manage.
+     */
+    private constructor(readonly factories: ReadonlyArray<ServiceFactory>) {
+        checkMissingDependencies(this.factories)
+        checkCircularDependencies(this.factories)
     }
 
-    // Check if the factory has an instance already
-    const instance = factory.getInstance()
-    if (instance) {
-      return instance.value as T
-    }
+    /**
+     * Retrieves an instance for the given key.
+     *
+     * @param key The key of the instance to retrieve.
+     * @return A promise that resolves to the instance.
+     * @throws {NoSuchFactoryError} If no suitable factory is found for the given key.
+     */
+    public async get<T>(key: ServiceKey<T>): Promise<T> {
+        const factory = this.factories.find((candidate) => {
+            return isSuitable(key, candidate)
+        })
 
-    // Resolve all dependencies first
-    const dependencies = await Promise.all(
-      factory.dependsOn.map((dependencyKey) => {
-        // If the dependency is a SelectorKey, create a Selector instance
-        if (dependencyKey instanceof SelectorKey) {
-          return new Selector(this, dependencyKey.values)
+        // Check if a factory to supply the requested key was not found
+        if (!factory) {
+            throw new NoSuchFactoryError(`No factory provides "${key.name}"`)
         }
-        return this.get(dependencyKey)
-      }),
-    )
 
-    // Call the factory to retrieve the dependency
-    return factory.initialize(...dependencies)
-  }
+        // Check if the factory has an instance already
+        const instance = factory.getInstance()
+        if (instance) {
+            return instance.value as T
+        }
 
-  /**
-   * Retrieves the value associated with the given service key or returns null if the service is not found.
-   *
-   * @param key - The key used to retrieve the associated service.
-   * @return A promise that resolves to the service value if found, or null if the service is not found.
-   */
-  public async getOrNull<T>(key: ServiceKey<T>): Promise<T | null> {
-    try {
-      return await this.get(key)
-    } catch (error) {
-      if (error instanceof NoSuchFactoryError) {
-        return null
-      }
-      throw error
-    }
-  }
+        // Resolve all dependencies first
+        const dependencies = await Promise.all(
+            factory.dependsOn.map((dependencyKey) => {
+                // If the dependency is a SelectorKey, create a Selector instance
+                if (dependencyKey instanceof SelectorKey) {
+                    return new Selector(this, dependencyKey.values)
+                }
+                return this.get(dependencyKey)
+            }),
+        )
 
-  /**
-   * Disposes of all factories in this module, releasing any resources
-   * or instances they hold. Factories are disposed in reverse-topological
-   * order, so dependents are disposed before the factories they depend on.
-   */
-  public dispose() {
-    sortReverseTopologically(this.factories)
-      // Dispose of factories in reverse-topological order
-      .forEach((e) => e.dispose?.())
-  }
-
-  /**
-   * Creates a new module instance by merging an array of module or factory entries.
-   * If more than one factory provides the same key, the last factory that provides the key will take precedence.
-   *
-   * @param entries An array of modules or factories to be merged.
-   * @return A new module containing the merged factories, with duplicates resolved in a last-wins manner.
-   * @throws {ModuleValidationError} If there are circular or missing dependencies among the provided factories.
-   */
-  static from(entries: (ServiceModule | ServiceFactory)[]): ServiceModule {
-    // Flatten entries and keep only the last factory for each ServiceKey
-    const flattened = entries.flatMap((e) => {
-      return e instanceof ServiceModule ? e.factories : [e]
-    })
-
-    const factoriesByKey = new Map<symbol, ServiceFactory>()
-    // Later factories overwrite earlier ones (last-wins)
-    for (const f of flattened) {
-      factoriesByKey.set(f.provides.symbol, f)
+        // Call the factory to retrieve the dependency
+        return factory.initialize(...dependencies)
     }
 
-    return new ServiceModule(Array.from(factoriesByKey.values()))
-  }
+    /**
+     * Retrieves the value associated with the given service key or returns null if the service is not found.
+     *
+     * @param key - The key used to retrieve the associated service.
+     * @return A promise that resolves to the service value if found, or null if the service is not found.
+     */
+    public async getOrNull<T>(key: ServiceKey<T>): Promise<T | null> {
+        try {
+            return await this.get(key)
+        } catch (error) {
+            if (error instanceof NoSuchFactoryError) {
+                return null
+            }
+            throw error
+        }
+    }
+
+    /**
+     * Disposes of all factories in this module, releasing any resources
+     * or instances they hold. Factories are disposed in reverse-topological
+     * order, so dependents are disposed before the factories they depend on.
+     */
+    public dispose() {
+        sortReverseTopologically(this.factories)
+            // Dispose of factories in reverse-topological order
+            .forEach((e) => e.dispose?.())
+    }
+
+    /**
+     * Creates a new module instance by merging an array of module or factory entries.
+     * If more than one factory provides the same key, the last factory that provides the key will take precedence.
+     *
+     * @param entries An array of modules or factories to be merged.
+     * @return A new module containing the merged factories, with duplicates resolved in a last-wins manner.
+     * @throws {ModuleValidationError} If there are circular or missing dependencies among the provided factories.
+     */
+    static from(entries: (ServiceModule | ServiceFactory)[]): ServiceModule {
+        // Flatten entries and keep only the last factory for each ServiceKey
+        const flattened = entries.flatMap((e) => {
+            return e instanceof ServiceModule ? e.factories : [e]
+        })
+
+        const factoriesByKey = new Map<symbol, ServiceFactory>()
+        // Later factories overwrite earlier ones (last-wins)
+        for (const f of flattened) {
+            factoriesByKey.set(f.provides.symbol, f)
+        }
+
+        return new ServiceModule(Array.from(factoriesByKey.values()))
+    }
 }
 
 /**
@@ -120,53 +120,53 @@ export class ServiceModule {
  * @throws {ModuleValidationError} If a circular dependency is detected.
  */
 function checkCircularDependencies(factories: ReadonlyArray<ServiceFactory>) {
-  const factoryMap = new Map<symbol, ServiceFactory>()
-  for (const f of factories) {
-    factoryMap.set(f.provides.symbol, f)
-  }
-
-  const visited = new Set<symbol>()
-  const stack = new Set<symbol>()
-
-  function walk(factory: ServiceFactory, path: string[]) {
-    const symbol = factory.provides.symbol
-
-    if (stack.has(symbol)) {
-      const cycle = [...path, factory.provides.name]
-      const frames = cycle.slice(0, -1).map((name, index) => {
-        const edge = `"${name}" factory depends on "${cycle[index + 1]}"`
-        return index === cycle.length - 2 ? `${edge} <- circular` : edge
-      })
-      throw new ModuleValidationError(
-        `Circular dependency detected:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
-      )
+    const factoryMap = new Map<symbol, ServiceFactory>()
+    for (const f of factories) {
+        factoryMap.set(f.provides.symbol, f)
     }
 
-    if (visited.has(symbol)) {
-      return
-    }
+    const visited = new Set<symbol>()
+    const stack = new Set<symbol>()
 
-    visited.add(symbol)
-    stack.add(symbol)
+    function walk(factory: ServiceFactory, path: string[]) {
+        const symbol = factory.provides.symbol
 
-    for (const depKey of factory.dependsOn) {
-      const keysToCheck =
-        depKey instanceof SelectorKey ? depKey.values : [depKey]
-
-      for (const key of keysToCheck) {
-        const depFactory = factoryMap.get(key.symbol)
-        if (depFactory) {
-          walk(depFactory, [...path, factory.provides.name])
+        if (stack.has(symbol)) {
+            const cycle = [...path, factory.provides.name]
+            const frames = cycle.slice(0, -1).map((name, index) => {
+                const edge = `"${name}" factory depends on "${cycle[index + 1]}"`
+                return index === cycle.length - 2 ? `${edge} <- circular` : edge
+            })
+            throw new ModuleValidationError(
+                `Circular dependency detected:\n${frames.map((frame) => `    ${frame}`).join('\n')}`,
+            )
         }
-      }
+
+        if (visited.has(symbol)) {
+            return
+        }
+
+        visited.add(symbol)
+        stack.add(symbol)
+
+        for (const depKey of factory.dependsOn) {
+            const keysToCheck =
+                depKey instanceof SelectorKey ? depKey.values : [depKey]
+
+            for (const key of keysToCheck) {
+                const depFactory = factoryMap.get(key.symbol)
+                if (depFactory) {
+                    walk(depFactory, [...path, factory.provides.name])
+                }
+            }
+        }
+
+        stack.delete(symbol)
     }
 
-    stack.delete(symbol)
-  }
-
-  for (const factory of factories) {
-    walk(factory, [])
-  }
+    for (const factory of factories) {
+        walk(factory, [])
+    }
 }
 
 /**
@@ -176,34 +176,34 @@ function checkCircularDependencies(factories: ReadonlyArray<ServiceFactory>) {
  * @throws {ModuleValidationError} If any dependency is missing.
  */
 function checkMissingDependencies(factories: ReadonlyArray<ServiceFactory>) {
-  const issues = factories.reduce((acc, factory) => {
-    const frames: string[] = []
+    const issues = factories.reduce((acc, factory) => {
+        const frames: string[] = []
 
-    factory.dependsOn.forEach((dependencyKey) => {
-      // For SelectorKey, trace each contained key that is not registered
-      if (dependencyKey instanceof SelectorKey) {
-        dependencyKey.values.forEach((key) => {
-          if (!isRegistered(key, factories)) {
-            frames.push(key.name)
-          }
+        factory.dependsOn.forEach((dependencyKey) => {
+            // For SelectorKey, trace each contained key that is not registered
+            if (dependencyKey instanceof SelectorKey) {
+                dependencyKey.values.forEach((key) => {
+                    if (!isRegistered(key, factories)) {
+                        frames.push(key.name)
+                    }
+                })
+            } else if (!isRegistered(dependencyKey, factories)) {
+                frames.push(dependencyKey.name)
+            }
         })
-      } else if (!isRegistered(dependencyKey, factories)) {
-        frames.push(dependencyKey.name)
-      }
-    })
 
-    if (frames.length !== 0) {
-      acc.push(
-        `The "${factory.provides.name}" factory will fail to initialize because it depends on service keys that no factory provides:\n${frames.map((frame) => `    "${frame}"`).join('\n')}`,
-      )
+        if (frames.length !== 0) {
+            acc.push(
+                `The "${factory.provides.name}" factory will fail to initialize because it depends on service keys that no factory provides:\n${frames.map((frame) => `    "${frame}"`).join('\n')}`,
+            )
+        }
+
+        return acc
+    }, new Array<string>())
+
+    if (issues.length > 0) {
+        throw new ModuleValidationError(issues.join('\n\n'))
     }
-
-    return acc
-  }, new Array<string>())
-
-  if (issues.length > 0) {
-    throw new ModuleValidationError(issues.join('\n\n'))
-  }
 }
 
 /**
@@ -215,46 +215,46 @@ function checkMissingDependencies(factories: ReadonlyArray<ServiceFactory>) {
  * @returns A new array with the factories in dependents-first order.
  */
 function sortReverseTopologically(
-  factories: ReadonlyArray<ServiceFactory>,
+    factories: ReadonlyArray<ServiceFactory>,
 ): ServiceFactory[] {
-  const factoryMap = new Map<symbol, ServiceFactory>()
-  for (const f of factories) {
-    factoryMap.set(f.provides.symbol, f)
-  }
-
-  const visited = new Set<symbol>()
-  const sorted = new Array<ServiceFactory>(factories.length)
-  let nextSlot = factories.length
-
-  function walk(factory: ServiceFactory) {
-    const symbol = factory.provides.symbol
-    if (visited.has(symbol)) {
-      return
+    const factoryMap = new Map<symbol, ServiceFactory>()
+    for (const f of factories) {
+        factoryMap.set(f.provides.symbol, f)
     }
-    visited.add(symbol)
 
-    for (const depKey of factory.dependsOn) {
-      const keysToCheck =
-        depKey instanceof SelectorKey ? depKey.values : [depKey]
+    const visited = new Set<symbol>()
+    const sorted = new Array<ServiceFactory>(factories.length)
+    let nextSlot = factories.length
 
-      for (const key of keysToCheck) {
-        const depFactory = factoryMap.get(key.symbol)
-        if (depFactory) {
-          walk(depFactory)
+    function walk(factory: ServiceFactory) {
+        const symbol = factory.provides.symbol
+        if (visited.has(symbol)) {
+            return
         }
-      }
+        visited.add(symbol)
+
+        for (const depKey of factory.dependsOn) {
+            const keysToCheck =
+                depKey instanceof SelectorKey ? depKey.values : [depKey]
+
+            for (const key of keysToCheck) {
+                const depFactory = factoryMap.get(key.symbol)
+                if (depFactory) {
+                    walk(depFactory)
+                }
+            }
+        }
+
+        // Post-order fills dependencies toward the back, leaving earlier slots
+        // for their dependents
+        sorted[--nextSlot] = factory
     }
 
-    // Post-order fills dependencies toward the back, leaving earlier slots
-    // for their dependents
-    sorted[--nextSlot] = factory
-  }
+    for (const factory of factories) {
+        walk(factory)
+    }
 
-  for (const factory of factories) {
-    walk(factory)
-  }
-
-  return sorted
+    return sorted
 }
 
 /**
@@ -265,10 +265,10 @@ function sortReverseTopologically(
  * @returns True if a factory provides the given key, false otherwise.
  */
 function isRegistered(
-  key: ServiceKey<unknown>,
-  factories: ReadonlyArray<ServiceFactory>,
+    key: ServiceKey<unknown>,
+    factories: ReadonlyArray<ServiceFactory>,
 ) {
-  return factories.some((factory) => factory.provides?.symbol === key?.symbol)
+    return factories.some((factory) => factory.provides?.symbol === key?.symbol)
 }
 
 /**
@@ -279,8 +279,8 @@ function isRegistered(
  * @returns True if the factory provides the key, false otherwise.
  */
 function isSuitable<T, D extends readonly DependencyKey<any>[]>(
-  key: ServiceKey<T>,
-  factory: ServiceFactory,
+    key: ServiceKey<T>,
+    factory: ServiceFactory,
 ): factory is ServiceFactory<T, D> {
-  return factory?.provides?.symbol === key?.symbol
+    return factory?.provides?.symbol === key?.symbol
 }

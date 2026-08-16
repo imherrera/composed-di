@@ -1,9 +1,9 @@
 {
-  "name": "vitest",
-  "version": "4.1.10",
-  "private": true,
-  "bin": {
-    "vitest": "vitest.mjs"
-  },
-  "type": "module"
+    "name": "vitest",
+    "version": "4.1.10",
+    "private": true,
+    "bin": {
+        "vitest": "vitest.mjs"
+    },
+    "type": "module"
 }

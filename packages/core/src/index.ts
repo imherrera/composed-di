@@ -1,10 +1,10 @@
 export { ServiceModule } from './serviceModule.js'
 export {
-  ServiceFactory,
-  SingletonFactory,
-  TransientFactory,
-  OneShotFactory,
-  type DependencyKey,
+    ServiceFactory,
+    SingletonFactory,
+    TransientFactory,
+    OneShotFactory,
+    type DependencyKey,
 } from './serviceFactory.js'
 export { ServiceKey } from './serviceKey.js'
 export { SelectorKey, ServiceSelectorKey } from './selectorKey.js'

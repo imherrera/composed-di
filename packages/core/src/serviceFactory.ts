@@ -13,15 +13,15 @@ export type DependencyKey<T> = ServiceKey<T> | SelectorKey<T>
 
 // The two branches are disjoint, so their order carries no meaning
 type DependencyType<T> =
-  T extends SelectorKey<infer U>
-    ? Selector<U>
-    : T extends ServiceKey<infer U>
-      ? U
-      : never
+    T extends SelectorKey<infer U>
+        ? Selector<U>
+        : T extends ServiceKey<infer U>
+          ? U
+          : never
 
 // Helper types to convert an array/tuple of dependency keys to tuple of their types
 type DependencyTypes<T extends readonly DependencyKey<unknown>[]> = {
-  [K in keyof T]: DependencyType<T[K]>
+    [K in keyof T]: DependencyType<T[K]>
 }
 
 /**
@@ -33,124 +33,124 @@ type DependencyTypes<T extends readonly DependencyKey<unknown>[]> = {
  * service, in the order {@link initialize} expects them.
  */
 export abstract class ServiceFactory<
-  const T = unknown,
-  const D extends readonly DependencyKey<unknown>[] =
-    readonly DependencyKey<any>[],
+    const T = unknown,
+    const D extends readonly DependencyKey<unknown>[] =
+        readonly DependencyKey<any>[],
 > {
-  /**
-   * The key under which this factory's service is registered and requested.
-   * */
-  abstract provides: ServiceKey<T>
+    /**
+     * The key under which this factory's service is registered and requested.
+     * */
+    abstract provides: ServiceKey<T>
 
-  /**
-   * The complete list of services this factory needs, resolved by the module and passed
-   * to {@link initialize} in declaration order.
-   */
-  abstract dependsOn: D
+    /**
+     * The complete list of services this factory needs, resolved by the module and passed
+     * to {@link initialize} in declaration order.
+     */
+    abstract dependsOn: D
 
-  /**
-   * Creates the service instance.
-   *
-   * Called by the `ServiceModule` with dependencies resolved per {@link dependsOn}.
-   */
-  abstract initialize(...dependencies: DependencyTypes<D>): T | Promise<T>
+    /**
+     * Creates the service instance.
+     *
+     * Called by the `ServiceModule` with dependencies resolved per {@link dependsOn}.
+     */
+    abstract initialize(...dependencies: DependencyTypes<D>): T | Promise<T>
 
-  /**
-   * Returns the retained instance if this factory currently holds one, or
-   * `undefined` if no instance is retained.
-   */
-  abstract getInstance(): { readonly value: T } | undefined
+    /**
+     * Returns the retained instance if this factory currently holds one, or
+     * `undefined` if no instance is retained.
+     */
+    abstract getInstance(): { readonly value: T } | undefined
 
-  /**
-   * Tears down whatever {@link initialize} retained (if anything at all). A subsequent {@link initialize}
-   * produces a fresh instance.
-   *
-   * Synchronous by design. The container does not await teardown, so asynchronous
-   * cleanup must be scheduled fire-and-forget from here.
-   */
-  abstract dispose(): void
+    /**
+     * Tears down whatever {@link initialize} retained (if anything at all). A subsequent {@link initialize}
+     * produces a fresh instance.
+     *
+     * Synchronous by design. The container does not await teardown, so asynchronous
+     * cleanup must be scheduled fire-and-forget from here.
+     */
+    abstract dispose(): void
 
-  /**
-   * Creates a lazily initialized singleton. `initialize` runs on the first request and
-   * the instance is shared by every request thereafter. A failed `initialize` is never
-   * cached, and after `dispose()` the next request initializes a fresh instance.
-   *
-   * @example
-   * ```typescript
-   * const databaseKey = new ServiceKey<DbClient>('Database')
-   *
-   * const database = ServiceFactory.singleton({
-   *   provides: databaseKey,
-   *   dependsOn: [configKey],
-   *   initialize: (config) => DbClient.connect(config.dbUrl),
-   *   dispose: (client) => client.close(),
-   * })
-   * ```
-   */
-  static singleton<
-    const T,
-    const D extends readonly DependencyKey<unknown>[] = [],
-  >({
-    provides,
-    dependsOn = [] as unknown as D,
-    initialize,
-    dispose = () => {},
-  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
-    dispose?: ((instance: T) => void) | undefined
-    dependsOn?: D
-  }): ServiceFactory<T, D> {
-    return new SingletonFactory(provides, dependsOn, initialize, dispose)
-  }
+    /**
+     * Creates a lazily initialized singleton. `initialize` runs on the first request and
+     * the instance is shared by every request thereafter. A failed `initialize` is never
+     * cached, and after `dispose()` the next request initializes a fresh instance.
+     *
+     * @example
+     * ```typescript
+     * const databaseKey = new ServiceKey<DbClient>('Database')
+     *
+     * const database = ServiceFactory.singleton({
+     *   provides: databaseKey,
+     *   dependsOn: [configKey],
+     *   initialize: (config) => DbClient.connect(config.dbUrl),
+     *   dispose: (client) => client.close(),
+     * })
+     * ```
+     */
+    static singleton<
+        const T,
+        const D extends readonly DependencyKey<unknown>[] = [],
+    >({
+        provides,
+        dependsOn = [] as unknown as D,
+        initialize,
+        dispose = () => {},
+    }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
+        dispose?: ((instance: T) => void) | undefined
+        dependsOn?: D
+    }): ServiceFactory<T, D> {
+        return new SingletonFactory(provides, dependsOn, initialize, dispose)
+    }
 
-  /**
-   * Creates a factory that builds a **fresh instance on every request**, with no
-   * caching and no deduplication.
-   *
-   * Transient services have no framework-managed lifecycle. `dispose` is a no-op, so
-   * instances are untouched by `module.dispose(...)`. Cleanup belongs entirely to
-   * whoever requested the instance.
-   *
-   * @example
-   * ```typescript
-   * const requestIdKey = new ServiceKey<string>('RequestId')
-   * const requestId = ServiceFactory.transient({
-   *   provides: requestIdKey,
-   *   initialize: () => crypto.randomUUID(), // fresh value per request
-   * })
-   * ```
-   */
-  static transient<
-    const T,
-    const D extends readonly DependencyKey<unknown>[] = [],
-  >({
-    provides,
-    dependsOn = [] as unknown as D,
-    initialize,
-  }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
-    dependsOn?: D
-  }): ServiceFactory<T, D> {
-    return new TransientFactory(provides, dependsOn, initialize)
-  }
+    /**
+     * Creates a factory that builds a **fresh instance on every request**, with no
+     * caching and no deduplication.
+     *
+     * Transient services have no framework-managed lifecycle. `dispose` is a no-op, so
+     * instances are untouched by `module.dispose(...)`. Cleanup belongs entirely to
+     * whoever requested the instance.
+     *
+     * @example
+     * ```typescript
+     * const requestIdKey = new ServiceKey<string>('RequestId')
+     * const requestId = ServiceFactory.transient({
+     *   provides: requestIdKey,
+     *   initialize: () => crypto.randomUUID(), // fresh value per request
+     * })
+     * ```
+     */
+    static transient<
+        const T,
+        const D extends readonly DependencyKey<unknown>[] = [],
+    >({
+        provides,
+        dependsOn = [] as unknown as D,
+        initialize,
+    }: Omit<ServiceFactory<T, D>, 'dispose' | 'dependsOn' | 'getInstance'> & {
+        dependsOn?: D
+    }): ServiceFactory<T, D> {
+        return new TransientFactory(provides, dependsOn, initialize)
+    }
 
-  /**
-   * Renamed to {@link ServiceFactory.transient}. This alias is kept for backwards
-   * compatibility and will be removed in a future release.
-   *
-   * @deprecated Renamed to {@link ServiceFactory.transient}.
-   * */
-  static oneShot<
-    const T,
-    const D extends readonly DependencyKey<unknown>[] = [],
-  >(
-    options: Omit<
-      ServiceFactory<T, D>,
-      'dispose' | 'dependsOn' | 'getInstance'
-    > & {
-      dependsOn?: D
-    },
-  ): ServiceFactory<T, D> {
-    return ServiceFactory.transient(options)
-  }
+    /**
+     * Renamed to {@link ServiceFactory.transient}. This alias is kept for backwards
+     * compatibility and will be removed in a future release.
+     *
+     * @deprecated Renamed to {@link ServiceFactory.transient}.
+     * */
+    static oneShot<
+        const T,
+        const D extends readonly DependencyKey<unknown>[] = [],
+    >(
+        options: Omit<
+            ServiceFactory<T, D>,
+            'dispose' | 'dependsOn' | 'getInstance'
+        > & {
+            dependsOn?: D
+        },
+    ): ServiceFactory<T, D> {
+        return ServiceFactory.transient(options)
+    }
 }
 
 /**
@@ -162,28 +162,28 @@ export abstract class ServiceFactory<
  * @template D - A tuple of `DependencyKey` types that represent the dependencies this factory relies on.
  */
 export class TransientFactory<
-  const T,
-  const D extends readonly DependencyKey<unknown>[] = [],
+    const T,
+    const D extends readonly DependencyKey<unknown>[] = [],
 > extends ServiceFactory<T, D> {
-  constructor(
-    readonly provides: ServiceKey<T>,
-    readonly dependsOn: D,
-    readonly onInitialize: ServiceFactory<T, D>['initialize'],
-  ) {
-    super()
-  }
+    constructor(
+        readonly provides: ServiceKey<T>,
+        readonly dependsOn: D,
+        readonly onInitialize: ServiceFactory<T, D>['initialize'],
+    ) {
+        super()
+    }
 
-  initialize(...dependencies: DependencyTypes<D>): T | Promise<T> {
-    return this.onInitialize(...dependencies)
-  }
+    initialize(...dependencies: DependencyTypes<D>): T | Promise<T> {
+        return this.onInitialize(...dependencies)
+    }
 
-  getInstance(): { readonly value: T } | undefined {
-    return undefined
-  }
+    getInstance(): { readonly value: T } | undefined {
+        return undefined
+    }
 
-  dispose(): void {
-    // Nothing retained, nothing to tear down.
-  }
+    dispose(): void {
+        // Nothing retained, nothing to tear down.
+    }
 }
 
 /**
@@ -201,8 +201,8 @@ export const OneShotFactory = TransientFactory
  * @deprecated Renamed to {@link TransientFactory}.
  * */
 export type OneShotFactory<
-  T,
-  D extends readonly DependencyKey<unknown>[] = [],
+    T,
+    D extends readonly DependencyKey<unknown>[] = [],
 > = TransientFactory<T, D>
 
 /**
@@ -215,111 +215,111 @@ export type OneShotFactory<
  * @template D - A tuple of `DependencyKey` types that represent the dependencies this factory relies on.
  */
 export class SingletonFactory<
-  const T,
-  const D extends readonly DependencyKey<unknown>[] = [],
+    const T,
+    const D extends readonly DependencyKey<unknown>[] = [],
 > extends ServiceFactory<T, D> {
-  private promisedInstance: Promise<T> | undefined
-  private retainedInstance: { value: T } | undefined
-  private generation = 0
-  private isRunningHook = false
+    private promisedInstance: Promise<T> | undefined
+    private retainedInstance: { value: T } | undefined
+    private generation = 0
+    private isRunningHook = false
 
-  constructor(
-    readonly provides: ServiceKey<T>,
-    readonly dependsOn: D,
-    readonly onInitialize: ServiceFactory<T, D>['initialize'],
-    readonly onDispose: ((instance: T) => void) | undefined,
-  ) {
-    super()
-  }
-
-  /**
-   * Returns the retained instance if the singleton is warm, or `undefined` if
-   * no instance is currently retained.
-   */
-  getInstance(): { readonly value: T } | undefined {
-    return this.retainedInstance
-  }
-
-  initialize(...dependencies: DependencyTypes<D>): Promise<T> | T {
-    if (this.retainedInstance !== undefined) {
-      return this.retainedInstance.value
-    }
-    if (this.promisedInstance !== undefined) {
-      return this.promisedInstance
+    constructor(
+        readonly provides: ServiceKey<T>,
+        readonly dependsOn: D,
+        readonly onInitialize: ServiceFactory<T, D>['initialize'],
+        readonly onDispose: ((instance: T) => void) | undefined,
+    ) {
+        super()
     }
 
-    if (this.isRunningHook) {
-      throw new Error(
-        `The "${this.provides.name}" factory initialize method cannot be called re-entrantly from onInitialize or onDispose`,
-      )
+    /**
+     * Returns the retained instance if the singleton is warm, or `undefined` if
+     * no instance is currently retained.
+     */
+    getInstance(): { readonly value: T } | undefined {
+        return this.retainedInstance
     }
 
-    const generation = this.generation
+    initialize(...dependencies: DependencyTypes<D>): Promise<T> | T {
+        if (this.retainedInstance !== undefined) {
+            return this.retainedInstance.value
+        }
+        if (this.promisedInstance !== undefined) {
+            return this.promisedInstance
+        }
 
-    // Invoke synchronously. If onInitialize throws right away, the error
-    // escapes before anything is cached, and the next call retries.
-    this.isRunningHook = true
-    let pending: Promise<T> | T
-    try {
-      pending = this.onInitialize(...dependencies)
-    } finally {
-      this.isRunningHook = false
-    }
+        if (this.isRunningHook) {
+            throw new Error(
+                `The "${this.provides.name}" factory initialize method cannot be called re-entrantly from onInitialize or onDispose`,
+            )
+        }
 
-    this.promisedInstance = (async () => {
-      try {
-        const newInstance = await pending
+        const generation = this.generation
 
-        if (this.generation !== generation) {
-          // Scope was disposed (and possibly revived) while we were in flight:
-          // this instance belongs to a dead generation. Tear it down and reject.
-          try {
-            this.isRunningHook = true
-            this.onDispose?.(newInstance)
-          } catch {
-            // teardown failure must not mask the disposal rejection
-          } finally {
+        // Invoke synchronously. If onInitialize throws right away, the error
+        // escapes before anything is cached, and the next call retries.
+        this.isRunningHook = true
+        let pending: Promise<T> | T
+        try {
+            pending = this.onInitialize(...dependencies)
+        } finally {
             this.isRunningHook = false
-          }
-          throw new InitializationAbortedError(
-            `The "${this.provides.name}" factory was disposed during initialization`,
-          )
         }
 
-        this.retainedInstance = { value: newInstance }
-        return newInstance
-      } finally {
-        // Only clear the slot if we still belong to the current generation.
-        // A dispose/revive may have installed a newer init's promise here.
-        if (this.generation === generation) {
-          this.promisedInstance = undefined
+        this.promisedInstance = (async () => {
+            try {
+                const newInstance = await pending
+
+                if (this.generation !== generation) {
+                    // Scope was disposed (and possibly revived) while we were in flight:
+                    // this instance belongs to a dead generation. Tear it down and reject.
+                    try {
+                        this.isRunningHook = true
+                        this.onDispose?.(newInstance)
+                    } catch {
+                        // teardown failure must not mask the disposal rejection
+                    } finally {
+                        this.isRunningHook = false
+                    }
+                    throw new InitializationAbortedError(
+                        `The "${this.provides.name}" factory was disposed during initialization`,
+                    )
+                }
+
+                this.retainedInstance = { value: newInstance }
+                return newInstance
+            } finally {
+                // Only clear the slot if we still belong to the current generation.
+                // A dispose/revive may have installed a newer init's promise here.
+                if (this.generation === generation) {
+                    this.promisedInstance = undefined
+                }
+            }
+        })()
+
+        return this.promisedInstance
+    }
+
+    dispose(): void {
+        if (this.isRunningHook) {
+            throw new Error(
+                `The "${this.provides.name}" factory dispose method cannot be called re-entrantly from onInitialize or onDispose`,
+            )
         }
-      }
-    })()
 
-    return this.promisedInstance
-  }
+        // Capture the current instance
+        const instance = this.retainedInstance
+        this.generation += 1
+        this.promisedInstance = undefined
+        this.retainedInstance = undefined
 
-  dispose(): void {
-    if (this.isRunningHook) {
-      throw new Error(
-        `The "${this.provides.name}" factory dispose method cannot be called re-entrantly from onInitialize or onDispose`,
-      )
+        if (instance) {
+            this.isRunningHook = true
+            try {
+                this.onDispose?.(instance.value)
+            } finally {
+                this.isRunningHook = false
+            }
+        }
     }
-
-    // Capture the current instance
-    const instance = this.retainedInstance
-    this.generation += 1
-    this.promisedInstance = undefined
-    this.retainedInstance = undefined
-
-    if (instance) {
-      this.isRunningHook = true
-      try {
-        this.onDispose?.(instance.value)
-      } finally {
-        this.isRunningHook = false
-      }
-    }
-  }
 }

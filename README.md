@@ -47,11 +47,11 @@ Every package is [pure ESM](https://gist.github.com/sindresorhus/a39789f98801d90
 import { ServiceKey, ServiceFactory, ServiceModule } from '@composed-di/core'
 
 interface Config {
-  dbUrl: string
+    dbUrl: string
 }
 interface Database {
-  query(sql: string): Promise<unknown[]>
-  close(): void
+    query(sql: string): Promise<unknown[]>
+    close(): void
 }
 
 // 1. Declare typed keys — unique tokens that identify each service.
@@ -60,15 +60,15 @@ const databaseKey = new ServiceKey<Database>('Database')
 
 // 2. Describe how each service is built and what it depends on.
 const configFactory = ServiceFactory.singleton({
-  provides: configKey,
-  initialize: () => ({ dbUrl: process.env.DB_URL! }),
+    provides: configKey,
+    initialize: () => ({ dbUrl: process.env.DB_URL! }),
 })
 
 const databaseFactory = ServiceFactory.singleton({
-  provides: databaseKey,
-  dependsOn: [configKey],
-  initialize: (config) => connectToDatabase(config.dbUrl), // may be async
-  dispose: (db) => db.close(),
+    provides: databaseKey,
+    dependsOn: [configKey],
+    initialize: (config) => connectToDatabase(config.dbUrl), // may be async
+    dispose: (db) => db.close(),
 })
 
 // 3. Compose a module. Cycles and missing dependencies throw here, not later.
@@ -95,34 +95,34 @@ import type { Pool } from 'pg'
 
 export const connectionKey = new ServiceKey<Pool>('Connection')
 export const userRepositoryKey = new ServiceKey<UserRepository>(
-  'UserRepository',
+    'UserRepository',
 )
 export const invoiceRepositoryKey = new ServiceKey<InvoiceRepository>(
-  'InvoiceRepository',
+    'InvoiceRepository',
 )
 
 const connectionFactory = ServiceFactory.singleton({
-  provides: connectionKey,
-  initialize: () => new Pool({ connectionString: process.env.DB_URL }),
-  dispose: (pool) => pool.end(),
+    provides: connectionKey,
+    initialize: () => new Pool({ connectionString: process.env.DB_URL }),
+    dispose: (pool) => pool.end(),
 })
 
 const userRepositoryFactory = ServiceFactory.singleton({
-  provides: userRepositoryKey,
-  dependsOn: [connectionKey],
-  initialize: (pool) => new PostgresUserRepository(pool),
+    provides: userRepositoryKey,
+    dependsOn: [connectionKey],
+    initialize: (pool) => new PostgresUserRepository(pool),
 })
 
 const invoiceRepositoryFactory = ServiceFactory.singleton({
-  provides: invoiceRepositoryKey,
-  dependsOn: [connectionKey],
-  initialize: (pool) => new PostgresInvoiceRepository(pool),
+    provides: invoiceRepositoryKey,
+    dependsOn: [connectionKey],
+    initialize: (pool) => new PostgresInvoiceRepository(pool),
 })
 
 export const dataModule = ServiceModule.from([
-  connectionFactory,
-  userRepositoryFactory,
-  invoiceRepositoryFactory,
+    connectionFactory,
+    userRepositoryFactory,
+    invoiceRepositoryFactory,
 ])
 ```
 
@@ -147,14 +147,14 @@ import { dataModule, connectionKey } from '@myapp/data'
 export const monthlyReportKey = new ServiceKey<MonthlyReport>('MonthlyReport')
 
 const monthlyReportFactory = ServiceFactory.singleton({
-  provides: monthlyReportKey,
-  dependsOn: [connectionKey],
-  initialize: (pool) => new MonthlyReport(pool),
+    provides: monthlyReportKey,
+    dependsOn: [connectionKey],
+    initialize: (pool) => new MonthlyReport(pool),
 })
 
 export const reportingModule = ServiceModule.from([
-  dataModule,
-  monthlyReportFactory,
+    dataModule,
+    monthlyReportFactory,
 ])
 ```
 
@@ -177,7 +177,7 @@ It stops working when a package deliberately must _not_ choose. A notifications 
 ```ts
 // @myapp/notifications — declares the contract, provides everything but the transport.
 export interface NotificationTransport {
-  send(to: string, subject: string, body: string): Promise<void>
+    send(to: string, subject: string, body: string): Promise<void>
 }
 
 export const transportKey = new ServiceKey<NotificationTransport>('Transport')
@@ -187,18 +187,18 @@ export const notifierKey = new ServiceKey<Notifier>('Notifier')
 const templateRendererKey = new ServiceKey<TemplateRenderer>('TemplateRenderer')
 
 const templateRendererFactory = ServiceFactory.singleton({
-  provides: templateRendererKey,
-  initialize: () => new HandlebarsRenderer(),
+    provides: templateRendererKey,
+    initialize: () => new HandlebarsRenderer(),
 })
 
 const notifierFactory = ServiceFactory.singleton({
-  provides: notifierKey,
-  dependsOn: [transportKey, templateRendererKey],
-  initialize: (transport, renderer) => new Notifier(transport, renderer),
+    provides: notifierKey,
+    dependsOn: [transportKey, templateRendererKey],
+    initialize: (transport, renderer) => new Notifier(transport, renderer),
 })
 
 export const makeNotificationsModule = (transport: ServiceModule) =>
-  ServiceModule.from([transport, templateRendererFactory, notifierFactory])
+    ServiceModule.from([transport, templateRendererFactory, notifierFactory])
 ```
 
 An implementation package exports no keys of its own. Its entire purpose is to satisfy `transportKey`, and its own dependencies stay internal:
@@ -211,20 +211,20 @@ import { SESClient } from '@aws-sdk/client-ses'
 const sesClientKey = new ServiceKey<SESClient>('SESClient')
 
 const sesClientFactory = ServiceFactory.singleton({
-  provides: sesClientKey,
-  initialize: () => new SESClient({ region: process.env.AWS_REGION }),
-  dispose: (client) => client.destroy(),
+    provides: sesClientKey,
+    initialize: () => new SESClient({ region: process.env.AWS_REGION }),
+    dispose: (client) => client.destroy(),
 })
 
 const sesTransportFactory = ServiceFactory.singleton({
-  provides: transportKey,
-  dependsOn: [sesClientKey],
-  initialize: (client) => new SESTransport(client),
+    provides: transportKey,
+    dependsOn: [sesClientKey],
+    initialize: (client) => new SESTransport(client),
 })
 
 export const sesTransportModule = ServiceModule.from([
-  sesClientFactory,
-  sesTransportFactory,
+    sesClientFactory,
+    sesTransportFactory,
 ])
 ```
 
@@ -233,13 +233,13 @@ Each application picks its transport at the composition root:
 ```ts
 // apps/web
 const appModule = ServiceModule.from([
-  makeNotificationsModule(sesTransportModule),
-  dataModule,
+    makeNotificationsModule(sesTransportModule),
+    dataModule,
 ])
 
 // apps/internal-tools — same package, different transport
 const toolsModule = ServiceModule.from([
-  makeNotificationsModule(twilioTransportModule),
+    makeNotificationsModule(twilioTransportModule),
 ])
 ```
 
@@ -256,8 +256,8 @@ Two lifetimes are provided:
 
 ```ts
 const requestIdFactory = ServiceFactory.transient({
-  provides: requestIdKey,
-  initialize: () => crypto.randomUUID(), // new value per request
+    provides: requestIdKey,
+    initialize: () => crypto.randomUUID(), // new value per request
 })
 ```
 
@@ -283,20 +283,20 @@ import { Selector, SelectorKey } from '@composed-di/core'
 const paymentSelectorKey = new SelectorKey([stripeKey, paypalKey])
 
 class CheckoutService {
-  constructor(private readonly payments: Selector<PaymentGateway>) {}
+    constructor(private readonly payments: Selector<PaymentGateway>) {}
 
-  async pay(order: Order) {
-    const gateway = await this.payments.get(
-      order.method === 'paypal' ? paypalKey : stripeKey,
-    )
-    return gateway.charge(order)
-  }
+    async pay(order: Order) {
+        const gateway = await this.payments.get(
+            order.method === 'paypal' ? paypalKey : stripeKey,
+        )
+        return gateway.charge(order)
+    }
 }
 
 const checkoutFactory = ServiceFactory.singleton({
-  provides: checkoutKey,
-  dependsOn: [paymentSelectorKey],
-  initialize: (payments) => new CheckoutService(payments),
+    provides: checkoutKey,
+    dependsOn: [paymentSelectorKey],
+    initialize: (payments) => new CheckoutService(payments),
 })
 ```
 
@@ -307,35 +307,35 @@ Everything above is plain factories, and core stays that way. When services are 
 ```ts
 import { ServiceModule } from '@composed-di/core'
 import {
-  Singleton,
-  Inject,
-  Dispose,
-  factoriesOf,
-  keyOf,
+    Singleton,
+    Inject,
+    Dispose,
+    factoriesOf,
+    keyOf,
 } from '@composed-di/decorators'
 
 @Singleton
 class Config {
-  readonly dbUrl = process.env.DB_URL!
+    readonly dbUrl = process.env.DB_URL!
 }
 
 @Singleton
 class Database {
-  // A decorated class is its own token — no ServiceKey needed.
-  @Inject(Config)
-  private readonly config!: Config
+    // A decorated class is its own token — no ServiceKey needed.
+    @Inject(Config)
+    private readonly config!: Config
 
-  // Injected fields are resolved before the rest of construction runs.
-  private readonly client = createClient(this.config.dbUrl)
+    // Injected fields are resolved before the rest of construction runs.
+    private readonly client = createClient(this.config.dbUrl)
 
-  query(sql: string): Promise<unknown[]> {
-    return this.client.query(sql)
-  }
+    query(sql: string): Promise<unknown[]> {
+        return this.client.query(sql)
+    }
 
-  @Dispose
-  close() {
-    this.client.close()
-  }
+    @Dispose
+    close() {
+        this.client.close()
+    }
 }
 
 const module = ServiceModule.from([...factoriesOf(Config, Database)])
@@ -353,7 +353,7 @@ Decorated classes take zero constructor arguments — dependencies are fields, a
 ```ts
 @Transient
 class RequestId {
-  readonly value = crypto.randomUUID() // new value per request
+    readonly value = crypto.randomUUID() // new value per request
 }
 ```
 
@@ -362,15 +362,17 @@ The capture caveat applies unchanged — an `@Inject` field on a singleton would
 ```ts
 @Singleton
 class CheckoutService {
-  @Select<PaymentGateway>(StripeGateway, PaypalGateway)
-  private readonly payments!: Selector<PaymentGateway>
+    @Select<PaymentGateway>(StripeGateway, PaypalGateway)
+    private readonly payments!: Selector<PaymentGateway>
 
-  async pay(order: Order) {
-    const gateway = await this.payments.get(
-      order.method === 'paypal' ? keyOf(PaypalGateway) : keyOf(StripeGateway),
-    )
-    return gateway.charge(order)
-  }
+    async pay(order: Order) {
+        const gateway = await this.payments.get(
+            order.method === 'paypal'
+                ? keyOf(PaypalGateway)
+                : keyOf(StripeGateway),
+        )
+        return gateway.charge(order)
+    }
 }
 ```
 
@@ -384,23 +386,23 @@ export const connectionKey = new ServiceKey<Pool>('Connection')
 
 @Singleton
 export class UserRepository {
-  @Inject(connectionKey)
-  private readonly pool!: Pool
+    @Inject(connectionKey)
+    private readonly pool!: Pool
 }
 
 @Singleton
 export class InvoiceRepository {
-  @Inject(connectionKey)
-  private readonly pool!: Pool
+    @Inject(connectionKey)
+    private readonly pool!: Pool
 }
 
 export const dataModule = ServiceModule.from([
-  ...factoriesOf(UserRepository, InvoiceRepository),
-  ServiceFactory.singleton({
-    provides: connectionKey,
-    initialize: () => new Pool({ connectionString: process.env.DB_URL }),
-    dispose: (pool) => pool.end(),
-  }),
+    ...factoriesOf(UserRepository, InvoiceRepository),
+    ServiceFactory.singleton({
+        provides: connectionKey,
+        initialize: () => new Pool({ connectionString: process.env.DB_URL }),
+        dispose: (pool) => pool.end(),
+    }),
 ])
 ```
 
@@ -408,12 +410,12 @@ Crossing the other way, `keyOf(Class)` returns the `ServiceKey` the lifecycle de
 
 ```ts
 const testModule = ServiceModule.from([
-  module,
-  // Replace the database at its own key.
-  ServiceFactory.singleton({
-    provides: keyOf(Database),
-    initialize: () => fakeDatabase,
-  }),
+    module,
+    // Replace the database at its own key.
+    ServiceFactory.singleton({
+        provides: keyOf(Database),
+        initialize: () => fakeDatabase,
+    }),
 ])
 ```
 
@@ -432,7 +434,7 @@ import { OTELServiceInstrumentation } from '@composed-di/instrumentation-otel'
 const instrumentation = new OTELServiceInstrumentation() // uses the global tracer provider
 
 const module = instrumentation.install(
-  ServiceModule.from([configFactory, databaseFactory]),
+    ServiceModule.from([configFactory, databaseFactory]),
 )
 ```
 
@@ -444,18 +446,19 @@ Nothing is captured by default — runtime values may be large or secret. Opt in
 import { redactionRule } from '@composed-di/instrumentation-core'
 
 const module = instrumentation.install(baseModule, {
-  capture: {
-    arguments: true,
-    results: true,
-    redactionRules: [
-      redactionRule(vaultKey).redactAll().exclude('ping').build(),
-      redactionRule(billingKey)
-        .redact('chargeCard', {
-          maskResult: (card) => `card ending in ${card.number.slice(-4)}`,
-        })
-        .build(),
-    ],
-  },
+    capture: {
+        arguments: true,
+        results: true,
+        redactionRules: [
+            redactionRule(vaultKey).redactAll().exclude('ping').build(),
+            redactionRule(billingKey)
+                .redact('chargeCard', {
+                    maskResult: (card) =>
+                        `card ending in ${card.number.slice(-4)}`,
+                })
+                .build(),
+        ],
+    },
 })
 ```
 

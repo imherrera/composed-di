@@ -7,7 +7,7 @@
  * than catching this at runtime.
  */
 export class ModuleValidationError extends Error {
-  override name = 'ModuleValidationError'
+    override name = 'ModuleValidationError'
 }
 
 /**
@@ -18,7 +18,7 @@ export class ModuleValidationError extends Error {
  * which catches it for you and returns `null` instead.
  */
 export class NoSuchFactoryError extends Error {
-  override name = 'NoSuchFactoryError'
+    override name = 'NoSuchFactoryError'
 }
 
 /**
@@ -28,7 +28,7 @@ export class NoSuchFactoryError extends Error {
  * Always indicates a bug in the caller. {@link Selector.keys} lists what can be requested.
  */
 export class NoSuchKeyError extends Error {
-  override name = 'NoSuchKeyError'
+    override name = 'NoSuchKeyError'
 }
 
 /**
@@ -42,7 +42,7 @@ export class NoSuchKeyError extends Error {
  * signal.
  */
 export class InitializationAbortedError extends Error {
-  override name = 'InitializationAbortedError'
+    override name = 'InitializationAbortedError'
 }
 
 /**

@@ -1,53 +1,53 @@
 {
-  "name": "@composed-di/instrumentation-otel",
-  "version": "0.14.0",
-  "private": false,
-  "keywords": [
-    "dependency injection",
-    "di",
-    "observability",
-    "opentelemetry",
-    "otel",
-    "tracing"
-  ],
-  "license": "MIT",
-  "author": "Juan Herrera juanhr454@gmail.com",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/imherrera/composed-di.git",
-    "directory": "packages/instrumentation-otel"
-  },
-  "files": [
-    "dist/src",
-    "src"
-  ],
-  "type": "module",
-  "sideEffects": false,
-  "types": "./dist/src/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/src/index.d.ts",
-      "default": "./dist/src/index.js"
+    "name": "@composed-di/instrumentation-otel",
+    "version": "0.14.0",
+    "private": false,
+    "keywords": [
+        "dependency injection",
+        "di",
+        "observability",
+        "opentelemetry",
+        "otel",
+        "tracing"
+    ],
+    "license": "MIT",
+    "author": "Juan Herrera juanhr454@gmail.com",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/imherrera/composed-di.git",
+        "directory": "packages/instrumentation-otel"
+    },
+    "files": [
+        "dist/src",
+        "src"
+    ],
+    "type": "module",
+    "sideEffects": false,
+    "types": "./dist/src/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/src/index.d.ts",
+            "default": "./dist/src/index.js"
+        }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "tsc --build",
+        "clean": "tsc --build --clean",
+        "prepublishOnly": "npm run build"
+    },
+    "devDependencies": {
+        "@composed-di/core": "workspace:*",
+        "@composed-di/instrumentation-core": "workspace:*",
+        "@opentelemetry/api": "1.9.1",
+        "@opentelemetry/context-async-hooks": "^2.9.0",
+        "@opentelemetry/sdk-trace-base": "^2.9.0"
+    },
+    "peerDependencies": {
+        "@composed-di/core": "^0.14.0",
+        "@composed-di/instrumentation-core": "^0.14.0",
+        "@opentelemetry/api": "^1.9.1"
     }
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "build": "tsc --build",
-    "clean": "tsc --build --clean",
-    "prepublishOnly": "npm run build"
-  },
-  "devDependencies": {
-    "@composed-di/core": "workspace:*",
-    "@composed-di/instrumentation-core": "workspace:*",
-    "@opentelemetry/api": "1.9.1",
-    "@opentelemetry/context-async-hooks": "^2.9.0",
-    "@opentelemetry/sdk-trace-base": "^2.9.0"
-  },
-  "peerDependencies": {
-    "@composed-di/core": "^0.14.0",
-    "@composed-di/instrumentation-core": "^0.14.0",
-    "@opentelemetry/api": "^1.9.1"
-  }
 }

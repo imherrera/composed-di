@@ -1,46 +1,46 @@
 {
-  "name": "@composed-di/instrumentation-core",
-  "version": "0.14.0",
-  "private": false,
-  "keywords": [
-    "dependency injection",
-    "di",
-    "instrumentation",
-    "observability",
-    "tracing"
-  ],
-  "license": "MIT",
-  "author": "Juan Herrera juanhr454@gmail.com",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/imherrera/composed-di.git",
-    "directory": "packages/instrumentation-core"
-  },
-  "files": [
-    "dist/src",
-    "src"
-  ],
-  "type": "module",
-  "sideEffects": false,
-  "types": "./dist/src/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/src/index.d.ts",
-      "default": "./dist/src/index.js"
+    "name": "@composed-di/instrumentation-core",
+    "version": "0.14.0",
+    "private": false,
+    "keywords": [
+        "dependency injection",
+        "di",
+        "instrumentation",
+        "observability",
+        "tracing"
+    ],
+    "license": "MIT",
+    "author": "Juan Herrera juanhr454@gmail.com",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/imherrera/composed-di.git",
+        "directory": "packages/instrumentation-core"
+    },
+    "files": [
+        "dist/src",
+        "src"
+    ],
+    "type": "module",
+    "sideEffects": false,
+    "types": "./dist/src/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/src/index.d.ts",
+            "default": "./dist/src/index.js"
+        }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "tsc --build",
+        "clean": "tsc --build --clean",
+        "prepublishOnly": "npm run build"
+    },
+    "devDependencies": {
+        "@composed-di/core": "workspace:^"
+    },
+    "peerDependencies": {
+        "@composed-di/core": "^0.14.0"
     }
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "build": "tsc --build",
-    "clean": "tsc --build --clean",
-    "prepublishOnly": "npm run build"
-  },
-  "devDependencies": {
-    "@composed-di/core": "workspace:^"
-  },
-  "peerDependencies": {
-    "@composed-di/core": "^0.14.0"
-  }
 }

@@ -1,8 +1,8 @@
 import {
-  type DependencyKey,
-  SelectorKey,
-  ServiceKey,
-  type Selector,
+    type DependencyKey,
+    SelectorKey,
+    ServiceKey,
+    type Selector,
 } from '@composed-di/core'
 import { type Constructor, type ServiceToken } from './types.js'
 import { keyOf } from './utils.js'
@@ -16,11 +16,11 @@ import { activeFieldStash, type FieldInjection } from './internal/metadata.js'
  * This decorator is not inherited.
  */
 export function Singleton<C extends Constructor<object>>(
-  constructor: C,
-  context: ClassDecoratorContext<C>,
+    constructor: C,
+    context: ClassDecoratorContext<C>,
 ): void {
-  assertStandardContext('Singleton', context)
-  LifecycleRegistry.register(constructor, context, 'singleton')
+    assertStandardContext('Singleton', context)
+    LifecycleRegistry.register(constructor, context, 'singleton')
 }
 
 /**
@@ -29,11 +29,11 @@ export function Singleton<C extends Constructor<object>>(
  * This decorator is not inherited.
  */
 export function Transient<C extends Constructor<object>>(
-  constructor: C,
-  context: ClassDecoratorContext<C>,
+    constructor: C,
+    context: ClassDecoratorContext<C>,
 ): void {
-  assertStandardContext('Transient', context)
-  LifecycleRegistry.register(constructor, context, 'transient')
+    assertStandardContext('Transient', context)
+    LifecycleRegistry.register(constructor, context, 'transient')
 }
 
 /**
@@ -42,21 +42,21 @@ export function Transient<C extends Constructor<object>>(
  * This decorator is not inherited and only applicable for {@link Singleton} classes.
  */
 export function Dispose<This>(
-  _method: (this: This) => void,
-  context: ClassMethodDecoratorContext<This, (this: This) => void>,
+    _method: (this: This) => void,
+    context: ClassMethodDecoratorContext<This, (this: This) => void>,
 ): void {
-  assertStandardContext('Dispose', context)
-  if (context.static) {
-    throw new DecoratorValidationError(
-      `@Dispose cannot be applied to the static method ${String(context.name)}`,
-    )
-  }
-  LifecycleRegistry.addPendingDispose(context.metadata, {
-    name: context.name,
-    invoke: (instance) => {
-      context.access.get(instance as This).call(instance as This)
-    },
-  })
+    assertStandardContext('Dispose', context)
+    if (context.static) {
+        throw new DecoratorValidationError(
+            `@Dispose cannot be applied to the static method ${String(context.name)}`,
+        )
+    }
+    LifecycleRegistry.addPendingDispose(context.metadata, {
+        name: context.name,
+        invoke: (instance) => {
+            context.access.get(instance as This).call(instance as This)
+        },
+    })
 }
 
 /**
@@ -68,14 +68,14 @@ export function Dispose<This>(
  * Constructing it manually throws {@link DecoratorValidationError}.
  */
 export function Inject<T>(token: ServiceToken<T>) {
-  const key = token instanceof ServiceKey ? token : keyOf(token)
+    const key = token instanceof ServiceKey ? token : keyOf(token)
 
-  return function <This>(
-    _value: undefined,
-    context: ClassFieldDecoratorContext<This, T>,
-  ): (this: This, initial: T) => T {
-    return inject('Inject', key, context)
-  }
+    return function <This>(
+        _value: undefined,
+        context: ClassFieldDecoratorContext<This, T>,
+    ): (this: This, initial: T) => T {
+        return inject('Inject', key, context)
+    }
 }
 
 /**
@@ -84,16 +84,18 @@ export function Inject<T>(token: ServiceToken<T>) {
  * The arguments can be {@link ServiceKey} or decorated classes, mixed freely.
  */
 export function Select<T>(...tokens: [ServiceToken<T>, ...ServiceToken<T>[]]) {
-  const key = new SelectorKey<T>(
-    tokens.map((token) => (token instanceof ServiceKey ? token : keyOf(token))),
-  )
+    const key = new SelectorKey<T>(
+        tokens.map((token) =>
+            token instanceof ServiceKey ? token : keyOf(token),
+        ),
+    )
 
-  return function <This>(
-    _value: undefined,
-    context: ClassFieldDecoratorContext<This, Selector<T>>,
-  ): (this: This, initial: Selector<T>) => Selector<T> {
-    return inject('Select', key, context)
-  }
+    return function <This>(
+        _value: undefined,
+        context: ClassFieldDecoratorContext<This, Selector<T>>,
+    ): (this: This, initial: Selector<T>) => Selector<T> {
+        return inject('Select', key, context)
+    }
 }
 
 /**
@@ -102,39 +104,39 @@ export function Select<T>(...tokens: [ServiceToken<T>, ...ServiceToken<T>[]]) {
  * the active stash. This is the machinery shared by `@Inject` and `@Select`.
  */
 function inject<This, T>(
-  decorator: string,
-  key: DependencyKey<unknown>,
-  context: ClassFieldDecoratorContext<This, T>,
+    decorator: string,
+    key: DependencyKey<unknown>,
+    context: ClassFieldDecoratorContext<This, T>,
 ): (this: This, initial: T) => T {
-  assertStandardContext(decorator, context)
+    assertStandardContext(decorator, context)
 
-  if (context.static) {
-    throw new DecoratorValidationError(
-      `@${decorator} cannot be applied to the static field ${String(context.name)}`,
-    )
-  }
-  const field: FieldInjection = { name: context.name, key }
-  LifecycleRegistry.addPendingField(context.metadata, field)
-
-  return function (this: This, _initial: T): T {
-    const owner = (this as object).constructor.name
-    const label = `${owner}.${String(context.name)}`
-
-    const stash = activeFieldStash()
-    if (stash === undefined) {
-      throw new DecoratorValidationError(
-        `${label}: @${decorator} fields are resolved by a ServiceModule. Retrieve ${owner} through the module instead of constructing it with new`,
-      )
+    if (context.static) {
+        throw new DecoratorValidationError(
+            `@${decorator} cannot be applied to the static field ${String(context.name)}`,
+        )
     }
-    if (!stash.values.has(field)) {
-      throw new DecoratorValidationError(
-        `${label}: no resolved instance. The field is not part of the class registration (is the class's lifecycle decorator missing?)`,
-      )
-    }
+    const field: FieldInjection = { name: context.name, key }
+    LifecycleRegistry.addPendingField(context.metadata, field)
 
-    stash.consumed.add(field)
-    return stash.values.get(field) as T
-  }
+    return function (this: This, _initial: T): T {
+        const owner = (this as object).constructor.name
+        const label = `${owner}.${String(context.name)}`
+
+        const stash = activeFieldStash()
+        if (stash === undefined) {
+            throw new DecoratorValidationError(
+                `${label}: @${decorator} fields are resolved by a ServiceModule. Retrieve ${owner} through the module instead of constructing it with new`,
+            )
+        }
+        if (!stash.values.has(field)) {
+            throw new DecoratorValidationError(
+                `${label}: no resolved instance. The field is not part of the class registration (is the class's lifecycle decorator missing?)`,
+            )
+        }
+
+        stash.consumed.add(field)
+        return stash.values.get(field) as T
+    }
 }
 
 /**
@@ -143,9 +145,9 @@ function inject<This, T>(
  * object.
  */
 function assertStandardContext(decorator: string, context: unknown): void {
-  if (typeof context !== 'object' || context === null) {
-    throw new DecoratorValidationError(
-      `@${decorator} was invoked with the legacy decorator protocol (experimentalDecorators). Compile with standard ECMAScript decorators`,
-    )
-  }
+    if (typeof context !== 'object' || context === null) {
+        throw new DecoratorValidationError(
+            `@${decorator} was invoked with the legacy decorator protocol (experimentalDecorators). Compile with standard ECMAScript decorators`,
+        )
+    }
 }

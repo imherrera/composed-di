@@ -1,18 +1,18 @@
 {
-  "extends": "../../tsconfig.base.src.json",
-  "compilerOptions": {
-    "outDir": "dist/src",
-    "rootDir": "src",
-    "tsBuildInfoFile": "dist/tsconfig.src.tsbuildinfo",
-    "types": ["node"]
-  },
-  "include": ["src"],
-  "references": [
-    {
-      "path": "../core/tsconfig.src.json"
+    "extends": "../../tsconfig.base.src.json",
+    "compilerOptions": {
+        "outDir": "dist/src",
+        "rootDir": "src",
+        "tsBuildInfoFile": "dist/tsconfig.src.tsbuildinfo",
+        "types": ["node"]
     },
-    {
-      "path": "../decorators/tsconfig.src.json"
-    }
-  ]
+    "include": ["src"],
+    "references": [
+        {
+            "path": "../core/tsconfig.src.json"
+        },
+        {
+            "path": "../decorators/tsconfig.src.json"
+        }
+    ]
 }

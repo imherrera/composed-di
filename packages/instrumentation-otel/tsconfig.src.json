@@ -1,17 +1,17 @@
 {
-  "extends": "../../tsconfig.base.src.json",
-  "compilerOptions": {
-    "outDir": "dist/src",
-    "rootDir": "src",
-    "tsBuildInfoFile": "dist/tsconfig.src.tsbuildinfo"
-  },
-  "include": ["src"],
-  "references": [
-    {
-      "path": "../core/tsconfig.src.json"
+    "extends": "../../tsconfig.base.src.json",
+    "compilerOptions": {
+        "outDir": "dist/src",
+        "rootDir": "src",
+        "tsBuildInfoFile": "dist/tsconfig.src.tsbuildinfo"
     },
-    {
-      "path": "../instrumentation-core/tsconfig.src.json"
-    }
-  ]
+    "include": ["src"],
+    "references": [
+        {
+            "path": "../core/tsconfig.src.json"
+        },
+        {
+            "path": "../instrumentation-core/tsconfig.src.json"
+        }
+    ]
 }

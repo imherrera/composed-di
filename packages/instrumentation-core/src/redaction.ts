@@ -15,13 +15,13 @@ export const REDACTED_VALUE = '[REDACTED]'
  * representation to report in place of the real value.
  */
 export type Mask<T, K extends Extract<keyof T, string>> = T[K] extends (
-  ...args: infer A
+    ...args: infer A
 ) => infer R
-  ? {
-      maskArgs?: (...args: A) => string
-      maskResult?: (result: R) => string
-    }
-  : never
+    ? {
+          maskArgs?: (...args: A) => string
+          maskResult?: (result: R) => string
+      }
+    : never
 
 /**
  * Per-property override, layered on top of a rule's `redactAll` default.
@@ -31,9 +31,9 @@ export type Mask<T, K extends Extract<keyof T, string>> = T[K] extends (
  * regardless of `redactAll`.
  */
 interface PropertyOverride {
-  redacted: boolean
-  maskArgs?: (...args: any[]) => string
-  maskResult?: (result: any) => string
+    redacted: boolean
+    maskArgs?: (...args: any[]) => string
+    maskResult?: (result: any) => string
 }
 
 /**
@@ -49,20 +49,20 @@ interface PropertyOverride {
  * reached its decision, only what to do with it.
  */
 export interface RedactionRule<T> {
-  readonly key: ServiceKey<T>
+    readonly key: ServiceKey<T>
 
-  /**
-   * The args to report for a call to `methodName`. Unchanged if not
-   * redacted, otherwise blanked or run through a custom `maskArgs`.
-   */
-  maskArgs(methodName: string, args: readonly unknown[]): readonly unknown[]
+    /**
+     * The args to report for a call to `methodName`. Unchanged if not
+     * redacted, otherwise blanked or run through a custom `maskArgs`.
+     */
+    maskArgs(methodName: string, args: readonly unknown[]): readonly unknown[]
 
-  /**
-   * The value to report for a method call's success outcome. Unchanged
-   * if not redacted, otherwise blanked or run through a custom
-   * `maskResult`.
-   */
-  maskResult(methodName: string, result: unknown): unknown
+    /**
+     * The value to report for a method call's success outcome. Unchanged
+     * if not redacted, otherwise blanked or run through a custom
+     * `maskResult`.
+     */
+    maskResult(methodName: string, result: unknown): unknown
 }
 
 /**
@@ -90,82 +90,85 @@ export interface RedactionRule<T> {
  * ```
  */
 export class RedactionRuleBuilder<T> {
-  private redactAllFlag = false
-  private hasRedact = false
-  private readonly overrides: Record<string, PropertyOverride> = {}
+    private redactAllFlag = false
+    private hasRedact = false
+    private readonly overrides: Record<string, PropertyOverride> = {}
 
-  constructor(private readonly key: ServiceKey<T>) {}
+    constructor(private readonly key: ServiceKey<T>) {}
 
-  /** Redacts every property by default. */
-  redactAll(): this {
-    this.redactAllFlag = true
-    this.hasRedact = true
-    return this
-  }
-
-  /**
-   * Marks one property (method) as redacted, with optional custom
-   * masking. Call repeatedly for several properties. Overrides
-   * `redactAll`/`exclude` for this specific property.
-   */
-  redact<K extends Extract<keyof T, string>>(name: K, mask?: Mask<T, K>): this {
-    this.overrides[name] = { redacted: true, ...mask }
-    this.hasRedact = true
-    return this
-  }
-
-  /**
-   * Marks one or more properties as explicitly NOT redacted, overriding
-   * `redactAll` for just these.
-   */
-  exclude(...names: Extract<keyof T, string>[]): this {
-    for (const name of names) {
-      this.overrides[name] = { redacted: false }
-    }
-    return this
-  }
-
-  build(): RedactionRule<any> {
-    // `exclude` alone never redacts anything. At least one call to
-    // `redactAll`/`redact` is required for this rule to have any effect.
-    if (!this.hasRedact) {
-      throw new Error(
-        `redactionRule(${this.key.name}) has no effect. Call .redactAll() and/or .redact(...) ` +
-          'before .build(), because .exclude() alone never redacts anything.',
-      )
+    /** Redacts every property by default. */
+    redactAll(): this {
+        this.redactAllFlag = true
+        this.hasRedact = true
+        return this
     }
 
-    const redactAllFlag = this.redactAllFlag
-    const overrides = this.overrides
+    /**
+     * Marks one property (method) as redacted, with optional custom
+     * masking. Call repeatedly for several properties. Overrides
+     * `redactAll`/`exclude` for this specific property.
+     */
+    redact<K extends Extract<keyof T, string>>(
+        name: K,
+        mask?: Mask<T, K>,
+    ): this {
+        this.overrides[name] = { redacted: true, ...mask }
+        this.hasRedact = true
+        return this
+    }
 
-    return {
-      key: this.key,
-      maskArgs(methodName, args) {
-        const override = overrides[methodName]
-        const redacted = override ? override.redacted : redactAllFlag
-        if (!redacted) {
-          return args
+    /**
+     * Marks one or more properties as explicitly NOT redacted, overriding
+     * `redactAll` for just these.
+     */
+    exclude(...names: Extract<keyof T, string>[]): this {
+        for (const name of names) {
+            this.overrides[name] = { redacted: false }
         }
-        return override?.maskArgs
-          ? // A custom mask reports one string for the whole call,
-            // rather than a value per argument.
-            [override.maskArgs(...args)]
-          : // Replace each argument rather than the whole array, so the
-            // delegate still sees the call's arity.
-            args.map(() => REDACTED_VALUE)
-      },
-      maskResult(methodName, result) {
-        const override = overrides[methodName]
-        const redacted = override ? override.redacted : redactAllFlag
-        if (!redacted) {
-          return result
+        return this
+    }
+
+    build(): RedactionRule<any> {
+        // `exclude` alone never redacts anything. At least one call to
+        // `redactAll`/`redact` is required for this rule to have any effect.
+        if (!this.hasRedact) {
+            throw new Error(
+                `redactionRule(${this.key.name}) has no effect. Call .redactAll() and/or .redact(...) ` +
+                    'before .build(), because .exclude() alone never redacts anything.',
+            )
         }
-        return override?.maskResult
-          ? override.maskResult(result)
-          : REDACTED_VALUE
-      },
-    } as RedactionRule<any>
-  }
+
+        const redactAllFlag = this.redactAllFlag
+        const overrides = this.overrides
+
+        return {
+            key: this.key,
+            maskArgs(methodName, args) {
+                const override = overrides[methodName]
+                const redacted = override ? override.redacted : redactAllFlag
+                if (!redacted) {
+                    return args
+                }
+                return override?.maskArgs
+                    ? // A custom mask reports one string for the whole call,
+                      // rather than a value per argument.
+                      [override.maskArgs(...args)]
+                    : // Replace each argument rather than the whole array, so the
+                      // delegate still sees the call's arity.
+                      args.map(() => REDACTED_VALUE)
+            },
+            maskResult(methodName, result) {
+                const override = overrides[methodName]
+                const redacted = override ? override.redacted : redactAllFlag
+                if (!redacted) {
+                    return result
+                }
+                return override?.maskResult
+                    ? override.maskResult(result)
+                    : REDACTED_VALUE
+            },
+        } as RedactionRule<any>
+    }
 }
 
 /**
@@ -175,5 +178,5 @@ export class RedactionRuleBuilder<T> {
  * @return A new instance of RedactionRuleBuilder for constructing redaction rules.
  */
 export function redactionRule<T>(key: ServiceKey<T>): RedactionRuleBuilder<T> {
-  return new RedactionRuleBuilder(key)
+    return new RedactionRuleBuilder(key)
 }
