@@ -161,7 +161,7 @@ The selector resolves through the module, so lifetimes hold: a singleton key yie
 
 ### Errors
 
-`ModuleValidationError`, `NoSuchFactoryError`, `NoSuchKeyError`, `InitializationAbortedError`, and `FactoryReentrancyError` — each is documented at its definition in [`src/errors.ts`](src/errors.ts).
+`ModuleValidationError`, `NoSuchFactoryError`, `NoSuchKeyError`, and `InitializationAbortedError` — each is documented at its definition in [`src/errors.ts`](src/errors.ts).
 
 ## Testing
 
