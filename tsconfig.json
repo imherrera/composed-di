@@ -3,8 +3,8 @@
     "references": [
         { "path": "packages/core" },
         { "path": "packages/decorators" },
-        { "path": "packages/example" },
         { "path": "packages/instrumentation-core" },
-        { "path": "packages/instrumentation-otel" }
+        { "path": "packages/instrumentation-otel" },
+        { "path": "examples/cafe" }
     ]
 }

@@ -184,7 +184,7 @@ Classes themselves stay framework-free — constructor injection means a unit te
 
 ## Full example
 
-The complete café — every feature above in one running file — lives at [`packages/example/src/cafeShopCore.ts`](../example/src/cafeShopCore.ts), with a decorator-based twin ([`cafeShop.ts`](../example/src/cafeShop.ts)) built on [`@composed-di/decorators`](../decorators) for comparison.
+The complete café — every feature above in one running file — lives at [`examples/cafe/src/cafeShopCore.ts`](../../examples/cafe/src/cafeShopCore.ts), with a decorator-based twin ([`cafeShop.ts`](../../examples/cafe/src/cafeShop.ts)) built on [`@composed-di/decorators`](../decorators) for comparison.
 
 ## Documentation
 

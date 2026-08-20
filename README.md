@@ -419,7 +419,7 @@ const testModule = ServiceModule.from([
 ])
 ```
 
-This is stage-3 decorators plus [decorator metadata](https://github.com/tc39/proposal-decorator-metadata), so it needs TypeScript ≥ 5.2 with `experimentalDecorators` **off** — legacy mode changes the runtime calling convention and breaks at runtime rather than at compile time, and metadata (5.2+) is how the decorators bind `@Inject` fields to their class. See the [package README](packages/decorators/README.md) for the full API, and the example package for one app written both ways: [`cafeShop.ts`](packages/example/src/cafeShop.ts) with decorators, [`cafeShopCore.ts`](packages/example/src/cafeShopCore.ts) with factories alone.
+This is stage-3 decorators plus [decorator metadata](https://github.com/tc39/proposal-decorator-metadata), so it needs TypeScript ≥ 5.2 with `experimentalDecorators` **off** — legacy mode changes the runtime calling convention and breaks at runtime rather than at compile time, and metadata (5.2+) is how the decorators bind `@Inject` fields to their class. See the [package README](packages/decorators/README.md) for the full API, and the example package for one app written both ways: [`cafeShop.ts`](examples/cafe/src/cafeShop.ts) with decorators, [`cafeShopCore.ts`](examples/cafe/src/cafeShopCore.ts) with factories alone.
 
 ## Observability
 

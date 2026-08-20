@@ -9,10 +9,10 @@
     "include": ["src"],
     "references": [
         {
-            "path": "../core/tsconfig.src.json"
+            "path": "../../packages/core/tsconfig.src.json"
         },
         {
-            "path": "../decorators/tsconfig.src.json"
+            "path": "../../packages/decorators/tsconfig.src.json"
         }
     ]
 }

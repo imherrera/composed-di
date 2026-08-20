@@ -1,5 +1,7 @@
 packages:
     - 'packages/*'
+    - 'examples/*'
+    - 'docs'
 minimumReleaseAgeExclude:
     - '@composed-di/core@0.13.0'
     - '@composed-di/instrumentation-core@0.13.0'

@@ -205,7 +205,7 @@ class Garage {
 
 ## Full example
 
-The complete café — every feature above in one running file — lives at [`packages/example/src/cafeShop.ts`](../example/src/cafeShop.ts), with a decorator-free twin ([`cafeShopCore.ts`](../example/src/cafeShopCore.ts)) for comparison.
+The complete café — every feature above in one running file — lives at [`examples/cafe/src/cafeShop.ts`](../../examples/cafe/src/cafeShop.ts), with a decorator-free twin ([`cafeShopCore.ts`](../../examples/cafe/src/cafeShopCore.ts)) for comparison.
 
 ## Errors
 

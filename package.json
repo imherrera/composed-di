@@ -11,7 +11,7 @@
     "type": "module",
     "scripts": {
         "build": "tsc --build",
-        "clean": "rm -rf packages/*/dist/",
+        "clean": "rm -rf packages/*/dist/ examples/*/dist/",
         "test": "pnpm build && vitest run",
         "test:watch": "pnpm build && vitest",
         "test:types": "tsc --build",
